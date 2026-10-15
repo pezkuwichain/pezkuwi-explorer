@@ -9,7 +9,7 @@ export async function loadCitizenship(address: string, deps = { getApi: realGetA
   // citizenNft is OptionQuery. Measured live on Zagros People chain.
   const q = api.query as never as {
     identityKyc: { kycStatuses(a: string): Promise<{ type: string }> };
-    tiki: { citizenNft(a: string): Promise<{ isSome: boolean }>; userTikis(a: string): Promise<{ type: string }[]> };
+    tiki: { citizenNft(a: string): Promise<{ isSome: boolean; unwrap(): { toBigInt(): bigint } }>; userTikis(a: string): Promise<{ type: string }[]> };
     trust: { trustScores(a: string): Promise<{ toBigInt(): bigint }> };
   };
   const [status, nft, tikis, trust] = await withTimeout(Promise.all([
@@ -23,5 +23,7 @@ export async function loadCitizenship(address: string, deps = { getApi: realGetA
     : status.type === 'NotStarted' ? 'notStarted'
     : status.type === 'PendingReferral' || status.type === 'ReferrerApproved' ? 'applied'
     : (() => { throw new Error(`unknown citizenship status: ${status.type}`); })();
-  return { stage, roles: tikis.map((t) => t.type), trust: trust.toBigInt() };
+  // The citizen card's number: the id of the citizenship NFT, or null when the account holds none.
+  const nftId = nft.isSome ? nft.unwrap().toBigInt() : null;
+  return { stage, roles: tikis.map((t) => t.type), trust: trust.toBigInt(), nftId };
 }

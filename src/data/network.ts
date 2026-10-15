@@ -12,11 +12,13 @@ const TREASURY = (() => {
 })();
 
 type Num = { toNumber(): number };
+type Big = { toBigInt(): bigint };
+type RefInfo = { isOngoing: boolean; asOngoing: { tally: { ayes: Big; nays: Big } } };
 type Api = {
   query: {
     timestamp: { now(): Promise<Num> };
     session: { validators(): Promise<unknown[]> };
-    referenda?: { referendumInfoFor: { entries(): Promise<[{ args: [Num] }, { unwrap(): { isOngoing: boolean } }][]> } };
+    referenda?: { referendumInfoFor: { entries(): Promise<[{ args: [Num] }, { unwrap(): RefInfo }][]> } };
     system: { account(a: string): Promise<{ data: { free: { toBigInt(): bigint } } }> };
   };
 };
@@ -29,7 +31,8 @@ export const LIVE_WINDOW_MS = 90_000;
 export type NetworkOverview = {
   live: boolean | null;
   validators: number | null;
-  votes: { chain: ChainKey; index: number }[] | null;
+  // ayes/nays: the ongoing tally as the chain reports it (conviction-weighted), for the Aye/Nay bar.
+  votes: { chain: ChainKey; index: number; ayes: bigint; nays: bigint }[] | null;
   treasury: bigint | null;
 };
 
@@ -58,7 +61,11 @@ export async function loadNetwork(deps = { getApi: realGetApi, now: () => Date.n
     q('assetHub', (a) => a.query.system.account(TREASURY)),
     ...chains.map((c) => q(c, async (a) => (await (a.query.referenda?.referendumInfoFor.entries() ?? Promise.resolve([])))
       .filter(([, v]) => v.unwrap().isOngoing)
-      .map(([k]) => ({ chain: c, index: k.args[0].toNumber() })))),
+      // A tally that cannot be read throws here, so this chain's votes read as "could not load", never as 0 / 0.
+      .map(([k, v]) => {
+        const { ayes, nays } = v.unwrap().asOngoing.tally;
+        return { chain: c, index: k.args[0].toNumber(), ayes: ayes.toBigInt(), nays: nays.toBigInt() };
+      }))),
   ]);
   return {
     live: ts ? isLive(ts.toNumber(), deps.now()) : null,

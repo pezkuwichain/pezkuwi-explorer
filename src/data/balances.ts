@@ -1,8 +1,9 @@
 import { getApi as realGetApi, REQUEST_TIMEOUT_MS } from '../chain/connections';
-import { NETWORK } from '../config/network';
+import { NETWORK, type ChainKey } from '../config/network';
 import { withTimeout } from '../lib/timeout';
 
-export type Holding = { symbol: string; decimals: number; amount: bigint };
+// perChain is set on the native holding only: where its total sits (the three always add up to amount).
+export type Holding = { symbol: string; decimals: number; amount: bigint; perChain?: Record<ChainKey, bigint> };
 
 // Fail-closed by design: if any chain fails or times out this rejects, and the
 // card shows "could not load". Never return a partial HEZ total; a too-low money
@@ -16,7 +17,8 @@ export async function loadBalances(address: string, deps = { getApi: realGetApi 
     return a.data.free.toBigInt() + a.data.reserved.toBigInt();
   };
   const [rHez, aHez, pHez] = await Promise.all([native(relay), native(ah), native(people)]);
-  const out: Holding[] = [{ symbol: NETWORK.native.symbol, decimals: NETWORK.native.decimals, amount: rHez + aHez + pHez }];
+  const out: Holding[] = [{ symbol: NETWORK.native.symbol, decimals: NETWORK.native.decimals, amount: rHez + aHez + pHez,
+    perChain: { relay: rHez, assetHub: aHez, people: pHez } }];
   const amounts = await Promise.all(NETWORK.assets.map(async (asset) => {
     const opt = (await withTimeout(ah.query.assets.account(asset.id, address), REQUEST_TIMEOUT_MS)) as never as {
       isSome: boolean; unwrap(): { balance: { toBigInt(): bigint } };

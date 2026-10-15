@@ -2,11 +2,11 @@
 import { describe, expect, it } from 'vitest';
 import { loadCitizenship } from './citizenship';
 
-const people = (status: string, nft: boolean, tikis: string[], trust: bigint) => () => Promise.resolve({
+const people = (status: string, nft: boolean, tikis: string[], trust: bigint, nftId = 1042n) => () => Promise.resolve({
   query: {
     identityKyc: { kycStatuses: () => Promise.resolve({ type: status }) },
     tiki: {
-      citizenNft: () => Promise.resolve({ isSome: nft }),
+      citizenNft: () => Promise.resolve({ isSome: nft, unwrap: () => { if (!nft) throw new Error('None'); return { toBigInt: () => nftId }; } }),
       userTikis: () => Promise.resolve(tikis.map((t) => ({ type: t }))),
     },
     trust: { trustScores: () => Promise.resolve({ toBigInt: () => trust }) },
@@ -30,6 +30,11 @@ describe('loadCitizenship', () => {
   });
   it('returns roles and trust', async () => {
     const r = await loadCitizenship('5Grw', { getApi: people('Approved', true, ['Welati', 'Noter'], 42n) });
-    expect(r).toEqual({ stage: 'citizen', roles: ['Welati', 'Noter'], trust: 42n });
+    expect(r).toEqual({ stage: 'citizen', roles: ['Welati', 'Noter'], trust: 42n, nftId: 1042n });
+  });
+  it('exposes the citizen NFT number, and null when there is none', async () => {
+    expect((await loadCitizenship('5Grw', { getApi: people('Approved', true, [], 0n, 7n) })).nftId).toBe(7n);
+    expect((await loadCitizenship('5Grw', { getApi: people('Approved', false, [], 0n) })).nftId).toBeNull();
+    expect((await loadCitizenship('5Grw', { getApi: people('PendingReferral', false, [], 0n) })).nftId).toBeNull();
   });
 });

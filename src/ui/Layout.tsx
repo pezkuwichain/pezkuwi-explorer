@@ -15,12 +15,14 @@ export function Amount({ value, decimals, symbol }: { value: bigint; decimals: n
 export default function Layout() {
   const { t } = useTranslation();
   const nav = useNavigate();
+  // Deep links open with no in-app history; going back must still land somewhere useful.
+  const goBack = () => (((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0 ? nav(-1) : nav('/'));
   const home = useLocation().pathname === '/';
   return (
     <div className="page">
       <header className="top">
-        {home ? <img className="logo" src="/logo.png" alt={t('app.name')} height={40} /> :
-          <button className="back" onClick={() => nav(-1)}><IconBack /> {t('app.back')}</button>}
+        {home ? <img className="logo" src="/logo.png" alt={t('app.name')} width={136} height={40} /> :
+          <button className="back" onClick={goBack}><IconBack /> {t('app.back')}</button>}
         <LanguagePicker />
       </header>
       <main><Outlet /></main>

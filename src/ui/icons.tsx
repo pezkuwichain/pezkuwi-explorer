@@ -56,3 +56,10 @@ export const IconSun = (p: P) => (
   <Svg {...p}><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" /></Svg>
 );
 export const IconMoon = (p: P) => <Svg {...p}><path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5a8.5 8.5 0 1 0 10.8 10.8z" /></Svg>;
+// The wallet dialogs (account/WalletModal, WalletConnectModal).
+export const IconPhone = (p: P) => <Svg {...p}><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><path d="M11 18.5h2" /></Svg>;
+export const IconBrowser = (p: P) => <Svg {...p}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18" /><path d="M6.5 6.5h.01M9 6.5h.01" /></Svg>;
+export const IconLogOut = (p: P) => <Svg {...p} className="flip"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></Svg>;
+export const IconCheckCircle = (p: P) => <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.8 2.8L16.5 9.5" /></Svg>;
+// A spinning arc; the spin is in dialog.css (.spin) and stops under prefers-reduced-motion.
+export const IconLoader = (p: P) => <Svg {...p} className={`spin${p.className ? ` ${p.className}` : ''}`}><path d="M21 12a9 9 0 1 1-6.2-8.6" /></Svg>;

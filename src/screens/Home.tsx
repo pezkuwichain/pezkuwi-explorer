@@ -14,7 +14,7 @@ import './Home.css';
 // Opened account: the HEZ total and what else it holds. Fail-closed like the account screen: an error, never a partial total.
 function AccountHero({ address }: { address: string }) {
   const { t } = useTranslation();
-  const { forget } = useAccount();
+  const { forget, openWalletModal } = useAccount();
   const b = useAsync(() => loadBalances(address), [address]);
   const native = b.data?.[0];
   return (
@@ -28,7 +28,8 @@ function AccountHero({ address }: { address: string }) {
       {b.status === 'error' && <p className="hero-note">{t('state.error')} <button type="button" className="retry" onClick={b.retry}>{t('state.retry')}</button></p>}
       <div className="hero-bottom">
         <span className="hero-who">
-          <bdi dir="ltr" className="hero-address" title={address}>{shortAddress(address)}</bdi>
+          {/* The address opens the wallet dialog on this account; Sign out stays one tap away beside it. */}
+          <button type="button" className="hero-address" onClick={openWalletModal}><bdi dir="ltr" title={address}>{shortAddress(address)}</bdi></button>
           <button type="button" className="hero-signout" onClick={forget}>{t('app.signOut')}</button>
         </span>
         <Link className="hero-cta" to="/account">{t('open.go')} <IconNext size={16} stroke={2.4} /></Link>
@@ -37,14 +38,16 @@ function AccountHero({ address }: { address: string }) {
   );
 }
 
-// No account yet: the same card offers the three ways in; each opens the account screen in that mode.
+// No account yet: the same card offers the three ways in. The wallet opens the wallet dialog here; scan and
+// paste open the account screen in that mode.
 function OpenHero() {
   const { t } = useTranslation();
+  const { openWalletModal } = useAccount();
   return (
     <section className="hero hero-open">
       <h2 className="hero-title">{t('open.title')}</h2>
       <div className="hero-ways">
-        <Link className="hero-way" to="/account/open?way=wallet"><IconWallet size={20} />{t('open.wallet')}</Link>
+        <button type="button" className="hero-way" onClick={openWalletModal}><IconWallet size={20} />{t('open.wallet')}</button>
         <Link className="hero-way" to="/account/open?way=scan"><IconScan size={20} />{t('open.scan')}</Link>
         <Link className="hero-way" to="/account/open?way=paste"><IconPaste size={20} />{t('open.paste')}</Link>
       </div>

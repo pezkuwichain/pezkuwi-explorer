@@ -1,0 +1,74 @@
+/* The wallet dialogs (WalletModal, WalletConnectModal): pwap's layout in the explorer's tokens, both themes. */
+.wallet-stack { display: flex; flex-direction: column; gap: 12px; }
+.wallet-tight { gap: 8px; }
+.wallet-small { margin: 0; font-size: 13px; color: var(--muted); }
+.wallet-center { text-align: center; }
+.wallet-label { margin: 0; font-size: 14px; color: var(--muted-strong); }
+.wallet-mono { font-family: var(--font-mono); font-size: 14px; color: var(--text); overflow-wrap: anywhere; }
+.wallet-link {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; align-self: center; min-block-size: var(--tap);
+  font-size: 13px; font-weight: 600; color: var(--link); text-decoration: none; text-align: center;
+}
+.wallet-link:hover { text-decoration: underline; }
+.wallet-btn { min-block-size: 48px; font-size: 16px; }
+.btn svg.spin { flex: none; }
+
+/* The two ways in, one card each. */
+.wallet-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 18px; background: var(--surface-sunk); border: 1px solid var(--border); }
+.wallet-card-head { display: flex; align-items: center; gap: 12px; }
+.wallet-card-icon { inline-size: 40px; block-size: 40px; border-radius: 12px; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+.wallet-card-icon.is-kesk { background: var(--ok-soft); color: var(--ok-text); }
+.wallet-card-icon.is-zer { background: var(--zer-soft); color: var(--zer-icon); }
+.wallet-card-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--text-strong); }
+
+/* Errors: authorise (neutral), not installed (zer), anything else (sor). */
+.wallet-note { margin: 0; padding: 14px; border-radius: 14px; font-size: 14px; font-weight: 600; border: 1px solid; }
+.wallet-note-plain { background: var(--surface-sunk); border-color: var(--border-strong); color: var(--text); }
+.wallet-note-zer { background: var(--zer-soft); border-color: var(--zer-line); color: var(--zer-text); }
+.wallet-note-bad { background: var(--bad-soft); border-color: var(--bad-line); color: var(--bad-text); }
+
+/* Connected: the account's facts. */
+.wallet-facts { margin: 0; padding: 14px; border-radius: 18px; background: var(--surface-sunk); display: flex; flex-direction: column; gap: 12px; }
+.wallet-facts dt { font-size: 12px; color: var(--muted); margin-block-end: 2px; }
+.wallet-facts dd { margin: 0; }
+.wallet-name { font-weight: 700; color: var(--text-strong); }
+.wallet-address-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wallet-source { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text); }
+.wallet-source svg { color: var(--ok-text); }
+.wallet-icon-btn {
+  flex: none; inline-size: var(--tap); block-size: var(--tap); border-radius: 12px; border: 0; background: transparent; color: var(--muted-strong);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.wallet-icon-btn:hover { background: var(--surface); }
+.wallet-icon-btn.is-ok { color: var(--ok-text); }
+.wallet-icon-btn.is-bad { color: var(--bad-text); }
+.wallet-disconnect { color: var(--bad-text); border-color: var(--bad-line); min-block-size: 48px; font-size: 16px; }
+
+/* Account lists (switch, or choose after connecting). */
+.wallet-list { display: flex; flex-direction: column; gap: 8px; max-block-size: 12rem; overflow-y: auto; }
+.wallet-account {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; border-radius: 14px; text-align: start;
+  background: var(--surface-sunk); border: 1px solid var(--border); color: var(--text); min-block-size: var(--tap);
+}
+.wallet-account:hover { border-color: var(--border-strong); }
+.wallet-account.is-current { background: var(--ok-soft); border-color: var(--ok-line); }
+.wallet-account-name { font-weight: 700; font-size: 15px; color: var(--text-strong); }
+
+/* WalletConnect. */
+.wc-body { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-block: 4px; }
+.wc-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-block: 20px; inline-size: 100%; }
+.wc-mobile { padding-block: 8px; }
+.wc-phone { inline-size: 64px; block-size: 64px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--ok-soft); color: var(--ok-text); }
+.wc-spinner { color: var(--ok-text); }
+.wc-muted { margin: 0; font-size: 14px; color: var(--muted-strong); }
+.wc-small { margin: 0; font-size: 12px; color: var(--muted); max-inline-size: 280px; }
+.wc-center { text-align: center; }
+.wc-waiting { margin: 0; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted-strong); }
+.wc-ok { color: var(--positive); }
+.wc-ok-text { margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--ok-text); }
+.wc-bad { color: var(--negative); }
+.wc-bad-text { margin: 0; font-size: 14px; color: var(--bad-text); text-align: center; }
+.wallet-wide { inline-size: 100%; }
+/* The pairing QR: white quiet zone and dark modules in both themes, so a wallet camera reads it anywhere. */
+.wc-qr { padding: 12px; border-radius: 20px; background: #FFFFFF; line-height: 0; }
+.wc-qr svg { display: block; inline-size: 280px; max-inline-size: 100%; block-size: auto; aspect-ratio: 1; }

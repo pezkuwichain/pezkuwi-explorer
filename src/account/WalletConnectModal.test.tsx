@@ -49,6 +49,14 @@ describe('WalletConnectModal', () => {
   });
   afterEach(() => { vi.useRealTimers(); setWidth(1024); });
 
+  it('a refusal in the wallet ends the wait at once, with Try Again', async () => {
+    const { dialog } = ui();
+    await within(dialog).findByText('Waiting for wallet to connect...');
+    await act(async () => { wc.settle!.no(new Error('rejected')); });
+    expect(await within(dialog).findByRole('button', { name: 'Try Again' })).toBeInTheDocument();
+    expect(within(dialog).queryByText('Waiting for wallet to connect...')).toBeNull();
+  });
+
   it('desktop: the pairing as an SVG QR, the waiting line and the how-to; never the raw wc: text, nothing followed', async () => {
     const { dialog } = ui();
     expect(dialog).toHaveAccessibleDescription('Scan with pezWallet to connect');

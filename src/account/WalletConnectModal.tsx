@@ -34,7 +34,7 @@ function PairingQr({ uri }: { uri: string }) {
 
 export function WalletConnectModal({ isOpen, onClose }: { isOpen: boolean; onClose(): void }) {
   const { t } = useTranslation();
-  const { connectWalletConnect, cancelWalletConnect, address, wcPeerName } = useAccount();
+  const { connectWalletConnect, cancelWalletConnect, address, wcPeerName, error } = useAccount();
   const isMobile = useIsMobile();
   const [wcUri, setWcUri] = useState('');
   const [connectionState, setConnectionState] = useState<ConnectionState>('generating');
@@ -106,6 +106,14 @@ export function WalletConnectModal({ isOpen, onClose }: { isOpen: boolean; onClo
     // Started once per opening, as in pwap.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  // A refusal in the wallet ends the wait at once (pwap keeps waiting until the five-minute timeout).
+  useEffect(() => {
+    if (!isOpen || connectionState !== 'waiting' || !error?.key?.startsWith('walletModal.errWc')) return;
+    clearConnectionTimeout();
+    setConnectionState('error');
+    setErrorMsg(t(error.key));
+  }, [error, isOpen, connectionState, clearConnectionTimeout, t]);
 
   const handleOpenPezWallet = () => { if (wcUri) followDeepLink(deepLinkFor(wcUri)); };
 

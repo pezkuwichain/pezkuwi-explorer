@@ -58,6 +58,9 @@ export function WalletModal({ isOpen, onClose }: { isOpen: boolean; onClose(): v
     setIsConnecting(true);
     try { await connectWallet(); } finally { setIsConnecting(false); }
   };
+  // Try again repeats the way that failed: a WalletConnect error reopens WalletConnect, never the browser
+  // extension (pwap retries the extension, which on a phone ends in "not found" and a Chrome Web Store tab).
+  const retry = () => (error?.key?.startsWith('walletModal.errWc') ? setShowWCModal(true) : void handleConnect());
   const handleSelectAccount = (a: WalletAccount) => { selectAccount(a.address); onClose(); };
   const handleDisconnect = () => { forget(); onClose(); };
 
@@ -96,7 +99,7 @@ export function WalletModal({ isOpen, onClose }: { isOpen: boolean; onClose(): v
         {error?.kind === 'generic' && (
           <div className="wallet-stack">
             <p className="wallet-note wallet-note-bad" role="alert">{errorText}</p>
-            <button type="button" className="btn btn-primary" onClick={() => void handleConnect()} disabled={isConnecting}>
+            <button type="button" className="btn btn-primary" onClick={retry} disabled={isConnecting}>
               {isConnecting
                 ? <><IconLoader size={18} />{t('walletModal.connectingExtension')}</>
                 : <><IconWallet size={18} />{t('walletModal.tryAgain')}</>}

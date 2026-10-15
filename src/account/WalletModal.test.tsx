@@ -14,11 +14,12 @@ vi.mock('./connectors/extension', async (orig) => ({ ...(await orig<typeof impor
 const wc = vi.hoisted(() => ({
   disconnect: vi.fn(() => Promise.resolve()),
   restore: vi.fn((): Promise<unknown> => Promise.resolve({ state: 'none' })),
+  start: vi.fn((): Promise<unknown> => new Promise(() => {})),
 }));
 vi.mock('./connectors/walletconnect', () => ({
   WC_DISCONNECTED: 'wc-off', WC_CONNECTED: 'wc-on', WC_SESSION_KEY: 'wc-session',
   disconnectWalletConnect: wc.disconnect, restoreWalletConnect: wc.restore, sessionPeerName: () => 'pezWallet',
-  startPairing: () => new Promise(() => {}), deepLinkFor: (u: string) => u, followDeepLink: () => {},
+  startPairing: () => wc.start(), deepLinkFor: (u: string) => u, followDeepLink: () => {},
 }));
 
 // A button that opens the app's wallet dialog, as the home card and the address chips do.
@@ -46,6 +47,7 @@ describe('WalletModal', () => {
     ext.accounts.mockReset();
     wc.disconnect.mockClear();
     wc.restore.mockReset().mockResolvedValue({ state: 'none' });
+    wc.start.mockReset().mockImplementation(() => new Promise(() => {}));
   });
   afterEach(() => { vi.restoreAllMocks(); injected(false); setWidth(1024); });
 
@@ -120,6 +122,23 @@ describe('WalletModal', () => {
     fireEvent.click(within(d).getByRole('button', { name: 'Try Again' }));
     await waitFor(() => expect(within(d).getByRole('alert')).toHaveTextContent('Extension exploded'));
     expect(ext.accounts).toHaveBeenCalledTimes(2);
+  });
+
+  it('a WalletConnect error: Try Again reopens WalletConnect, never the browser extension', async () => {
+    setWidth(390);
+    wc.start.mockRejectedValue(new Error(''));
+    const d = ui();
+    fireEvent.click(within(d).getByRole('button', { name: 'Connect with pezWallet' }));
+    const wcDialog = await screen.findByRole('dialog', { name: 'WalletConnect' });
+    await within(wcDialog).findByRole('button', { name: 'Try Again' });
+    fireEvent.keyDown(wcDialog, { key: 'Escape' });
+    fireEvent(wcDialog, new Event('cancel'));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'WalletConnect' })).toBeNull());
+    expect(within(d).getByRole('alert')).toHaveTextContent('Failed to start WalletConnect');
+    wc.start.mockImplementation(() => new Promise(() => {}));
+    fireEvent.click(within(d).getByRole('button', { name: 'Try Again' }));
+    expect(await screen.findByRole('dialog', { name: 'WalletConnect' })).toBeInTheDocument();
+    expect(ext.accounts).not.toHaveBeenCalled();
   });
 
   it('connected over WalletConnect: address with copy, the source with the wallet name, and Disconnect', async () => {

@@ -11,7 +11,7 @@ Turkish and English are written directly and are not listed.
 | key | kmr | ckb | fa | ar | source |
 |---|---|---|---|---|---|
 | app.name | Pezkuwi Explorer | Pezkuwi Explorer | Pezkuwi Explorer | Pezkuwi Explorer | brand |
-| app.experts | Ji bo pisporan: apps.pezkuwichain.io | بۆ شارەزایان: apps.pezkuwichain.io | برای متخصصان: apps.pezkuwichain.io | للخبراء: apps.pezkuwichain.io | draft |
+| app.experts | Ji bo pisporan: &lt;domain&gt;apps.pezkuwichain.io&lt;/domain&gt; | بۆ شارەزایان: &lt;domain&gt;apps.pezkuwichain.io&lt;/domain&gt; | برای متخصصان: &lt;domain&gt;apps.pezkuwichain.io&lt;/domain&gt; | للخبراء: &lt;domain&gt;apps.pezkuwichain.io&lt;/domain&gt; | draft (the domain tag marks the left-to-right part; keep it around the domain) |
 | app.back | Paşve | گەڕانەوە | بازگشت | رجوع | pwap |
 | app.language | Ziman | زمان | زبان | اللغة | pwap |
 | home.account | Hesabê min | هەژمارەکەم | حساب من | حسابي | draft |
@@ -23,6 +23,7 @@ Turkish and English are written directly and are not listed.
 | status.checking | Tor tê kontrol kirin… | تۆڕ دەپشکنرێت… | در حال بررسی شبکه… | جارٍ فحص الشبكة… | draft |
 | open.title | Hesabê xwe veke | هەژمارەکەت بکەرەوە | حساب خود را باز کنید | افتح حسابك | draft |
 | open.wallet | Bi berîka xwe veke | بە جزدانەکەم بیکەرەوە | با کیف پول من باز کن | افتح بمحفظتي | draft |
+| open.wcHint | Heke berîka te venebe, vegere û li şûna wê navnîşana xwe bixe vir an jî koda QR bişopîne. | ئەگەر جزدانەکەت نەکرایەوە، بگەڕێوە و لەجیاتی ئەوە ناونیشانەکەت دابنێ یان سکانی بکە. | اگر کیف پول شما باز نشد، برگردید و به جای آن آدرس خود را بچسبانید یا اسکن کنید. | إذا لم تُفتح محفظتك، ارجع والصق عنوانك أو امسحه ضوئيًا بدلًا من ذلك. | draft (shown under the wallet link; some wallets, e.g. on iOS, do not open from it) |
 | open.scan | Koda QR Bişopîne | سکانی کۆدی QR بکە | اسکن QR | مسح رمز QR | pwap |
 | open.paste | Navnîşanê bixe vir | ناونیشان لێرە دابنێ | چسباندن آدرس | لصق العنوان | draft |
 | open.pastePlaceholder | Navnîşana xwe li vir bixe | ناونیشانەکەت لێرە دابنێ | آدرس خود را اینجا بچسبانید | الصق عنوانك هنا | draft |
@@ -64,6 +65,7 @@ Turkish and English are written directly and are not listed.
 | citizenship.stepDone | qediya | تەواو بوو | انجام شد | مكتمل | draft (screen-reader text on completed steps; tr/en direct) |
 | network.title | Tor | تۆڕ | شبکه | الشبكة | pwap |
 | network.votes | Deng | دەنگدان | رأی‌ها | الأصوات | pwap |
+| network.votesActive | Dengdanên çalak: {{count, number}} | دەنگدانە چالاکەکان: {{count, number}} | {{count, number}} رأی‌گیری فعال | التصويتات النشطة: {{count, number}} | draft (kmr, ckb, ar use a label-and-number form so the same text is grammatical for every count; en is the ruled "{{count, number}} active votes") |
 | network.noVotes | Niha dengdaneke çalak tune. | ئێستا هیچ دەنگدانێکی چالاک نییە. | اکنون رأی‌گیری فعالی نیست. | لا توجد تصويتات نشطة الآن. | draft |
 | network.voteHint | Ji bo dengdanê apps.pezkuwichain.io bikar bîne | بۆ دەنگدان apps.pezkuwichain.io بەکاربهێنە | برای رأی دادن از apps.pezkuwichain.io استفاده کنید | للتصويت، استخدم apps.pezkuwichain.io | draft |
 | network.treasury | Xezîne | گەنجینە | خزانه | الخزينة | pwap |

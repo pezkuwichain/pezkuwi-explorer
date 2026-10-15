@@ -5,10 +5,9 @@ import { Card } from '../ui/Card';
 import { Light } from '../ui/StatusLight';
 import { Amount } from '../ui/Layout';
 import { NETWORK } from '../config/network';
-import { formatInteger } from '../lib/format';
 
 export default function Network() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const s = useAsync(() => loadNetwork(), []);
   const d = s.data;
   // A card is in error when the whole load failed or when its own field is null; the others still render.
@@ -18,7 +17,7 @@ export default function Network() {
       <h1>{t('network.title')}</h1>
       <Light status={s.status} live={d?.live} />
       <Card title={t('network.votes')} status={cardStatus(d?.votes)} onRetry={s.retry}>
-        {d?.votes?.length ? <p><bdi>{formatInteger(BigInt(d.votes.length), i18n.language)}</bdi></p> : <p>{t('network.noVotes')}</p>}
+        {d?.votes?.length ? <p><bdi>{t('network.votesActive', { count: d.votes.length })}</bdi></p> : <p>{t('network.noVotes')}</p>}
         <a href="https://apps.pezkuwichain.io/#/referenda" rel="noopener">{t('network.voteHint')}</a>
       </Card>
       <Card title={t('network.treasury')} status={cardStatus(d?.treasury)} onRetry={s.retry}>

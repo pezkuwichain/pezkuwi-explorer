@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { shortAddress } from '../lib/address';
 import { formatAmount } from '../lib/format';
 import LanguagePicker from './LanguagePicker';
@@ -28,7 +28,7 @@ export default function Layout() {
         <LanguagePicker />
       </header>
       <main><ErrorBoundary key={pathname}><Outlet /></ErrorBoundary></main>
-      <footer><a href="https://apps.pezkuwichain.io" rel="noopener">{t('app.experts')}</a></footer>
+      <footer><a href="https://apps.pezkuwichain.io" rel="noopener"><Trans i18nKey="app.experts" components={{ domain: <bdi dir="ltr" /> }} /></a></footer>
     </div>
   );
 }

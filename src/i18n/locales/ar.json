@@ -1,12 +1,12 @@
 {
-  "app": { "name": "Pezkuwi Explorer", "experts": "للخبراء: apps.pezkuwichain.io", "back": "رجوع", "language": "اللغة" },
+  "app": { "name": "Pezkuwi Explorer", "experts": "للخبراء: <domain>apps.pezkuwichain.io</domain>", "back": "رجوع", "language": "اللغة" },
   "home": { "account": "حسابي", "payment": "هل وصلت دفعتي؟", "citizenship": "المواطنة", "network": "الشبكة" },
   "status": { "up": "الشبكة تعمل", "down": "الشبكة لا تستجيب", "checking": "جارٍ فحص الشبكة…" },
-  "open": { "title": "افتح حسابك", "wallet": "افتح بمحفظتي", "scan": "مسح رمز QR", "paste": "لصق العنوان", "pastePlaceholder": "الصق عنوانك هنا", "invalid": "هذا العنوان غير صالح. تحقق منه وحاول مجددًا.", "noWallet": "لم يتم العثور على محفظة Pezkuwi على هذا الجهاز.", "rejected": "لم تشارك المحفظة أي حساب.", "noCamera": "تعذر فتح الكاميرا. يمكنك لصق العنوان بدلًا من ذلك.", "go": "افتح" },
+  "open": { "title": "افتح حسابك", "wallet": "افتح بمحفظتي", "scan": "مسح رمز QR", "paste": "لصق العنوان", "pastePlaceholder": "الصق عنوانك هنا", "invalid": "هذا العنوان غير صالح. تحقق منه وحاول مجددًا.", "noWallet": "لم يتم العثور على محفظة Pezkuwi على هذا الجهاز.", "rejected": "لم تشارك المحفظة أي حساب.", "noCamera": "تعذر فتح الكاميرا. يمكنك لصق العنوان بدلًا من ذلك.", "go": "افتح", "wcHint": "إذا لم تُفتح محفظتك، ارجع والصق عنوانك أو امسحه ضوئيًا بدلًا من ذلك." },
   "account": { "total": "المجموع", "activity": "النشاط الأخير", "forget": "انسَ على هذا الجهاز", "sent": "أرسلت <amount/> إلى <who/>", "received": "استلمت <amount/> من <who/>", "fee": "الرسوم", "when": "الوقت", "from": "من", "to": "إلى", "ok": "تم", "failed": "فشل", "empty": "لا يوجد نشاط بعد." },
   "payment": { "title": "هل وصلت دفعتي؟", "placeholder": "الصق رمز العملية أو عنوانًا", "arrived": "وصلت", "onTheWay": "في الطريق", "notArrived": "لم تصل", "arrivedText": "وصل المال إلى <who/>.", "notArrivedText": "لم يتم إرسالها. أموالك ما زالت في حسابك.", "notAPayment": "هذا الرمز ليس دفعة.", "notFound": "لم نعثر على هذه الدفعة بعد. إذا أرسلتها للتو، انتظر دقيقة وحاول مجددًا." },
   "citizenship": { "title": "المواطنة", "applied": "تم تقديم الطلب", "approved": "تمت الموافقة", "citizen": "مواطن", "notStarted": "لا يوجد طلب بعد", "revoked": "تم إلغاء المواطنة", "roles": "الأدوار", "trust": "درجة الثقة", "noRoles": "لا توجد أدوار بعد.", "stepDone": "مكتمل" },
-  "network": { "title": "الشبكة", "votes": "الأصوات", "noVotes": "لا توجد تصويتات نشطة الآن.", "voteHint": "للتصويت، استخدم apps.pezkuwichain.io", "treasury": "الخزينة", "validators": "المدققون", "validatorsActive": "{{count, number}} نشط" },
+  "network": { "title": "الشبكة", "votes": "الأصوات", "noVotes": "لا توجد تصويتات نشطة الآن.", "voteHint": "للتصويت، استخدم apps.pezkuwichain.io", "treasury": "الخزينة", "validators": "المدققون", "validatorsActive": "{{count, number}} نشط", "votesActive": "التصويتات النشطة: {{count, number}}" },
   "state": { "loading": "جارٍ التحميل…", "error": "تعذّر التحميل. حاول لاحقًا.", "preparing": "هذا القسم قيد الإعداد.", "retry": "حاول مجددًا" }
 ,
   "time": { "minutesAgo": "منذ {{count, number}} دقيقة", "hoursAgo": "منذ {{count, number}} ساعة", "daysAgo": "منذ {{count, number}} يوم" },

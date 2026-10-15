@@ -59,10 +59,11 @@ describe('Network', () => {
     expect(screen.getByText('4 active')).toBeInTheDocument();
   });
 
-  it('a count of active votes is shown as a number', async () => {
+  it('a count of active votes is shown as a sentence, not a bare number', async () => {
     impl.load = () => Promise.resolve({ ...full, votes: [{ chain: 'relay', index: 1 }, { chain: 'people', index: 2 }] });
     renderIt();
-    expect(await screen.findByText('2')).toBeInTheDocument();
+    expect(await screen.findByText('2 active votes')).toBeInTheDocument();
+    expect(screen.queryByText('2')).toBeNull();
     expect(screen.queryByText('No active votes right now.')).toBeNull();
   });
 
@@ -81,6 +82,14 @@ describe('Network', () => {
     renderIt();
     expect(await screen.findByText('The network is not answering')).toBeInTheDocument();
     expect(screen.getAllByText(/could not be loaded/)).toHaveLength(3);
+  });
+
+  it('renders the vote count in Sorani digits inside the sentence', async () => {
+    await i18n.changeLanguage('ckb');
+    impl.load = () => Promise.resolve({ ...full, votes: [{ chain: 'relay', index: 1 }, { chain: 'people', index: 2 }, { chain: 'assetHub', index: 3 }] });
+    renderIt();
+    expect(await screen.findByText(/٣/)).toBeInTheDocument();
+    await i18n.changeLanguage('en');
   });
 
   it('renders the validator count in Sorani digits', async () => {

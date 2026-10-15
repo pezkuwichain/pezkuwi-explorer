@@ -33,4 +33,21 @@ describe('Layout', () => {
     expect(screen.getByText('HOME')).toBeInTheDocument();
     setLanguage('kmr');
   });
+
+  it('isolates the footer domain as left-to-right in every locale', () => {
+    for (const lang of ['kmr', 'ckb', 'tr', 'en', 'fa', 'ar'] as const) {
+      setLanguage(lang);
+      const { unmount } = render(
+        <MemoryRouter initialEntries={['/']}><Routes><Route element={<Layout />}><Route index element={<p>HOME</p>} /></Route></Routes></MemoryRouter>,
+      );
+      const link = document.querySelector('footer a') as HTMLElement;
+      expect(link).toHaveAttribute('href', 'https://apps.pezkuwichain.io');
+      const domain = link.querySelector('bdi');
+      expect(domain).not.toBeNull();
+      expect(domain).toHaveAttribute('dir', 'ltr');
+      expect(domain).toHaveTextContent(/^apps\.pezkuwichain\.io$/);
+      unmount();
+    }
+    setLanguage('kmr');
+  });
 });

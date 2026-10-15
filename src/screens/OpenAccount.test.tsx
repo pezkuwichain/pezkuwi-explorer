@@ -5,11 +5,19 @@ import i18n from '../i18n';
 import { AccountProvider } from '../account/AccountContext';
 import OpenAccount from './OpenAccount';
 
-const ui = () => render(
-  <MemoryRouter initialEntries={['/account/open']}><AccountProvider><Routes>
+const ui = (entry = '/account/open') => render(
+  <MemoryRouter initialEntries={[entry]}><AccountProvider><Routes>
     <Route path="/account/open" element={<OpenAccount />} />
     <Route path="/account" element={<p>ACCOUNT PAGE</p>} />
+    <Route path="/citizenship" element={<p>CITIZENSHIP PAGE</p>} />
+    <Route path="*" element={<p>ELSEWHERE</p>} />
   </Routes></AccountProvider></MemoryRouter>);
+const ALICE = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
+const pasteAlice = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Paste address' }));
+  fireEvent.change(screen.getByPlaceholderText('Paste your address here'), { target: { value: ALICE } });
+  fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+};
 
 describe('OpenAccount', () => {
   it('offers the three ways in', async () => {
@@ -26,6 +34,18 @@ describe('OpenAccount', () => {
     fireEvent.change(box, { target: { value: '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY' } });
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     expect(await screen.findByText('ACCOUNT PAGE')).toBeInTheDocument();
+  });
+  it('returns to an allowed next page', async () => {
+    localStorage.clear(); ui('/account/open?next=/citizenship'); pasteAlice();
+    expect(await screen.findByText('CITIZENSHIP PAGE')).toBeInTheDocument();
+  });
+  it('ignores a next that is not one of the app pages', async () => {
+    for (const bad of ['//evil.example', 'https://evil.example', '/account/open', '/elsewhere']) {
+      localStorage.clear();
+      const v = ui(`/account/open?next=${encodeURIComponent(bad)}`); pasteAlice();
+      expect(await screen.findByText('ACCOUNT PAGE')).toBeInTheDocument();
+      v.unmount();
+    }
   });
 });
 
@@ -79,6 +99,12 @@ describe('OpenAccount connectors (mocked)', () => {
     const r = await setup(() => Promise.reject(new Error('x')), () => Promise.reject(new DOMException('no', 'NotAllowedError'))); r();
     fireEvent.click(screen.getByRole('button', { name: 'Scan QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('camera could not be opened');
+  });
+  it('under the wallet link, tells the user to paste or scan if the wallet does not open', async () => {
+    const r = await setup((onUri: (u: string) => void) => { onUri('wc:abc@2?relay-protocol=irn&symKey=00'); return new Promise(() => {}); }); r();
+    fireEvent.click(screen.getByRole('button', { name: 'Open with my wallet' }));
+    expect(await screen.findByRole('link', { name: 'Open with my wallet' })).toHaveAttribute('href', expect.stringMatching(/^wc:/));
+    expect(screen.getByText('If your wallet does not open, go back and paste or scan your address instead.')).toBeInTheDocument();
   });
   it('does not render a non-wc link', async () => {
     const r = await setup((onUri: (u: string) => void) => { onUri('javascript:alert(1)'); return new Promise(() => {}); }); r();

@@ -7,12 +7,15 @@ import { walletConnectAccounts } from '../account/connectors/walletconnect';
 import { scanQr } from '../account/connectors/qr';
 
 type Mode = 'menu' | 'paste' | 'scan' | 'pick' | 'wc';
+const NEXT_PAGES = ['/account', '/citizenship', '/payment', '/network'] as const;
 
 export default function OpenAccount() {
   const { t } = useTranslation();
   const { open } = useAccount();
   const nav = useNavigate();
-  const next = useSearchParams()[0].get('next') ?? '/account';
+  // Only the app's own pages: anything else (another site, a protocol-relative URL) falls back to the account.
+  const asked = useSearchParams()[0].get('next');
+  const next = NEXT_PAGES.find((p) => p === asked) ?? '/account';
   const [mode, setMode] = useState<Mode>('menu');
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +89,8 @@ export default function OpenAccount() {
       {mode === 'wc' && wcUri?.startsWith('wc:') && <>
         {/* The raw wc: URI is the scheme both wallet apps register for pairing. */}
         <a className="big button" href={wcUri}>{t('open.wallet')}</a>
+        {/* Some wallets (iOS) do not register the wc: scheme, so the link can do nothing. */}
+        <p>{t('open.wcHint')}</p>
         <bdi dir="ltr" className="wc-uri">{wcUri}</bdi>
       </>}
       {mode === 'pick' && choices.map((a) => <button key={a} className="big" onClick={() => finish(a)}><bdi dir="ltr">{a}</bdi></button>)}

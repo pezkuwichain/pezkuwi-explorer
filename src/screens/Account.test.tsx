@@ -52,13 +52,15 @@ describe('Account', () => {
     impl.balances = () => Promise.resolve([
       { symbol: 'HEZ', decimals: 12, amount: 5_000_000_000_000n, perChain: { relay: 2_000_000_000_000n, assetHub: 1_000_000_000_000n, people: 2_000_000_000_000n } },
       { symbol: 'PEZ', decimals: 12, amount: 1_250_000_000_000_000n },
+      { symbol: 'USDT', decimals: 6, amount: 25_000_000n, standard: 'PEZ-20' },
     ]);
     renderAccount();
     await screen.findByTitle('5 HEZ');
     const chains = [...document.querySelectorAll('.chain-tile')].map((c) => c.textContent);
     expect(chains).toEqual(['Relay2', 'Asset Hub1', 'People2']);
     const tokens = within(screen.getByRole('region', { name: 'Tokens' })).getAllByRole('listitem').map((r) => r.textContent);
-    expect(tokens).toEqual(['HEZPezkuwiChain5', 'PEZAsset Hub1,250']);
+    // USDT carries the wallet's token-standard label after the network name, as in the Pezkuwi Wallet.
+    expect(tokens).toEqual(['HEZPezkuwiChain5', 'PEZAsset Hub1,250', 'USDTAsset Hub (PEZ-20)25']);
   });
 
   it('marks with ≈ every figure that lost digits, and only those', async () => {

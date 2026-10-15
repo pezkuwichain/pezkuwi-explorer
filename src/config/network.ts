@@ -6,7 +6,9 @@ export type NetworkConfig = {
   ss58: number;
   native: { symbol: string; decimals: number };
   chains: Record<ChainKey, { rpc: readonly string[]; genesis: `0x${string}` }>;
-  assets: readonly { id: number; symbol: string; decimals: number }[];
+  // standard: the token-standard label the Pezkuwi Wallet appends to the network name (ChainExt.kt
+  // assetStandardLabelOrNull), so a symbol that many ecosystems issue says which issuance it is.
+  assets: readonly { id: number; symbol: string; decimals: number; standard?: string }[];
   // null = no indexer for this chain yet; history screens show "being prepared".
   history: { assetHub: string | null; relay: string | null };
   walletConnectProjectId: string;
@@ -27,10 +29,11 @@ export const NETWORK: NetworkConfig = {
     assetHub: { rpc: ['wss://zagros-asset-hub-rpc.pezkuwichain.io'], genesis: '0x063f739077881df9f291548de301b2e11d6a45cc545c24e7bf18d8a40f0ce182' },
     people: { rpc: ['wss://zagros-people-rpc.pezkuwichain.io'], genesis: '0xc72b38f36affaeb2661018b201c2be02e8c09fc699640525d39200a10fd77878' },
   },
+  // The Pezkuwi Wallet's list (pezkuwi-wallet-utils chains.json, Pezkuwi Asset Hub): HEZ native, PEZ, and
+  // USDT (asset 1000, shown as USDT, not wUSDT). Nothing else is shown.
   assets: [
     { id: 1, symbol: 'PEZ', decimals: 12 },
-    { id: 1000, symbol: 'wUSDT', decimals: 6 },
-    { id: 2, symbol: 'wHEZ', decimals: 12 },
+    { id: 1000, symbol: 'USDT', decimals: 6, standard: 'PEZ-20' },
   ],
   // history.assetHub is on (the indexer caught up 2026-10-15); relay stays null: there is no relay indexer. Every gate in docs/superpowers/specs/2026-10-15-explorer-design.md §9 is closed and tested:
   //   1. Address-lookup verdict: an address lookup lists up to five recent transfers (direction, amount, counterparty, time, ✅/❌; a failed row reads "Failed", never "sent"/"received"), no single verdict; a single-transfer code shows amount, time and counterparty.

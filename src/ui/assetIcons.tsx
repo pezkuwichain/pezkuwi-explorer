@@ -1,7 +1,8 @@
 import type { ChainKey } from '../config/network';
 
-// Token art from pezkuwi-wallet-utils; wHEZ is HEZ wrapped, so it shares the HEZ mark.
-const TOKEN_SRC: Record<string, string> = { HEZ: '/tokens/HEZ.png', wHEZ: '/tokens/HEZ.png', PEZ: '/tokens/PEZ.png', wUSDT: '/tokens/wUSDT.svg' };
+// The Pezkuwi Wallet's own token art, byte for byte (pezkuwi-wallet-utils icons/tokens/colored/: HEZ.svg,
+// PEZ.svg, and wUSDT.svg saved as USDT.svg), so a token looks the same here as in the wallet.
+const TOKEN_SRC: Record<string, string> = { HEZ: '/tokens/HEZ.svg', PEZ: '/tokens/PEZ.svg', USDT: '/tokens/USDT.svg' };
 const CHAIN_SRC: Record<ChainKey, string> = { relay: '/chains/relay.png', assetHub: '/chains/assethub.png', people: '/chains/people.png' };
 
 // Decorative: the symbol is always written next to it. An asset without art gets a neutral circle with its name.

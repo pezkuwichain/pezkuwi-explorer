@@ -9,11 +9,10 @@ describe('network config', () => {
   it('uses only wss endpoints', () => {
     for (const c of Object.values(NETWORK.chains)) for (const u of c.rpc) expect(u.startsWith('wss://')).toBe(true);
   });
-  it('lists PEZ, wUSDT, wHEZ with measured decimals', () => {
+  it('lists the Pezkuwi Wallet tokens: PEZ and USDT (PEZ-20), with measured decimals', () => {
     expect(NETWORK.assets).toEqual([
       { id: 1, symbol: 'PEZ', decimals: 12 },
-      { id: 1000, symbol: 'wUSDT', decimals: 6 },
-      { id: 2, symbol: 'wHEZ', decimals: 12 },
+      { id: 1000, symbol: 'USDT', decimals: 6, standard: 'PEZ-20' },
     ]);
   });
   // CSP_CONF lets the checks be pointed at a deliberately broken copy to prove they can fail.

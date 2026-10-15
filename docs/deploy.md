@@ -21,3 +21,13 @@ The deploy user has no usable shell; its `authorized_keys` entry is
 1. All files except `index.html`, `sw.js`, `registerSW.js`, `manifest.webmanifest` (no delete).
 2. Those four entry files.
 3. A final `--delete-after` pass removes stale files.
+
+## Enabling history (owner, after the indexer has caught up)
+`deploy/nginx-explorer.conf` is a reference copy; the host's vhost is installed by hand. In this order:
+1. Create `/etc/nginx/conf.d/explorer-history.conf` (http context) containing
+   `limit_req_zone $binary_remote_addr zone=explorer_history:1m rate=5r/s;`.
+   Without it the vhost's `limit_req zone=explorer_history` fails `nginx -t`.
+2. Install the vhost with the `location = /history/assethub` block, then `nginx -t && systemctl reload nginx`.
+3. Check: a GET to `https://explorer.pezkuwichain.io/history/assethub` answers 403, and a POST of
+   `{"query":"{_metadata{lastProcessedHeight targetHeight}}"}` answers the indexer's metadata.
+4. Set `history.assetHub = ZAGROS_HISTORY_URL` in `src/config/network.ts` (no CSP change: same origin).

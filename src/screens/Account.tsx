@@ -9,6 +9,7 @@ import { Card } from '../ui/Card';
 import { Addr, Amount } from '../ui/Layout';
 import { ActivityAmount } from '../ui/ActivityAmount';
 import { relativeTime } from '../lib/format';
+import { useNow } from '../hooks/useNow';
 
 type Hist = { status: 'loading' | 'ok' | 'error' | 'preparing'; data?: Activity[] };
 
@@ -18,18 +19,18 @@ export default function Account() {
   // No account: the redirect below renders; nothing is fetched for a null address.
   const balances = useAsync(() => (address ? loadBalances(address) : Promise.resolve([])), [address]);
   const [hist, setHist] = useState<Hist>({ status: 'loading' });
-  const [now] = useState(() => Date.now() / 1000);
+  const [now, refreshNow] = useNow();
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!address) return;
     let live = true;
     setHist({ status: 'loading' });
     loadActivity(address).then(
-      (data) => live && setHist({ status: 'ok', data }),
+      (data) => { if (live) { refreshNow(); setHist({ status: 'ok', data }); } },
       (e) => live && setHist({ status: e instanceof NotIndexedError ? 'preparing' : 'error' }),
     );
     return () => { live = false; };
-  }, [address, tick]);
+  }, [address, tick, refreshNow]);
   if (!address) return <Navigate to="/account/open" replace />;
   return (
     <div className="stack">
@@ -40,8 +41,8 @@ export default function Account() {
         </ul>
       </Card>
       <Card title={t('account.activity')} status={hist.status} onRetry={() => setTick((n) => n + 1)}>
-        {hist.data?.length === 0 && <p>{t('account.empty')}</p>}
-        <ul className="timeline">
+        {/* One or the other: the empty sentence, or a list with at least one row. */}
+        {!hist.data || hist.data.length === 0 ? <p>{t('account.empty')}</p> : <ul className="timeline">
           {hist.data?.map((a) => (
             <li key={a.id}>
               <Link to={`/account/activity/${encodeURIComponent(a.id)}`} state={a}>
@@ -55,7 +56,7 @@ export default function Account() {
               </Link>
             </li>
           ))}
-        </ul>
+        </ul>}
       </Card>
       <button className="quiet" onClick={forget}>{t('account.forget')}</button>
     </div>

@@ -44,15 +44,25 @@ Turkish and English are written directly and are not listed.
 | account.ok | Qediya | تەواو | انجام شد | تم | draft |
 | account.failed | Bi ser neket | سەرکەوتوو نەبوو | ناموفق | فشل | draft (kmr: pwap verbatim) |
 | account.empty | Hîna tu çalakî tune. | هێشتا هیچ چالاکییەک نییە. | هنوز فعالیتی نیست. | لا يوجد نشاط بعد. | draft |
+| account.code | Koda dayînê | کۆدی پارەدان | کد تراکنش | رمز العملية | draft (the code shown on an activity; same wording as the "transaction code" in payment.placeholder) |
 | payment.title | Dayîna min gihîşt? | پارەدانەکەم گەیشت؟ | پرداخت من رسید؟ | هل وصلت دفعتي؟ | draft |
 | payment.placeholder | Koda dayînê an navnîşanekê bixe vir | کۆدی پارەدان یان ناونیشانێک لێرە دابنێ | کد تراکنش یا یک آدرس را بچسبانید | الصق رمز العملية أو عنوانًا | draft |
 | payment.arrived | Gihîşt | گەیشت | رسید | وصلت | draft |
 | payment.onTheWay | Di rê de ye | لە ڕێگایە | در راه است | في الطريق | draft |
 | payment.notArrived | Negihîşt | نەگەیشت | نرسید | لم تصل | draft |
 | payment.arrivedText | Pere gihîşt <who/>. | پارەکە گەیشتە <who/>. | پول به <who/> رسید. | وصل المال إلى <who/>. | draft |
-| payment.notArrivedText | Nehat şandin. Pereyên te hê jî di hesabê te de ne. | نەنێردراوە. پارەکەت هێشتا لە هەژمارەکەتدایە. | ارسال نشده است. پول شما هنوز در حساب شماست. | لم يتم إرسالها. أموالك ما زالت في حسابك. | draft |
+| payment.notArrivedText | Pêk nehat. Pere ji hesabê şandkar derneket; tenê xerc hat birîn. | ئەنجام نەدرا. پارەکە لە هەژماری نێرەر دەرنەچوو؛ تەنها تێچووەکە بڕدرا. | انجام نشد. پول از حساب فرستنده خارج نشد؛ فقط کارمزد کسر شد. | لم تتم العملية. لم يخرج المال من حساب المرسل؛ أُخذت الرسوم فقط. | draft (neutral: the reader may be the sender or the recipient) |
 | payment.notFound | Me hîna ev dayîn nedît. Heke te nû şandiye, deqeyekê bisekine û dîsa biceribîne. | هێشتا ئەم پارەدانەمان نەدۆزییەوە. ئەگەر تازە ناردوتە، خولەکێک چاوەڕێ بکە و دووبارە هەوڵبدەرەوە. | هنوز این پرداخت را پیدا نکردیم. اگر همین حالا فرستاده‌اید، یک دقیقه صبر کنید و دوباره تلاش کنید. | لم نعثر على هذه الدفعة بعد. إذا أرسلتها للتو، انتظر دقيقة وحاول مجددًا. | draft |
 | payment.notAPayment | Ev kod ne dayînek e. | ئەم کۆدە پارەدان نییە. | این کد یک پرداخت نیست. | هذا الرمز ليس دفعة. | draft |
+| payment.failedNotAPayment | Ev kod ne dayînek e, û pêk jî nehat. | ئەم کۆدە پارەدان نییە، و ئەنجامیش نەدرا. | این کد یک پرداخت نیست و انجام هم نشد. | هذا الرمز ليس دفعة، ولم تتم العملية أيضًا. | draft |
+| payment.recent | Dayînên dawî yên <who/> | دوایین پارەدانەکانی <who/> | آخرین پرداخت‌های <who/> | آخر دفعات <who/> | draft (address lookup: heads the list of recent transfers; <who/> is the address looked up) |
+| payment.sent | <amount/> ji <who/> re hat şandin | <amount/> نێردرا بۆ <who/> | <amount/> به <who/> فرستاده شد | أُرسل <amount/> إلى <who/> | draft |
+| payment.received | <amount/> ji <who/> hat wergirtin | <amount/> وەرگیرا لە <who/> | <amount/> از <who/> دریافت شد | استُلم <amount/> من <who/> | draft |
+| payment.to | <amount/> bo <who/> | <amount/> بۆ <who/> | <amount/> به <who/> | <amount/> إلى <who/> | draft |
+| payment.several | Ev dayîn pêk hatin | ئەم پارەدانانە ئەنجام دران | این پرداخت‌ها انجام شدند | تمت هذه الدفعات | draft (heading over a code with more than one transfer) |
+| payment.notYou | Heke navnîşana te di vê lîsteyê de tune be, vê kodê tu dayîn ji te re nekiriye. | ئەگەر ناونیشانەکەت لەم لیستەدا نییە، ئەم کۆدە پارەی بۆ تۆ نەداوە. | اگر آدرس شما در این فهرست نیست، این کد به شما پرداختی نکرده است. | إذا لم يكن عنوانك في هذه القائمة، فهذا الرمز لم يدفع لك. | draft |
+| payment.more | Dibe ku vê kodê ji yên li vir têne nîşandan bêtir veguhastin hebin. Heke navnîşana te di vê lîsteyê de tune be, em ji vir nikarin bizanin ka vê kodê dayîn ji te re kiriye an na. | لەوانەیە ئەم کۆدە گواستنەوەی زیاتری هەبێت لەوەی لێرە پیشان دراوە. ئەگەر ناونیشانەکەت لەم لیستەدا نییە، لێرەوە ناتوانین بزانین ئایا ئەم کۆدە پارەی بۆ تۆ داوە یان نا. | ممکن است این کد انتقال‌های بیشتری از آنچه اینجا نشان داده شده داشته باشد. اگر آدرس شما در این فهرست نیست، از اینجا نمی‌توانیم بگوییم که آیا این کد به شما پرداخت کرده است یا نه. | قد يكون لهذا الرمز تحويلات أكثر مما يظهر هنا. إذا لم يكن عنوانك في هذه القائمة، فلا يمكننا أن نعرف من هنا ما إذا كان هذا الرمز قد دفع لك. | draft (shown when the list of a code may be incomplete; must not claim the code did not pay the reader) |
+| payment.failedGroup | Ev pêk nehatin | ئەمانە ئەنجام نەدران | این‌ها انجام نشدند | هذه لم تتم | draft (line above the failed transfers of a code with several transfers) |
 | citizenship.title | Hemwelatî | هاوڵاتیبوون | شهروندی | المواطنة | draft |
 | citizenship.applied | Serlêdan hat kirin | داواکاری نێردرا | درخواست داده شد | تم تقديم الطلب | draft |
 | citizenship.approved | Pejirandî | پەسەندکرا | تأیید شد | تمت الموافقة | draft |

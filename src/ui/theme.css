@@ -83,3 +83,10 @@ button.big, a.big { display: flex; align-items: center; justify-content: center;
 .badges { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .badges li { padding: 8px 16px; border-radius: 999px; background: var(--bg); color: var(--text); border: 2px solid var(--muted); font-size: 17px; }
 .big-number { margin: 0; font-size: 2.5rem; font-weight: 700; line-height: 1.2; }
+
+/* Payment lookup: the transfers behind an answer */
+/* Lists of transfers fill the width and read from the start; only single verdicts are centred full-screen. */
+.answer-recent, .answer-several, .answer-incomplete { min-block-size: auto; align-items: stretch; text-align: start; }
+.payments { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; inline-size: 100%; }
+.payments li { padding: 8px 12px; border-radius: var(--radius); background: var(--bg); font-size: 17px; overflow-wrap: anywhere; }
+.code { overflow-wrap: anywhere; font-family: ui-monospace, monospace; }

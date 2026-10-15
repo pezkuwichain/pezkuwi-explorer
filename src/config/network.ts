@@ -12,6 +12,12 @@ export type NetworkConfig = {
   walletConnectProjectId: string;
 };
 
+// The Asset Hub history indexer for Zagros, served by the explorer's own nginx (deploy/nginx-explorer.conf,
+// `location = /history/assethub`: POST only, rate-limited, proxied to the indexer's GraphQL on the host).
+// Same origin as the site, so the CSP's connect-src 'self' already allows it. Not enabled here: set
+// history.assetHub to this value once the indexer has caught up with the chain.
+export const ZAGROS_HISTORY_URL = 'https://explorer.pezkuwichain.io/history/assethub';
+
 export const NETWORK: NetworkConfig = {
   name: 'Zagros',
   ss58: 42,
@@ -26,15 +32,17 @@ export const NETWORK: NetworkConfig = {
     { id: 1000, symbol: 'wUSDT', decimals: 6 },
     { id: 2, symbol: 'wHEZ', decimals: 12 },
   ],
-  // Before setting history.* to a real indexer (see docs/superpowers/specs/2026-10-15-explorer-design.md §9):
-  //   1. Address-lookup verdict: a lookup by address must show the amount, the time and the counterparty of the payment it found (or a list of recent payments), not a bare ✅ — today it reports only the newest transfer as "Arrived".
-  //   2. Batch extrinsics: a code that covers several transfers (a batch) must report every transfer, not only the first one.
-  //   3. null === null is 'sent': in toActivity, an unparseable `from` and an unparseable account both normalise to null and compare equal, so the row reads "sent"; compare only when both are valid addresses.
-  //   4. NaN event index: eventIdx returns NaN for an id without a numeric second segment and the sort comparator then misorders; treat a non-numeric index as last explicitly.
-  //   5. Activity.code validation: the indexer's extrinsicHash is shown as the transaction code; accept it only when it is 0x followed by 64 hex digits.
-  //   6. Empty list markup: the activity card renders an empty list element next to the "no activity yet" sentence; render one or the other.
-  //   7. `now` frozen at mount: relative times on the account screen are computed against the time the screen opened; refresh it so "2 minutes ago" does not stay true for an hour.
-  //   8. History test isolation: tests that set NETWORK.history.* must restore it, so no test depends on another's indexer setting.
+  // history.* stays null until the owner switches it on (assetHub -> ZAGROS_HISTORY_URL, after the indexer has
+  // caught up). Every gate in docs/superpowers/specs/2026-10-15-explorer-design.md §9 is closed and tested:
+  //   1. Address-lookup verdict: an address lookup lists up to five recent transfers (direction, amount, counterparty, time, ✅/❌; a failed row reads "Failed", never "sent"/"received"), no single verdict; a single-transfer code shows amount, time and counterparty.
+  //   2. Batch extrinsics: a code lists every transfer (up to 200 nodes); more than one transfer gets no single "Arrived", and a full page says there are more and gives no verdict.
+  //   3. null === null is 'sent': toActivity compares addresses only when both are valid.
+  //   4. NaN event index: a non-numeric event index sorts last, deterministically.
+  //   5. Activity.code validation: kept only when it is 0x followed by 64 hex digits, otherwise null.
+  //   6. Empty list markup: the activity card renders the empty sentence or a list, never both.
+  //   7. `now` frozen at mount: relative times refresh on each history load and every minute.
+  //   8. History test isolation: tests that set NETWORK.history.* restore it.
+  // src/screens/HistoryEnabled.test.tsx runs the screens end to end with assetHub = ZAGROS_HISTORY_URL.
   history: { assetHub: null, relay: null },
   walletConnectProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? '',
 };

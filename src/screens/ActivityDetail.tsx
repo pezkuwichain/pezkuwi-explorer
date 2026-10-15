@@ -1,7 +1,7 @@
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAccount } from '../account/AccountContext';
-import type { Activity } from '../data/history';
+import { validCode, type Activity } from '../data/history';
 import { Addr, Amount } from '../ui/Layout';
 import { ActivityAmount } from '../ui/ActivityAmount';
 import { NETWORK } from '../config/network';
@@ -18,7 +18,8 @@ function asActivity(state: unknown, id: string | undefined): Activity | null {
     typeof a.symbol === 'string' &&
     (a.decimals === null || (typeof a.decimals === 'number' && Number.isInteger(a.decimals) && a.decimals >= 0)) &&
     typeof a.amount === 'bigint' && typeof a.fee === 'bigint' && typeof a.ok === 'boolean';
-  return ok ? (state as Activity) : null;
+  // A code that is not 0x + 64 hex digits is no code at all; the rest of the entry is still good.
+  return ok ? { ...(state as Activity), code: validCode(a.code) } : null;
 }
 
 export default function ActivityDetail() {
@@ -37,6 +38,7 @@ export default function ActivityDetail() {
       <h1><ActivityAmount a={a} />{!a.ok && <> · {t('account.failed')}</>}</h1>
       {a.counterparty && <p>{t(a.direction === 'sent' ? 'account.to' : 'account.from')}: <Addr value={a.counterparty} /></p>}
       <p>{t('account.when')}: {new Date(a.when * 1000).toLocaleString(i18n.language)}</p>
+      {a.code && <p>{t('account.code')}: <bdi dir="ltr" className="code">{a.code}</bdi></p>}
       <p>{t('account.fee')}: <Amount value={a.fee} decimals={NETWORK.native.decimals} symbol={NETWORK.native.symbol} /></p>
     </div>
   );

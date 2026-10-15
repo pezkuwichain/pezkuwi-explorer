@@ -1,12 +1,84 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { findPayment, indexerLag, InvalidLookupError, NotIndexedError } from '../data/history';
+import { findPayment, indexerLag, InvalidLookupError, NotIndexedError, RECENT_LIMIT, type Activity, type PaymentLookup } from '../data/history';
 import { scanQr } from '../account/connectors/qr';
-import { normaliseAddress } from '../lib/address';
 import { Addr } from '../ui/Layout';
+import { ActivityAmount } from '../ui/ActivityAmount';
 import { NETWORK } from '../config/network';
+import { relativeTime } from '../lib/format';
+import { useNow } from '../hooks/useNow';
 
-type Result = 'arrived' | 'failed' | 'onTheWay' | 'notFound' | 'notAPayment' | 'preparing' | 'error' | 'invalid' | 'noCamera';
+type Simple = 'onTheWay' | 'notFound' | 'preparing' | 'error' | 'invalid' | 'noCamera';
+type Found = Exclude<PaymentLookup, { status: 'notFound' }>;
+type Answer = { r: Simple } | { r: 'found'; p: Found };
+
+// One transfer: what moved, between whom, when, and whether it went through.
+// A failed transfer moved nothing, so it never reads as "sent X to Y": amount, Failed, the counterparty, time, always ❌.
+function TransferRow({ a, view, now, mark }: { a: Activity; view: 'code' | 'address'; now: number; mark: boolean }) {
+  const { t, i18n } = useTranslation();
+  const amount = <ActivityAmount a={a} />;
+  const known = !!a.counterparty && a.direction !== 'other';
+  let body;
+  if (!a.ok) {
+    body = <>{amount} · {t('account.failed')}{known && <> · {t(a.direction === 'received' ? 'account.from' : 'account.to')}: <Addr value={a.counterparty!} /></>}</>;
+  } else if (known) {
+    // A code is always read from the sender's side ("X to Y"); an address row is relative to the queried address.
+    const key = view === 'code' ? 'payment.to' : a.direction === 'sent' ? 'payment.sent' : 'payment.received';
+    body = <Trans i18nKey={key} components={{ amount, who: <Addr value={a.counterparty!} /> }} />;
+  } else body = amount;
+  return (
+    <li>
+      {body}
+      {' · '}{relativeTime(a.when, now, i18n.language, t)}
+      {(mark || !a.ok) && <> <span role="img" aria-label={t(a.ok ? 'account.ok' : 'account.failed')}>{a.ok ? '✅' : '❌'}</span></>}
+    </li>
+  );
+}
+
+function FoundAnswer({ p, now }: { p: Found; now: number }) {
+  const { t } = useTranslation();
+  const list = (view: 'code' | 'address', rows: Activity[], mark: boolean) => (
+    <ul className="payments">{rows.map((a) => <TransferRow key={a.id} a={a} view={view} now={now} mark={mark} />)}</ul>
+  );
+  if (p.kind === 'address') {
+    // No verdict: the newest transfer touching an address need not be the payment the person means.
+    return (
+      <>
+        <p><Trans i18nKey="payment.recent" components={{ who: <Addr value={p.address} /> }} /></p>
+        {list('address', p.transfers.slice(0, RECENT_LIMIT), true)}
+      </>
+    );
+  }
+  switch (p.status) {
+    case 'notAPayment': return <p>{t('payment.notAPayment')}</p>;
+    case 'failedNotAPayment': return <p>{t('payment.failedNotAPayment')}</p>;
+    // The list may be missing transfers: no verdict, and no claim about an address that is not in it.
+    case 'incomplete': return <><p>{t('payment.more')}</p>{p.transfers.length > 0 && list('code', p.transfers, true)}</>;
+    // Several transfers, at least one went through: who got what is in the list, and no "went through"
+    // heading sits above a failed row. (None went through: the "did not arrive" verdict below is true for all.)
+    case 'several': {
+      const ok = p.transfers.filter((a) => a.ok), failed = p.transfers.filter((a) => !a.ok);
+      return (
+        <>
+          <h2>{t('payment.several')}</h2>
+          <p>{t('payment.notYou')}</p>
+          {list('code', ok, true)}
+          {failed.length > 0 && <><p className="group">{t('payment.failedGroup')}</p>{list('code', failed, true)}</>}
+        </>
+      );
+    }
+  }
+  const only = p.transfers.length === 1 ? p.transfers[0] : null;
+  return (
+    <>
+      <p className="big-mark">{p.status === 'arrived' ? '✅' : '❌'}</p>
+      <h2>{t(p.status === 'arrived' ? 'payment.arrived' : 'payment.notArrived')}</h2>
+      {p.status === 'arrived' && only?.counterparty && only.direction !== 'other' && <p><Trans i18nKey="payment.arrivedText" components={{ who: <Addr value={only.counterparty} /> }} /></p>}
+      {p.status === 'failed' && <p>{t('payment.notArrivedText')}</p>}
+      {p.transfers.length > 0 && list('code', p.transfers, p.transfers.length > 1)}
+    </>
+  );
+}
 
 export default function PaymentStatus() {
   const { t } = useTranslation();
@@ -14,7 +86,8 @@ export default function PaymentStatus() {
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
-  const [res, setRes] = useState<{ r: Result; who?: string | null } | null>(null);
+  const [res, setRes] = useState<Answer | null>(null);
+  const [now, refreshNow] = useNow();
   const latest = useRef(0);
   useEffect(() => () => { latest.current = -1; }, []);
 
@@ -29,12 +102,7 @@ export default function PaymentStatus() {
         // An unreadable lag must not be reported as "on its way".
         const lag = await indexerLag().catch(() => 0);
         if (live()) setRes({ r: lag > 20 ? 'onTheWay' : 'notFound' });
-      } else if (p.status === 'arrived') {
-        const a = p.activity;
-        // The sentence must be true for both views: a sender's lookup names the recipient; a lookup of a received payment names the queried address itself.
-        const who = a?.direction === 'received' ? normaliseAddress(text.trim()) : (a?.counterparty ?? null);
-        setRes({ r: 'arrived', who });
-      } else setRes({ r: p.status });
+      } else { refreshNow(); setRes({ r: 'found', p }); }
     } catch (err) {
       if (!live()) return;
       setRes({ r: err instanceof NotIndexedError ? 'preparing' : err instanceof InvalidLookupError ? 'invalid' : 'error' });
@@ -78,12 +146,10 @@ export default function PaymentStatus() {
             <button className="big" onClick={() => setScanning(false)}>{t('app.back')}</button>
           </>
         : <button className="big" onClick={() => { latest.current++; setBusy(false); setRes(null); setScanning(true); }}>{t('open.scan')}</button>}
-      {res && <div className={`answer answer-${res.r}`} role="status">
-        {res.r === 'arrived' && <><p className="big-mark">✅</p><h2>{t('payment.arrived')}</h2>{res.who && <p><Trans i18nKey="payment.arrivedText" components={{ who: <Addr value={res.who} /> }} /></p>}</>}
-        {res.r === 'failed' && <><p className="big-mark">❌</p><h2>{t('payment.notArrived')}</h2><p>{t('payment.notArrivedText')}</p></>}
+      {res && <div className={`answer answer-${res.r === 'found' ? res.p.status : res.r}`} role="status">
+        {res.r === 'found' && <FoundAnswer p={res.p} now={now} />}
         {res.r === 'onTheWay' && <><p className="big-mark">⏳</p><h2>{t('payment.onTheWay')}</h2></>}
         {res.r === 'notFound' && <p>{t('payment.notFound')}</p>}
-        {res.r === 'notAPayment' && <p>{t('payment.notAPayment')}</p>}
         {res.r === 'preparing' && <p>{t('state.preparing')}</p>}
         {res.r === 'invalid' && <p role="alert">{t('open.invalid')}</p>}
         {res.r === 'noCamera' && <p role="alert">{t('open.noCamera')}</p>}

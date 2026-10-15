@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act as flush, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import i18n from '../i18n';
 import { AccountProvider } from '../account/AccountContext';
@@ -89,6 +89,38 @@ describe('Account', () => {
     await new Promise((x) => setTimeout(x, 10));
     expect(impl.calls).toEqual([]);
   });
+  it('an empty history shows the sentence and no empty list', async () => {
+    impl.activity = () => Promise.resolve([]);
+    renderAccount();
+    expect(await screen.findByText('No activity yet.')).toBeInTheDocument();
+    expect(document.querySelector('ul.timeline')).toBeNull();
+  });
+  describe('relative time', () => {
+    const T = 1_800_000_000;
+    // Only Date and the interval are faked: testing-library keeps its real timeouts.
+    beforeEach(() => { vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] }); vi.setSystemTime(T * 1000); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    it('is not frozen at mount: it moves on at least every minute while the screen is open', async () => {
+      impl.activity = () => Promise.resolve([act({ when: T - 120 })]);
+      renderAccount();
+      expect(await screen.findByText(/2 minutes ago/)).toBeInTheDocument();
+      vi.setSystemTime((T + 3600) * 1000);
+      await flush(async () => { vi.advanceTimersByTime(60_000); });
+      expect(screen.getByText(/1 hour ago/)).toBeInTheDocument();
+      expect(screen.queryByText(/2 minutes ago/)).toBeNull();
+    });
+    it('is taken afresh when the history loads again', async () => {
+      let fail = true;
+      impl.activity = () => (fail ? Promise.reject(new Error('down')) : Promise.resolve([act({ when: T + 3600 - 120 })]));
+      renderAccount();
+      const retry = await screen.findByRole('button', { name: 'Try again' });
+      fail = false;
+      vi.setSystemTime((T + 3600) * 1000);
+      fireEvent.click(retry);
+      expect(await screen.findByText(/2 minutes ago/)).toBeInTheDocument();
+    });
+  });
   it('a failed row shows Failed and not the sent sentence', async () => {
     impl.activity = () => Promise.resolve([act({ ok: false })]);
     renderAccount();
@@ -126,6 +158,17 @@ describe('ActivityDetail', () => {
   it('a failed transaction heading says Failed', async () => {
     detail(act({ ok: false }));
     expect(await screen.findByRole('heading', { name: /Failed/ })).toBeInTheDocument();
+  });
+  it('shows a well-formed transaction code', async () => {
+    const code = '0x' + 'ab'.repeat(32);
+    detail(act({ code }));
+    expect(await screen.findByText(code)).toBeInTheDocument();
+  });
+  it('a malformed transaction code is treated as no code: the rest still shows, the code does not', async () => {
+    detail(act({ code: '<b>zzz</b>' }));
+    expect(await screen.findByText('1 HEZ')).toBeInTheDocument();
+    expect(screen.queryByText(/zzz/)).toBeNull();
+    expect(screen.queryByText(/Transaction code/)).toBeNull();
   });
   it('mismatched id redirects', async () => {
     detail(act({ id: 'other' }));

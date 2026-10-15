@@ -7,3 +7,8 @@
 .way-main { background: var(--primary); border-color: transparent; color: var(--on-primary); }
 .way-main .way-icon { background: rgba(255, 255, 255, 0.16); color: #FFFFFF; }
 .way-address { font-family: var(--font-mono); font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+/* The pairing QR: white quiet zone and dark modules in both themes, so a wallet camera reads it anywhere. */
+.wc-qr { align-self: center; padding: 12px; border-radius: 20px; background: #FFFFFF; line-height: 0; }
+.wc-qr svg { display: block; inline-size: 232px; block-size: 232px; max-inline-size: 100%; }
+.wc-note { text-align: center; }
+.store-link { color: var(--link); font-weight: 700; }

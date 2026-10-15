@@ -58,7 +58,7 @@ export default function PaymentStatus() {
     <div className="stack">
       <h1>{t('payment.title')}</h1>
       <form role="search" onSubmit={submit}>
-        <textarea dir="ltr" rows={3} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('payment.placeholder')} />
+        <textarea dir="ltr" rows={3} value={q} onChange={(e) => { latest.current++; setBusy(false); setRes(null); setQ(e.target.value); }} placeholder={t('payment.placeholder')} />
         <button className="big" type="submit" disabled={busy}>{busy ? t('state.loading') : t('open.go')}</button>
       </form>
       {scanning
@@ -66,7 +66,7 @@ export default function PaymentStatus() {
             <video ref={setVideo} playsInline muted className="scanner" />
             <button className="big" onClick={() => setScanning(false)}>{t('app.back')}</button>
           </>
-        : <button className="big" onClick={() => { setRes(null); setScanning(true); }}>{t('open.scan')}</button>}
+        : <button className="big" onClick={() => { latest.current++; setBusy(false); setRes(null); setScanning(true); }}>{t('open.scan')}</button>}
       {res && <div className={`answer answer-${res.r}`} role="status">
         {res.r === 'arrived' && <><p className="big-mark">✅</p><h2>{t('payment.arrived')}</h2>{res.who && <p><Trans i18nKey="payment.arrivedText" components={{ who: <Addr value={res.who} /> }} /></p>}</>}
         {res.r === 'failed' && <><p className="big-mark">❌</p><h2>{t('payment.notArrived')}</h2><p>{t('payment.notArrivedText')}</p></>}

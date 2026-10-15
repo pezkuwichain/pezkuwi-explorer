@@ -71,4 +71,20 @@ describe('PaymentStatus', () => {
     expect(signal.aborted).toBe(true);
     expect(screen.getByRole('button', { name: 'Scan QR' })).toBeInTheDocument();
   });
+  it('clears the answer as soon as the input changes', async () => {
+    find.mockResolvedValue({ status: 'arrived', activity: { counterparty: null } }); await ask();
+    expect(await screen.findByText('Arrived')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Paste the transaction code or an address'), { target: { value: '0x' } });
+    expect(screen.queryByText('Arrived')).toBeNull();
+  });
+  it('entering scan mode supersedes an in-flight lookup', async () => {
+    let done!: (v: unknown) => void;
+    find.mockReturnValue(new Promise((r) => { done = r; })); scan.mockReturnValue(new Promise(() => {}));
+    await ask();
+    fireEvent.click(screen.getByRole('button', { name: 'Scan QR' }));
+    done({ status: 'arrived', activity: { counterparty: null } });
+    await new Promise((x) => setTimeout(x, 20));
+    expect(screen.queryByText('Arrived')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+  });
 });

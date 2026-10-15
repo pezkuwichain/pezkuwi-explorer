@@ -56,3 +56,13 @@ button.big, a.big { display: flex; align-items: center; justify-content: center;
 .scanner { inline-size: 100%; border-radius: var(--radius); background: #000; }
 .wc-uri { overflow-wrap: anywhere; font-size: 17px; }
 [role="alert"] { color: var(--error, #b42318); font-weight: 600; }
+/* Full-screen answer: fills the viewport under the form. Accent colours are used only on large text (>=24px bold, 3:1 needed); body text stays --text. */
+:root { --gold-text: #8a5a00; }
+@media (prefers-color-scheme: dark) { :root { --gold-text: var(--gold); } }
+.big-mark { margin: 0; font-size: 96px; line-height: 1.1; text-align: center; }
+.answer { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 16px; min-block-size: 60vh; padding: 24px; box-sizing: border-box; border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 20px; }
+.answer h2 { margin: 0; font-size: 2rem; font-weight: 700; }
+.answer p { margin: 0; }
+.answer-arrived h2 { color: var(--green-strong); }
+.answer-failed h2 { color: var(--red); }
+.answer-onTheWay h2 { color: var(--gold-text); }

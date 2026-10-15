@@ -52,13 +52,16 @@ export function CitizenCard({ address, data, personal }: { address: string; data
                 <radialGradient id="cid-sun" cx=".78" cy=".42" r=".55"><stop stopColor="#F2D27A" stopOpacity=".55" /><stop offset="1" stopColor="#F2D27A" stopOpacity="0" /></radialGradient>
                 <pattern id="cid-micro" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M0 5L5 0" stroke="#1F6B4E" strokeOpacity=".07" strokeWidth=".45" /></pattern>
                 <path id="cid-ring" d="M14 14H526V326H14Z" />
+                {/* Where the rosette lines crowd at their centre they would read as a solid "eye": fade them out there. */}
+                <radialGradient id="cid-hole-g" gradientUnits="userSpaceOnUse" cx="420" cy="150" r="70"><stop offset=".45" stopColor="#000" /><stop offset="1" stopColor="#FFF" /></radialGradient>
+                <mask id="cid-hole" maskUnits="userSpaceOnUse" x="0" y="0" width="540" height="340"><rect width="540" height="340" fill="url(#cid-hole-g)" /></mask>
               </defs>
               <rect width="540" height="340" fill="url(#cid-fp)" />
               <rect width="540" height="340" fill="url(#cid-micro)" />
               <rect width="540" height="340" fill="url(#cid-sun)" />
               <path d={RIDGE_A} fill="none" stroke="#2C6B52" strokeOpacity=".22" strokeWidth=".8" />
               <path d={RIDGE_B} fill="none" stroke="#B08A2E" strokeOpacity=".18" strokeWidth=".6" />
-              <g fill="none" strokeWidth=".55">
+              <g fill="none" strokeWidth=".55" mask="url(#cid-hole)">
                 <path d={PATTERNS.roseA} stroke="#2C7A5B" strokeOpacity=".28" />
                 <path d={PATTERNS.roseB} stroke="#B08A2E" strokeOpacity=".30" />
                 <path d={PATTERNS.roseC} stroke="#2C7A5B" strokeOpacity=".18" />
@@ -83,7 +86,6 @@ export function CitizenCard({ address, data, personal }: { address: string; data
                   </span>
                   <small className="cid-sub">DIJITAL KURDISTAN · <bdi>{t('cid.idName').toLocaleUpperCase(i18n.language)}</bdi> · e-ID</small>
                 </span>
-                {verified && <span className="cid-chip">✓ <bdi>{t('citizenship.approved')}</bdi></span>}
               </div>
               <div className="cid-mid">
                 <div className="cid-photo-col">
@@ -111,7 +113,8 @@ export function CitizenCard({ address, data, personal }: { address: string; data
                   {number ? <span className="cid-number laser">{number}</span> : <bdi className="cid-number-stage">{stageText}</bdi>}
                 </div>
                 <div className="cid-net">
-                  PEZKUWICHAIN · {NETWORK.name.toUpperCase()}<br />
+                  {verified && <span className="cid-chip">✓ <bdi>{t('citizenship.approved')}</bdi></span>}
+                  <span>PEZKUWICHAIN · {NETWORK.name.toUpperCase()}</span>
                   <span className="cid-mono" title={address}>{shortAddress(address)}</span>
                 </div>
               </div>
@@ -123,10 +126,12 @@ export function CitizenCard({ address, data, personal }: { address: string; data
               <defs><linearGradient id="cid-bp" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#DCEADF" /><stop offset=".55" stopColor="#F6F0DF" /><stop offset="1" stopColor="#DDE6D7" /></linearGradient></defs>
               <rect width="540" height="340" fill="url(#cid-bp)" />
               <g fill="none" strokeWidth=".5">
-                <path d={PATTERNS.roseD} stroke="#B08A2E" strokeOpacity=".26" />
+                <path d={PATTERNS.roseD} stroke="#B08A2E" strokeOpacity=".2" />
                 <path d={PATTERNS.waveA} stroke="#2C7A5B" strokeOpacity=".14" />
                 <path d={PATTERNS.waveC} stroke="#2C7A5B" strokeOpacity=".14" />
               </g>
+              {/* Calm paper under the address and status, so the text never sits on line work. */}
+              <rect x="24" y="64" width="372" height="164" rx="10" fill="#F7F5EC" fillOpacity=".72" />
               <rect x="0" y="236" width="540" height="104" fill="#FFFFFF" fillOpacity=".72" />
               <rect x="14" y="14" width="512" height="312" rx="16" fill="none" stroke="#A88A43" strokeOpacity=".55" strokeWidth=".7" />
             </svg>

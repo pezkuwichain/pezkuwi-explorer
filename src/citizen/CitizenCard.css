@@ -45,9 +45,10 @@
 /* Both titles and the chip share one line at 350px in every language (the Sorani chip text runs a little wider). */
 .cid-title { font-family: 'Space Grotesk', sans-serif; font-size: calc(10.5 * var(--u)); letter-spacing: calc(1 * var(--u)); font-weight: 700; }
 .cid-title-ckb { font-family: 'Noto Sans Arabic', sans-serif; font-size: calc(10.5 * var(--u)); font-weight: 700; }
-.cid-sub { font-size: calc(7 * var(--u)); letter-spacing: calc(1.2 * var(--u)); color: #3F5449; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* One line, never cut: the header has the card's full width now that the status chip sits at the bottom. */
+.cid-sub { font-size: calc(6.8 * var(--u)); letter-spacing: calc(1 * var(--u)); color: #3F5449; font-weight: 800; white-space: nowrap; }
 .cid-chip {
-  flex: none;
+  flex: none; line-height: 1.2; margin-block-end: calc(2 * var(--u));
   font-size: calc(7.5 * var(--u)); font-weight: 800; letter-spacing: calc(1.2 * var(--u)); color: #FFFFFF; background: #017A2F; text-transform: uppercase;
   border-radius: 20px; padding: calc(4 * var(--u)) calc(8 * var(--u)); box-shadow: 0 1px 0 rgba(255, 255, 255, .4) inset; white-space: nowrap;
 }
@@ -85,7 +86,7 @@
 .cid-number { font-family: 'Space Grotesk', sans-serif; font-size: calc(17 * var(--u)); font-weight: 700; letter-spacing: calc(1.6 * var(--u)); line-height: 1; }
 .cid-number-stage { font-size: calc(9 * var(--u)); font-weight: 800; color: #0F2A1F; overflow: hidden; text-overflow: ellipsis; }
 .laser { color: #0E3B26; text-shadow: 0 1px 0 rgba(255, 255, 255, .7), 0 -1px 0 rgba(0, 0, 0, .18); }
-.cid-net { text-align: right; font-size: calc(6.5 * var(--u)); letter-spacing: calc(1 * var(--u)); color: #22573F; font-weight: 700; line-height: 1.5; white-space: nowrap; }
+.cid-net { display: flex; flex-direction: column; align-items: flex-end; gap: calc(4 * var(--u)); text-align: right; font-size: calc(6.5 * var(--u)); letter-spacing: calc(1 * var(--u)); color: #22573F; font-weight: 700; line-height: 1.5; white-space: nowrap; }
 .cid-mono { font-family: 'JetBrains Mono', monospace; font-weight: 600; letter-spacing: calc(.5 * var(--u)); }
 .cid-back-title { font-family: 'Space Grotesk', sans-serif; font-size: calc(11 * var(--u)); letter-spacing: calc(2 * var(--u)); flex: 1; }
 .cid-star { color: #7A5A1E; }

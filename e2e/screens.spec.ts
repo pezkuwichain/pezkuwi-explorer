@@ -48,6 +48,26 @@ async function setUp(page: Page, opts: { account: boolean; lang?: string }) {
   return blocked;
 }
 
+// The card's text never collides or gets cut: title, Sorani title and status chip have pairwise disjoint boxes
+// inside the card, and the subtitle is whole on one line (no overflow, no ellipsis).
+async function checkCardText(page: Page) {
+  const box = async (sel: string) => page.locator(`.cid-front ${sel}`).boundingBox();
+  const card = (await page.locator('.cid-front').boundingBox())!;
+  const boxes = (await Promise.all(['.cid-title', '.cid-title-ckb', '.cid-chip', '.cid-sub'].map(box))).filter((b) => b !== null);
+  expect(boxes.length).toBeGreaterThanOrEqual(3);
+  const apart = (a: NonNullable<(typeof boxes)[number]>, b: NonNullable<(typeof boxes)[number]>) =>
+    a.x + a.width <= b.x + 0.5 || b.x + b.width <= a.x + 0.5 || a.y + a.height <= b.y + 0.5 || b.y + b.height <= a.y + 0.5;
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i]!;
+    expect(b.x >= card.x - 0.5 && b.x + b.width <= card.x + card.width + 0.5).toBe(true);
+    for (let j = i + 1; j < boxes.length; j++) expect(apart(b, boxes[j]!)).toBe(true);
+  }
+  const sub = page.locator('.cid-front .cid-sub');
+  expect(await sub.evaluate((e) => e.scrollWidth <= e.clientWidth + 1 && getComputedStyle(e).textOverflow !== 'ellipsis')).toBe(true);
+  const head = page.locator('.cid-front .cid-titles');
+  expect(await head.evaluate((e) => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
+}
+
 const shot = async (page: Page, name: string, scheme: string) => {
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: `test-results/screens/${name}-${scheme}.png` });
@@ -103,6 +123,7 @@ for (const scheme of ['dark', 'light'] as const) {
       await page.goto('/citizenship');
       await settled(page);
       await shot(page, 'citizenship', scheme);
+      await checkCardText(page);
       await page.getByRole('button', { name: 'Rûyê paşîn nîşan bide' }).click();
       await page.waitForTimeout(900); // the turn takes .8 s
       await shot(page, 'citizenship-back', scheme);
@@ -139,12 +160,7 @@ for (const scheme of ['dark', 'light'] as const) {
       await page.goto('/citizenship');
       await settled(page);
       await shot(page, 'citizenship-ckb', scheme);
-      // The card's header line fits in Sorani too: the Sorani title ends before the chip, the chip inside the card.
-      const ckbTitle = (await page.locator('.cid-front .cid-title-ckb').boundingBox())!;
-      const chip = (await page.locator('.cid-front .cid-chip').boundingBox())!;
-      const card = (await page.locator('.cid-front').boundingBox())!;
-      expect(ckbTitle.x + ckbTitle.width).toBeLessThanOrEqual(chip.x + 0.5);
-      expect(chip.x + chip.width).toBeLessThanOrEqual(card.x + card.width);
+      await checkCardText(page);
       await page.locator('.cid-flip').click();
       await page.waitForTimeout(900);
       await shot(page, 'citizenship-back-ckb', scheme);

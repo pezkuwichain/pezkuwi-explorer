@@ -9,7 +9,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       // Chain data is never cached: only the app shell is precached, no runtime caching at all.
-      workbox: { navigateFallback: '/index.html', runtimeCaching: [] },
+      workbox: {
+        navigateFallback: '/index.html',
+        // Self-hosted fonts are part of the shell so it renders offline with the right type.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        runtimeCaching: [],
+      },
       manifest: {
         name: 'Pezkuwi Explorer',
         short_name: 'Explorer',

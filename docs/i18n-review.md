@@ -53,6 +53,12 @@ Turkish and English are written directly and are not listed.
 | payment.notArrivedText | Nehat şandin. Pereyên te hê jî di hesabê te de ne. | نەنێردراوە. پارەکەت هێشتا لە هەژمارەکەتدایە. | ارسال نشده است. پول شما هنوز در حساب شماست. | لم يتم إرسالها. أموالك ما زالت في حسابك. | draft |
 | payment.notFound | Me hîna ev dayîn nedît. Heke te nû şandiye, deqeyekê bisekine û dîsa biceribîne. | هێشتا ئەم پارەدانەمان نەدۆزییەوە. ئەگەر تازە ناردوتە، خولەکێک چاوەڕێ بکە و دووبارە هەوڵبدەرەوە. | هنوز این پرداخت را پیدا نکردیم. اگر همین حالا فرستاده‌اید، یک دقیقه صبر کنید و دوباره تلاش کنید. | لم نعثر على هذه الدفعة بعد. إذا أرسلتها للتو، انتظر دقيقة وحاول مجددًا. | draft |
 | payment.notAPayment | Ev kod ne dayînek e. | ئەم کۆدە پارەدان نییە. | این کد یک پرداخت نیست. | هذا الرمز ليس دفعة. | draft |
+| payment.recent | Dayînên dawî yên <who/> | دوایین پارەدانەکانی <who/> | آخرین پرداخت‌های <who/> | آخر دفعات <who/> | draft (address lookup: heads the list of recent transfers; <who/> is the address looked up) |
+| payment.sent | <amount/> ji <who/> re hat şandin | <amount/> نێردرا بۆ <who/> | <amount/> به <who/> فرستاده شد | أُرسل <amount/> إلى <who/> | draft |
+| payment.received | <amount/> ji <who/> hat wergirtin | <amount/> وەرگیرا لە <who/> | <amount/> از <who/> دریافت شد | استُلم <amount/> من <who/> | draft |
+| payment.to | <amount/> bo <who/> | <amount/> بۆ <who/> | <amount/> به <who/> | <amount/> إلى <who/> | draft |
+| payment.partial | Tenê beşek jê gihîşt | تەنها بەشێکی گەیشت | فقط بخشی از آن رسید | وصل جزء منها فقط | draft |
+| payment.partialText | Hin ji van dayînan pêk hatin û hin jî pêk nehatin. Her yek li jêr hatiye nîşankirin. | هەندێک لەم پارەدانانە ئەنجام دران و هەندێکیان نا. هەر یەکێکیان لە خوارەوە دیاری کراوە. | برخی از این پرداخت‌ها انجام شد و برخی نه. هر کدام در زیر مشخص شده است. | تمّ بعض هذه الدفعات ولم يتمّ بعضها. كل واحدة موضّحة أدناه. | draft |
 | citizenship.title | Hemwelatî | هاوڵاتیبوون | شهروندی | المواطنة | draft |
 | citizenship.applied | Serlêdan hat kirin | داواکاری نێردرا | درخواست داده شد | تم تقديم الطلب | draft |
 | citizenship.approved | Pejirandî | پەسەندکرا | تأیید شد | تمت الموافقة | draft |

@@ -1,12 +1,64 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { findPayment, indexerLag, InvalidLookupError, NotIndexedError } from '../data/history';
+import { findPayment, indexerLag, InvalidLookupError, NotIndexedError, RECENT_LIMIT, type Activity, type PaymentLookup } from '../data/history';
 import { scanQr } from '../account/connectors/qr';
-import { normaliseAddress } from '../lib/address';
 import { Addr } from '../ui/Layout';
+import { ActivityAmount } from '../ui/ActivityAmount';
 import { NETWORK } from '../config/network';
+import { relativeTime } from '../lib/format';
+import { useNow } from '../hooks/useNow';
 
-type Result = 'arrived' | 'failed' | 'onTheWay' | 'notFound' | 'notAPayment' | 'preparing' | 'error' | 'invalid' | 'noCamera';
+type Simple = 'onTheWay' | 'notFound' | 'preparing' | 'error' | 'invalid' | 'noCamera';
+type Found = Exclude<PaymentLookup, { status: 'notFound' }>;
+type Answer = { r: Simple } | { r: 'found'; p: Found };
+
+const MARK = { arrived: '✅', failed: '❌', partial: '⚠️' } as const;
+const HEADING = { arrived: 'payment.arrived', failed: 'payment.notArrived', partial: 'payment.partial' } as const;
+
+// One transfer: what moved, between whom, when, and whether it went through.
+function TransferRow({ a, view, now, mark }: { a: Activity; view: 'code' | 'address'; now: number; mark: boolean }) {
+  const { t, i18n } = useTranslation();
+  const amount = <ActivityAmount a={a} />;
+  // A code is always read from the sender's side ("X to Y"); an address row is relative to the queried address.
+  const key = !a.counterparty || a.direction === 'other' ? null
+    : view === 'code' ? 'payment.to' : a.direction === 'sent' ? 'payment.sent' : 'payment.received';
+  return (
+    <li>
+      {key ? <Trans i18nKey={key} components={{ amount, who: <Addr value={a.counterparty!} /> }} /> : amount}
+      {' · '}{relativeTime(a.when, now, i18n.language, t)}
+      {mark && <> <span role="img" aria-label={t(a.ok ? 'account.ok' : 'account.failed')}>{a.ok ? '✅' : '❌'}</span></>}
+    </li>
+  );
+}
+
+function FoundAnswer({ p, now }: { p: Found; now: number }) {
+  const { t } = useTranslation();
+  if (p.kind === 'address') {
+    // No verdict: the newest transfer touching an address need not be the payment the person means.
+    return (
+      <>
+        <p><Trans i18nKey="payment.recent" components={{ who: <Addr value={p.address} /> }} /></p>
+        <ul className="payments">
+          {p.transfers.slice(0, RECENT_LIMIT).map((a) => <TransferRow key={a.id} a={a} view="address" now={now} mark />)}
+        </ul>
+      </>
+    );
+  }
+  if (p.status === 'notAPayment') return <p>{t('payment.notAPayment')}</p>;
+  const only = p.transfers.length === 1 ? p.transfers[0] : null;
+  return (
+    <>
+      <p className="big-mark">{MARK[p.status]}</p>
+      <h2>{t(HEADING[p.status])}</h2>
+      {p.status === 'arrived' && only?.counterparty && <p><Trans i18nKey="payment.arrivedText" components={{ who: <Addr value={only.counterparty} /> }} /></p>}
+      {p.status === 'failed' && <p>{t('payment.notArrivedText')}</p>}
+      {p.status === 'partial' && <p>{t('payment.partialText')}</p>}
+      {p.transfers.length > 0 && <ul className="payments">
+        {p.transfers.map((a) => <TransferRow key={a.id} a={a} view="code" now={now} mark={p.transfers.length > 1} />)}
+      </ul>}
+    </>
+  );
+}
 
 export default function PaymentStatus() {
   const { t } = useTranslation();
@@ -14,7 +66,8 @@ export default function PaymentStatus() {
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
-  const [res, setRes] = useState<{ r: Result; who?: string | null } | null>(null);
+  const [res, setRes] = useState<Answer | null>(null);
+  const [now, refreshNow] = useNow();
   const latest = useRef(0);
   useEffect(() => () => { latest.current = -1; }, []);
 
@@ -29,12 +82,7 @@ export default function PaymentStatus() {
         // An unreadable lag must not be reported as "on its way".
         const lag = await indexerLag().catch(() => 0);
         if (live()) setRes({ r: lag > 20 ? 'onTheWay' : 'notFound' });
-      } else if (p.status === 'arrived') {
-        const a = p.activity;
-        // The sentence must be true for both views: a sender's lookup names the recipient; a lookup of a received payment names the queried address itself.
-        const who = a?.direction === 'received' ? normaliseAddress(text.trim()) : (a?.counterparty ?? null);
-        setRes({ r: 'arrived', who });
-      } else setRes({ r: p.status });
+      } else { refreshNow(); setRes({ r: 'found', p }); }
     } catch (err) {
       if (!live()) return;
       setRes({ r: err instanceof NotIndexedError ? 'preparing' : err instanceof InvalidLookupError ? 'invalid' : 'error' });
@@ -78,12 +126,10 @@ export default function PaymentStatus() {
             <button className="big" onClick={() => setScanning(false)}>{t('app.back')}</button>
           </>
         : <button className="big" onClick={() => { latest.current++; setBusy(false); setRes(null); setScanning(true); }}>{t('open.scan')}</button>}
-      {res && <div className={`answer answer-${res.r}`} role="status">
-        {res.r === 'arrived' && <><p className="big-mark">✅</p><h2>{t('payment.arrived')}</h2>{res.who && <p><Trans i18nKey="payment.arrivedText" components={{ who: <Addr value={res.who} /> }} /></p>}</>}
-        {res.r === 'failed' && <><p className="big-mark">❌</p><h2>{t('payment.notArrived')}</h2><p>{t('payment.notArrivedText')}</p></>}
+      {res && <div className={`answer answer-${res.r === 'found' ? res.p.status : res.r}`} role="status">
+        {res.r === 'found' && <FoundAnswer p={res.p} now={now} />}
         {res.r === 'onTheWay' && <><p className="big-mark">⏳</p><h2>{t('payment.onTheWay')}</h2></>}
         {res.r === 'notFound' && <p>{t('payment.notFound')}</p>}
-        {res.r === 'notAPayment' && <p>{t('payment.notAPayment')}</p>}
         {res.r === 'preparing' && <p>{t('state.preparing')}</p>}
         {res.r === 'invalid' && <p role="alert">{t('open.invalid')}</p>}
         {res.r === 'noCamera' && <p role="alert">{t('open.noCamera')}</p>}

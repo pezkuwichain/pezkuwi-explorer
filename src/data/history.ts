@@ -55,52 +55,98 @@ async function query(filter: string, fetcher: typeof fetch): Promise<Node[]> {
   return nodes.filter(validNode);
 }
 
+// The indexer's extrinsicHash is shown to people as the transaction code: only 0x + 64 hex digits is one.
+export const CODE_RE = /^0x[0-9a-fA-F]{64}$/;
+export const validCode = (v: unknown): string | null => (typeof v === 'string' && CODE_RE.test(v) ? v.toLowerCase() : null);
+
+// Two addresses are the same account only when both are readable; two unreadable ones are not equal.
+function sameAccount(a: string, b: string | null): boolean {
+  const x = normaliseAddress(a);
+  return x !== null && b !== null && x === b;
+}
+
 function toActivity(n: Node, me: string): Activity {
   const t = n.transfer ?? n.assetTransfer;
   const asset = n.assetTransfer ? NETWORK.assets.find((a) => String(a.id) === String(n.assetTransfer!.assetId)) : null;
   const symbol = asset?.symbol ?? (n.assetTransfer ? `#${n.assetTransfer.assetId}` : NETWORK.native.symbol);
   const decimals = n.assetTransfer ? (asset?.decimals ?? null) : NETWORK.native.decimals;
+  const code = validCode(n.extrinsicHash);
   if (!t) {
     return { id: n.id, when: Number(n.timestamp), direction: 'other', counterparty: null, symbol, decimals, amount: 0n,
-      fee: BigInt(n.extrinsic?.fee ?? '0'), ok: n.extrinsic?.success ?? true, code: n.extrinsicHash };
+      fee: BigInt(n.extrinsic?.fee ?? '0'), ok: n.extrinsic?.success ?? true, code };
   }
-  const sent = normaliseAddress(t.from) === normaliseAddress(me);
-  return { id: n.id, when: Number(n.timestamp), direction: sent ? 'sent' : 'received', counterparty: sent ? t.to : t.from,
-    symbol, decimals, amount: BigInt(t.amount), fee: BigInt(t.fee), ok: t.success, code: n.extrinsicHash };
+  const meN = normaliseAddress(me);
+  const direction = sameAccount(t.from, meN) ? 'sent' : sameAccount(t.to, meN) ? 'received' : 'other';
+  const counterparty = direction === 'sent' ? t.to : direction === 'received' ? t.from : null;
+  return { id: n.id, when: Number(n.timestamp), direction, counterparty,
+    symbol, decimals, amount: BigInt(t.amount), fee: BigInt(t.fee), ok: t.success, code };
 }
 
 export async function loadActivity(address: string, fetcher: typeof fetch = fetch): Promise<Activity[]> {
   return (await query(`{address:{equalTo:${JSON.stringify(address)}}}`, fetcher)).map((n) => toActivity(n, address));
 }
 
-// Event index inside the block, parsed from ids like `<blk>-<idx>-from` / `-to`.
-const eventIdx = (n: Node) => Number(n.id.split('-')[1] ?? Number.MAX_SAFE_INTEGER);
+// Event index inside the block, parsed from ids like `<blk>-<idx>-from` / `-to`; null when it is not a plain number.
+const eventIdx = (n: Node): number | null => {
+  const s = n.id.split('-')[1];
+  return s !== undefined && /^\d+$/.test(s) ? Number(s) : null;
+};
+// Total order: numeric index first (ascending), non-numeric last; then the -from node of a pair; then the id itself.
+function byEvent(a: Node, b: Node): number {
+  const ia = eventIdx(a), ib = eventIdx(b);
+  if (ia !== ib) return ia === null ? 1 : ib === null ? -1 : ia - ib;
+  const fa = a.id.endsWith('-from'), fb = b.id.endsWith('-from');
+  if (fa !== fb) return fa ? -1 : 1;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+// The two nodes of one transfer (`-from` and `-to`) are the same event.
+const eventKey = (n: Node) => n.id.replace(/-(from|to)$/, '');
+function firstOfEachEvent(sorted: Node[]): Node[] {
+  const seen = new Set<string>();
+  return sorted.filter((n) => {
+    const k = eventKey(n);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
 
-export async function findPayment(input: string, fetcher: typeof fetch = fetch) {
+// How many recent transfers an address lookup shows.
+export const RECENT_LIMIT = 5;
+
+export type PaymentLookup =
+  | { status: 'notFound' }
+  // A transaction code: one entry per transfer it made (a batch makes several), each from the sender's side.
+  | { kind: 'code'; status: 'arrived' | 'failed' | 'partial' | 'notAPayment'; transfers: Activity[] }
+  // An address: its most recent transfers, each relative to that address. No single verdict: the newest
+  // transfer touching an address need not be the payment the person is asking about.
+  | { kind: 'address'; status: 'recent'; address: string; transfers: Activity[] };
+
+export async function findPayment(input: string, fetcher: typeof fetch = fetch): Promise<PaymentLookup> {
   const text = input.trim();
-  let act: Activity | undefined;
-  if (/^0x[0-9a-fA-F]{64}$/.test(text)) {
+  if (CODE_RE.test(text)) {
     const nodes = await query(`{extrinsicHash:{equalTo:${JSON.stringify(text.toLowerCase())}}}`, fetcher);
-    if (nodes.length === 0) return { status: 'notFound' as const };
-    const transfers = nodes
-      .filter((n) => n.transfer || n.assetTransfer)
-      .sort((a, b) => eventIdx(a) - eventIdx(b) || Number(b.id.endsWith('-from')) - Number(a.id.endsWith('-from')));
-    const first = transfers[0];
-    if (!first) {
+    if (nodes.length === 0) return { status: 'notFound' };
+    const transfers = firstOfEachEvent(nodes.filter((n) => n.transfer || n.assetTransfer).sort(byEvent))
+      // Always the sender's perspective, so the answer does not depend on which node of a pair came first.
+      .map((n) => toActivity(n, (n.transfer ?? n.assetTransfer)!.from));
+    if (transfers.length === 0) {
       const ex = nodes.find((n) => n.extrinsic) ?? nodes[0];
       const ok = ex.extrinsic?.success ?? true;
-      return { status: ok ? ('notAPayment' as const) : ('failed' as const), activity: toActivity(ex, ex.address) };
+      return { kind: 'code', status: ok ? 'notAPayment' : 'failed', transfers: [] };
     }
-    // Always the sender's perspective, so the answer does not depend on which of the pair came first.
-    act = toActivity(first, (first.transfer ?? first.assetTransfer)!.from);
-  } else {
-    const a = normaliseAddress(text);
-    if (!a) throw new InvalidLookupError('not a code or address');
-    const n = (await query(`{address:{equalTo:${JSON.stringify(a)}}}`, fetcher)).find((x) => x.transfer || x.assetTransfer);
-    if (!n) return { status: 'notFound' as const };
-    act = toActivity(n, a);
+    const okCount = transfers.filter((a) => a.ok).length;
+    const status = okCount === transfers.length ? 'arrived' : okCount === 0 ? 'failed' : 'partial';
+    return { kind: 'code', status, transfers };
   }
-  return { status: act.ok ? ('arrived' as const) : ('failed' as const), activity: act };
+  const a = normaliseAddress(text);
+  if (!a) throw new InvalidLookupError('not a code or address');
+  const transfers = (await query(`{address:{equalTo:${JSON.stringify(a)}}}`, fetcher))
+    .filter((x) => x.transfer || x.assetTransfer)
+    .slice(0, RECENT_LIMIT)
+    .map((n) => toActivity(n, a));
+  if (transfers.length === 0) return { status: 'notFound' };
+  return { kind: 'address', status: 'recent', address: a, transfers };
 }
 
 export async function indexerLag(fetcher: typeof fetch = fetch): Promise<number> {

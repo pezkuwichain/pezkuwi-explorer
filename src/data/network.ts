@@ -21,17 +21,40 @@ type Api = {
   };
 };
 
-export async function loadNetwork(deps = { getApi: realGetApi, now: () => Date.now() }) {
+// About 15 relay blocks: tolerates ordinary phone clock skew, and a device clock
+// behind the chain reads live.
+export const LIVE_WINDOW_MS = 90_000;
+
+// null = could not load; each field fails on its own so one down chain greys out only its card.
+export type NetworkOverview = {
+  live: boolean | null;
+  validators: number | null;
+  votes: { chain: ChainKey; index: number }[] | null;
+  treasury: bigint | null;
+};
+
+const settled = async <T>(p: Promise<T>): Promise<T | null> => {
+  try { return await p; } catch { return null; }
+};
+
+export async function loadNetwork(deps = { getApi: realGetApi, now: () => Date.now() }): Promise<NetworkOverview> {
   const chains: ChainKey[] = ['relay', 'assetHub', 'people'];
-  const apis = (await Promise.all(chains.map((c) => deps.getApi(c)))) as never as Api[];
-  const [relay, ah] = apis;
-  const [ts, vals, treasury, ...refs] = await withTimeout(Promise.all([
-    relay.query.timestamp.now(),
-    relay.query.session.validators(),
-    ah.query.system.account(TREASURY),
-    ...apis.map((a) => a.query.referenda?.referendumInfoFor.entries() ?? Promise.resolve([])),
-  ]), REQUEST_TIMEOUT_MS) as [Num, unknown[], Awaited<ReturnType<Api['query']['system']['account']>>, ...Awaited<ReturnType<NonNullable<Api['query']['referenda']>['referendumInfoFor']['entries']>>[]];
-  const votes = refs.flatMap((entries, i) =>
-    entries.filter(([, v]) => v.unwrap().isOngoing).map(([k]) => ({ chain: chains[i], index: k.args[0].toNumber() })));
-  return { live: deps.now() - ts.toNumber() < 30_000, validators: vals.length, votes, treasury: treasury.data.free.toBigInt() };
+  const api = (c: ChainKey) => deps.getApi(c) as never as Promise<Api>;
+  const q = <T>(c: ChainKey, f: (a: Api) => Promise<T>) =>
+    settled(withTimeout(api(c).then(f), REQUEST_TIMEOUT_MS));
+
+  const [ts, validators, treasury, ...refs] = await Promise.all([
+    q('relay', (a) => a.query.timestamp.now()),
+    q('relay', (a) => a.query.session.validators()),
+    q('assetHub', (a) => a.query.system.account(TREASURY)),
+    ...chains.map((c) => q(c, async (a) => (await (a.query.referenda?.referendumInfoFor.entries() ?? Promise.resolve([])))
+      .filter(([, v]) => v.unwrap().isOngoing)
+      .map(([k]) => ({ chain: c, index: k.args[0].toNumber() })))),
+  ]);
+  return {
+    live: ts ? deps.now() - ts.toNumber() < LIVE_WINDOW_MS : null,
+    validators: validators ? validators.length : null,
+    votes: refs.every((r) => r !== null) ? refs.flat() : null,
+    treasury: treasury ? treasury.data.free.toBigInt() : null,
+  };
 }

@@ -1,0 +1,54 @@
+/* The digital citizen card: kesk to navy, a gold edge, the Newroz flame. Its colours are fixed in both themes. */
+.citizen-card {
+  position: relative; overflow: hidden; min-block-size: 214px; box-sizing: border-box; padding: 18px 20px; border-radius: 24px;
+  background: var(--citizen-bg); border: 1px solid rgba(253, 184, 19, 0.45); color: #FFFFFF;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 12px;
+}
+.citizen-card::before {
+  content: ''; position: absolute; inset-inline-end: -36px; inset-block-start: -36px; inline-size: 180px; block-size: 180px;
+  border-radius: 999px; background: rgba(253, 184, 19, 0.10); pointer-events: none;
+}
+.citizen-card > * { position: relative; }
+.citizen-card .card-note { color: rgba(255, 255, 255, 0.92); }
+.citizen-card .retry { background: #FFFFFF; color: #017A2F; border: 0; }
+.cc-top { display: flex; align-items: center; gap: 10px; }
+.cc-name { display: flex; flex-direction: column; flex: 1; }
+.cc-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: 2px; text-transform: uppercase; }
+.cc-chain { font-size: 12px; color: rgba(255, 255, 255, 0.86); }
+.cc-chip { block-size: 28px; background: rgba(0, 0, 0, 0.30); color: #7BE59D; }
+.cc-message { margin: 0; font-weight: 600; font-size: 17px; }
+.cc-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.cc-id { display: flex; flex-direction: column; gap: 6px; min-inline-size: 0; }
+.cc-number { font-family: var(--font-display); font-size: 34px; font-weight: 700; letter-spacing: 1px; line-height: 1; }
+.cc-address { font-family: var(--font-mono); font-size: 13px; color: rgba(255, 255, 255, 0.86); }
+.cc-trust { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: end; }
+.cc-trust-label { font-size: 12px; color: rgba(255, 255, 255, 0.86); }
+.cc-trust-value { font-family: var(--font-display); font-size: 30px; font-weight: 700; color: #FDB813; line-height: 1.1; }
+
+.steps-card { padding: 16px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.steps li { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; font-size: 13px; font-weight: 600; color: var(--muted-strong); }
+.step-dot {
+  inline-size: 40px; block-size: 40px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--border-strong); color: var(--muted); font-weight: 700; box-sizing: border-box;
+}
+.steps li.done { color: var(--text-strong); }
+.steps li.done .step-dot { background: var(--kesk-700); border-color: transparent; color: #FFFFFF; }
+.tick { display: inline-flex; }
+.steps li[aria-current='step'] { color: var(--zer-text); font-weight: 700; }
+.steps li[aria-current='step'] .step-dot { background: var(--zer); color: #08090E; box-shadow: 0 0 0 5px rgba(253, 184, 19, 0.22); }
+
+.roles { background: transparent; border: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.roles.card-error { border: 1px dashed var(--border-strong); padding: 16px; border-radius: 20px; }
+.badges { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 8px; min-block-size: 40px; padding-inline: 14px; box-sizing: border-box;
+  border-radius: 999px; font-size: 15px; font-weight: 600; color: var(--text-strong); border: 1px solid;
+}
+.badge-ok { background: var(--ok-soft); border-color: var(--ok-line); }
+.badge-ok svg { color: var(--ok-text); }
+.badge-zer { background: var(--zer-soft); border-color: var(--zer-line); }
+.badge-zer svg { color: var(--zer-icon); }
+.badge-info { background: var(--info-soft); border-color: var(--info-line); }
+.badge-info svg { color: var(--info-icon); }
+.experts-button { margin-block-start: auto; font-size: 16px; }

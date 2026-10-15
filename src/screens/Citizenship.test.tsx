@@ -32,6 +32,22 @@ describe('Citizenship', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
+  it('the citizen card shows the NFT number, the address and a verified chip', async () => {
+    impl.load = () => Promise.resolve({ stage: 'citizen', roles: ['Welati'], trust: 86n, nftId: 1042n });
+    renderIt();
+    const card = await screen.findByRole('region', { name: 'Citizen card' });
+    expect(card).toHaveTextContent('№ 1,042');
+    expect(card.querySelector(`bdi[title="${ALICE}"]`)).toHaveTextContent('5Grwva…GKutQY');
+    expect(card).toHaveTextContent('Approved');
+    expect(card).toHaveTextContent('86');
+  });
+
+  it('without an NFT the card shows no number', async () => {
+    renderIt();
+    const card = await screen.findByRole('region', { name: 'Citizen card' });
+    expect(card).not.toHaveTextContent('№');
+  });
+
   it('an unknown role variant renders its raw name', async () => {
     impl.load = () => Promise.resolve({ stage: 'citizen', roles: ['BrandNewRole'], trust: 1n });
     renderIt();

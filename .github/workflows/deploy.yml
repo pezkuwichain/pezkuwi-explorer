@@ -1,0 +1,68 @@
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check-deps
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_WALLETCONNECT_PROJECT_ID: ${{ secrets.VITE_WALLETCONNECT_PROJECT_ID }}
+      - name: bundle size
+        run: test "$(du -sk dist | cut -f1)" -lt 4096
+      - name: upload
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p ~/.ssh
+          install -m 600 /dev/null ~/.ssh/deploy_key
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key
+          install -m 600 /dev/null ~/.ssh/known_hosts
+          printf '%s\n' "$HOSTS" > ~/.ssh/known_hosts
+          SSH="ssh -i $HOME/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o BatchMode=yes"
+          DEST="explorer-deploy@$HOST:"
+          # 1. everything except the entry points: new hashed assets land first, nothing is deleted
+          rsync -rlz --exclude='/index.html' --exclude='/sw.js' --exclude='/registerSW.js' --exclude='/manifest.webmanifest' -e "$SSH" dist/ "$DEST"
+          # 2. entry points last, so they never reference assets that are not there yet
+          rsync -lz -e "$SSH" dist/index.html dist/sw.js dist/registerSW.js dist/manifest.webmanifest "$DEST"
+          # 3. prune files of older builds
+          rsync -rlz --delete-after -e "$SSH" dist/ "$DEST"
+      - name: remove key material
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts
+      - name: verify
+        run: |
+          set -euo pipefail
+          main=$(grep -o '/assets/index-[^"]*\.js' dist/index.html | head -n1)
+          test -n "$main"
+          ok=0
+          for i in 1 2 3 4 5; do
+            if curl -fsS https://explorer.pezkuwichain.io/ | grep -qF "$main"; then ok=1; break; fi
+            sleep 5
+          done
+          test "$ok" = 1
+          curl -fsSI https://explorer.pezkuwichain.io/ | grep -i '^content-security-policy:'

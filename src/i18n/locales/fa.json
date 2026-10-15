@@ -1,5 +1,6 @@
 {
   "app": { "name": "Pezkuwi Explorer", "experts": "برای متخصصان: <domain>apps.pezkuwichain.io</domain>", "back": "بازگشت", "language": "زبان", "expertsShort": "برای متخصصان", "signOut": "خروج" },
+  "theme": { "label": "پوسته", "auto": "خودکار", "light": "روشن", "dark": "تیره" },
   "home": { "account": "حساب من", "payment": "پرداخت من رسید؟", "citizenship": "شهروندی", "network": "شبکه" },
   "status": { "up": "شبکه کار می‌کند", "down": "شبکه پاسخ نمی‌دهد", "checking": "در حال بررسی شبکه…" },
   "open": { "title": "حساب خود را باز کنید", "wallet": "با کیف پول من باز کن", "scan": "اسکن QR", "paste": "چسباندن آدرس", "pastePlaceholder": "آدرس خود را اینجا بچسبانید", "invalid": "این آدرس معتبر نیست. آن را بررسی کنید و دوباره تلاش کنید.", "noWallet": "هیچ کیف پول Pezkuwi در این دستگاه پیدا نشد.", "rejected": "کیف پول حسابی را به اشتراک نگذاشت.", "noCamera": "دوربین باز نشد. می‌توانید به جای آن آدرس را بچسبانید.", "go": "باز کن", "openApp": "باز کردن Pezkuwi Wallet", "waiting": "در انتظار تأیید در کیف پول…", "qrHow": "Pezkuwi Wallet → WalletConnect → کد را اسکن کنید", "otherDevice": "کیف پول روی دستگاه دیگر (QR)", "getApp": "هنوز کیف پول ندارید؟ از اینجا بگیرید:", "onPlay": "اپلیکیشن اندروید" },

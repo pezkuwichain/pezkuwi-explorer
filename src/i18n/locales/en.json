@@ -1,5 +1,6 @@
 {
   "app": { "name": "Pezkuwi Explorer", "experts": "For experts: <domain>apps.pezkuwichain.io</domain>", "back": "Back", "language": "Language", "expertsShort": "For experts", "signOut": "Sign out" },
+  "theme": { "label": "Theme", "auto": "Auto", "light": "Light", "dark": "Dark" },
   "home": { "account": "My account", "payment": "Did my payment arrive?", "citizenship": "Citizenship", "network": "Network" },
   "status": { "up": "The network is working", "down": "The network is not answering", "checking": "Checking the network…" },
   "open": { "title": "Open your account", "wallet": "Open with my wallet", "scan": "Scan QR", "paste": "Paste address", "pastePlaceholder": "Paste your address here", "invalid": "This is not a valid address. Check it and try again.", "noWallet": "No Pezkuwi wallet was found on this device.", "rejected": "The wallet did not share an account.", "noCamera": "The camera could not be opened. You can paste the address instead.", "go": "Open", "openApp": "Open Pezkuwi Wallet", "waiting": "Waiting for approval in the wallet…", "qrHow": "Pezkuwi Wallet → WalletConnect → scan the code", "otherDevice": "Wallet on another device (QR)", "getApp": "No wallet yet? Get one here:", "onPlay": "Android app" },

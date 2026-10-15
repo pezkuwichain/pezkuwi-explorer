@@ -50,3 +50,9 @@ export const IconLines = (p: P) => <Svg {...p}><path d="M4 6h16" /><path d="M4 1
 export const IconExternal = (p: P) => <Svg {...p}><path d="M7 17L17 7" /><path d="M7 7h10v10" /></Svg>;
 export const IconRotate = (p: P) => <Svg {...p}><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8" /><path d="M21 3v5h-5" /></Svg>;
 export const IconPen = (p: P) => <Svg {...p}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></Svg>;
+// The theme switch's three marks, as on dks.news: a screen (follow the system), a sun, a moon.
+export const IconThemeAuto = (p: P) => <Svg {...p}><rect x="3" y="4" width="18" height="12.5" rx="2" /><path d="M8.5 20.5h7M12 16.5v4" /></Svg>;
+export const IconSun = (p: P) => (
+  <Svg {...p}><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" /></Svg>
+);
+export const IconMoon = (p: P) => <Svg {...p}><path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5a8.5 8.5 0 1 0 10.8 10.8z" /></Svg>;

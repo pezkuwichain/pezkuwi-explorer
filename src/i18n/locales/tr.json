@@ -1,5 +1,6 @@
 {
   "app": { "name": "Pezkuwi Explorer", "experts": "Uzmanlar için: <domain>apps.pezkuwichain.io</domain>", "back": "Geri", "language": "Dil", "expertsShort": "Uzmanlar için", "signOut": "Çıkış" },
+  "theme": { "label": "Tema", "auto": "Otomatik", "light": "Açık", "dark": "Koyu" },
   "home": { "account": "Hesabım", "payment": "Ödemem ulaştı mı?", "citizenship": "Vatandaşlık", "network": "Ağ" },
   "status": { "up": "Ağ çalışıyor", "down": "Ağ yanıt vermiyor", "checking": "Ağ kontrol ediliyor…" },
   "open": { "title": "Hesabını aç", "wallet": "Cüzdanımla aç", "scan": "QR tara", "paste": "Adresi yapıştır", "pastePlaceholder": "Adresini buraya yapıştır", "invalid": "Bu geçerli bir adres değil. Kontrol edip tekrar dene.", "noWallet": "Bu cihazda Pezkuwi cüzdanı bulunamadı.", "rejected": "Cüzdan bir hesap paylaşmadı.", "noCamera": "Kamera açılamadı. Bunun yerine adresi yapıştırabilirsin.", "go": "Aç", "openApp": "Pezkuwi Wallet’ı aç", "waiting": "Cüzdanda onay bekleniyor…", "qrHow": "Pezkuwi Wallet → WalletConnect → kodu okutun", "otherDevice": "Başka cihazdaki cüzdan (QR)", "getApp": "Cüzdanınız yok mu? Buradan edinin:", "onPlay": "Android uygulaması" },

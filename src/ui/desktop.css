@@ -6,12 +6,10 @@
   --glass-bg: #FFFFFF; --glass-line: #E3E5DC; --glass-text: #0F111A;
   position: relative; min-block-size: 100vh; overflow: hidden; background: var(--desk-bg); color: var(--desk-text);
 }
-@media (prefers-color-scheme: dark) {
-  .desk {
-    --desk-bg: radial-gradient(60% 55% at 50% 45%, rgba(1, 122, 47, 0.28) 0%, #08090E 62%), #05081C;
-    --desk-text: rgba(255, 255, 255, 0.88); --desk-soft: rgba(255, 255, 255, 0.56); --desk-pill: rgba(153, 158, 199, 0.08); --desk-pill-line: rgba(153, 158, 199, 0.24);
-    --glass-bg: rgba(153, 158, 199, 0.16); --glass-line: rgba(153, 158, 199, 0.28); --glass-text: rgba(255, 255, 255, 0.92);
-  }
+:root[data-theme='dark'] .desk {
+  --desk-bg: radial-gradient(60% 55% at 50% 45%, rgba(1, 122, 47, 0.28) 0%, #08090E 62%), #05081C;
+  --desk-text: rgba(255, 255, 255, 0.88); --desk-soft: rgba(255, 255, 255, 0.56); --desk-pill: rgba(153, 158, 199, 0.08); --desk-pill-line: rgba(153, 158, 199, 0.24);
+  --glass-bg: rgba(153, 158, 199, 0.16); --glass-line: rgba(153, 158, 199, 0.28); --glass-text: rgba(255, 255, 255, 0.92);
 }
 .desk-head { position: absolute; inset-inline: 48px; inset-block-start: 32px; display: flex; align-items: center; gap: 12px; z-index: 3; }
 .desk-name { font-family: var(--font-display); font-weight: 700; font-size: 22px; flex: 1; }

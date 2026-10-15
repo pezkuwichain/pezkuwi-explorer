@@ -1,26 +1,60 @@
-import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { WALLET_CLASS, isWalletBrowser, markWalletBrowser } from './walletBrowser';
 
-// The tab bar's space below the tabs is the device's bottom inset, or 8px where there is none, never a fixed
-// amount added to it: in a wallet's DApp browser (inset 0, the wallet's toolbar right below the page) a fixed
-// allowance shows as an empty band above that toolbar.
-describe('tab bar bottom space', () => {
-  const rule = (css: string, sel: string) => {
-    const at = css.search(new RegExp(`^${sel.replace('.', '\\.')} \\{`, 'm'));
-    expect(at).toBeGreaterThanOrEqual(0);
-    return css.slice(at, css.indexOf('}', at));
-  };
-  const layout = readFileSync('src/ui/layout.css', 'utf8');
+// The bottom inset goes through --sa-bottom only, and html.in-wallet zeroes it (pex.network's fix): inside the
+// Pezkuwi Wallet's DApp browser the webview reports the system bar's inset although the wallet already sits the
+// page above its own toolbar, so using it again leaves a band between the two bars.
+const css = (dir: string): string[] => readdirSync(dir, { withFileTypes: true })
+  .flatMap((e) => e.isDirectory() ? css(join(dir, e.name)) : e.name.endsWith('.css') ? [join(dir, e.name)] : []);
+const theme = readFileSync('src/ui/theme.css', 'utf8');
+const layout = readFileSync('src/ui/layout.css', 'utf8');
 
-  it('pads the bar by the inset alone, with an 8px floor', () => {
-    const bar = rule(layout, '.tabbar');
-    expect(bar).toMatch(/padding: 8px 12px max\(8px, env\(safe-area-inset-bottom, 0px\)\);/);
-    expect(bar).toMatch(/block-size: var\(--tabbar\);/);
+describe('bottom safe-area inset', () => {
+  it('is read from env() in one place only, the --sa-bottom variable', () => {
+    const uses = css('src').flatMap((f) => (readFileSync(f, 'utf8').match(/env\(safe-area-inset-bottom[^)]*\)/g) ?? []).map(() => f));
+    expect(uses).toEqual(['src/ui/theme.css']);
+    expect(theme).toMatch(/--sa-bottom: env\(safe-area-inset-bottom, 0px\);/);
   });
 
-  it('sizes the bar and the page clearance from the same token, which holds no fixed allowance', () => {
-    expect(readFileSync('src/ui/theme.css', 'utf8')).toMatch(/--tabbar: calc\(62px \+ max\(8px, env\(safe-area-inset-bottom, 0px\)\)\);/);
-    expect(rule(layout, '.page')).toMatch(/padding-block-end: var\(--tabbar\);/);
-    expect(layout).not.toMatch(/calc\(\s*\d+px \+ env\(safe-area-inset-bottom/);
+  it('is zeroed inside the wallet browser', () => {
+    expect(theme).toMatch(/:root\.in-wallet \{ --sa-bottom: 0px; \}/);
+  });
+
+  it('sizes and pads the tab bar from it, with an 8px floor and no fixed allowance', () => {
+    expect(theme).toMatch(/--tabbar: calc\(62px \+ max\(8px, var\(--sa-bottom\)\)\);/);
+    expect(layout).toMatch(/padding: 8px 12px max\(8px, var\(--sa-bottom\)\);/);
+    expect(layout).toMatch(/padding-block-end: var\(--tabbar\);/);
+  });
+});
+
+describe('wallet browser detection', () => {
+  afterEach(() => {
+    delete (window as { injectedWeb3?: unknown }).injectedWeb3;
+    document.documentElement.classList.remove(WALLET_CLASS);
+    vi.useRealTimers();
+  });
+
+  it('is off in a plain browser', () => {
+    expect(isWalletBrowser()).toBe(false);
+  });
+
+  it('marks the page when the wallet injects its provider after load', () => {
+    vi.useFakeTimers();
+    markWalletBrowser();
+    expect(document.documentElement.classList.contains(WALLET_CLASS)).toBe(false);
+    (window as { injectedWeb3?: unknown }).injectedWeb3 = { 'pezkuwi-wallet': {} };
+    vi.advanceTimersByTime(150);
+    expect(document.documentElement.classList.contains(WALLET_CLASS)).toBe(true);
+  });
+
+  it('gives up after ten checks', () => {
+    vi.useFakeTimers();
+    markWalletBrowser();
+    vi.advanceTimersByTime(1500);
+    (window as { injectedWeb3?: unknown }).injectedWeb3 = { 'pezkuwi-wallet': {} };
+    vi.advanceTimersByTime(1500);
+    expect(document.documentElement.classList.contains(WALLET_CLASS)).toBe(false);
   });
 });

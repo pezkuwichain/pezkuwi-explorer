@@ -21,9 +21,10 @@ function asActivity(state: unknown, id: string | undefined): Activity | null {
     (a.counterparty === null || typeof a.counterparty === 'string') &&
     typeof a.symbol === 'string' &&
     (a.decimals === null || (typeof a.decimals === 'number' && Number.isInteger(a.decimals) && a.decimals >= 0)) &&
-    typeof a.amount === 'bigint' && typeof a.fee === 'bigint' && typeof a.ok === 'boolean';
+    typeof a.amount === 'bigint' && typeof a.fee === 'bigint' && typeof a.ok === 'boolean' &&
+    (a.call === undefined || a.call === null || typeof a.call === 'string');
   // A code that is not 0x + 64 hex digits is no code at all; the rest of the entry is still good.
-  return ok ? { ...(state as Activity), code: validCode(a.code) } : null;
+  return ok ? { ...(state as Activity), code: validCode(a.code), call: typeof a.call === 'string' ? a.call : null } : null;
 }
 
 export default function ActivityDetail() {
@@ -45,7 +46,7 @@ export default function ActivityDetail() {
         </p>
         <h2 className="verdict-word">{t(a.ok ? 'account.ok' : 'account.failed')}</h2>
         <dl className="facts">
-          <div className="fact fact-amount"><dt className="lead"><TokenIcon symbol={a.symbol} size={32} />{t('account.amount')}</dt><dd><ActivityAmount a={a} /></dd></div>
+          <div className="fact fact-amount"><dt className="lead">{a.call ? t('account.type') : <><TokenIcon symbol={a.symbol} size={32} />{t('account.amount')}</>}</dt><dd><ActivityAmount a={a} /></dd></div>
           {a.counterparty && <div className="fact"><dt>{t(a.direction === 'sent' ? 'account.to' : 'account.from')}</dt><dd><Addr value={a.counterparty} /></dd></div>}
           <div className="fact"><dt>{t('account.when')}</dt><dd>{new Date(a.when * 1000).toLocaleString(intlTag(i18n.language))}</dd></div>
           {a.code && <div className="fact"><dt>{t('account.code')}</dt><dd><bdi dir="ltr" className="code">{a.code}</bdi></dd></div>}

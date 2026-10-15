@@ -14,7 +14,7 @@ const THEM = '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty';
 const HOUR_AGO = () => Math.floor(Date.now() / 1000) - 7200;
 const tr = (over: Partial<Activity>): Activity => ({
   id: '9-1-from', when: HOUR_AGO(), direction: 'sent', counterparty: THEM,
-  symbol: 'HEZ', decimals: 12, amount: 1_000_000_000_000n, fee: 0n, ok: true, code: CODE, ...over,
+  symbol: 'HEZ', decimals: 12, amount: 1_000_000_000_000n, fee: 0n, ok: true, code: CODE, call: null, ...over,
 });
 // The screen's content under its header (the header has its own Back button).
 const content = () => document.querySelector('.screen') as HTMLElement;

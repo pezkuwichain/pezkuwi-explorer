@@ -16,6 +16,7 @@ Turkish and English are written directly and are not listed.
 | app.experts | Ji bo pisporan: &lt;domain&gt;apps.pezkuwichain.io&lt;/domain&gt; | بۆ شارەزایان: &lt;domain&gt;apps.pezkuwichain.io&lt;/domain&gt; | برای متخصصان: &lt;domain&gt;apps.pezkuwichain.io&lt;/domain&gt; | للخبراء: &lt;domain&gt;apps.pezkuwichain.io&lt;/domain&gt; | draft (the domain tag marks the left-to-right part; keep it around the domain) |
 | app.back | Paşve | گەڕانەوە | بازگشت | رجوع | pwap |
 | app.language | Ziman | زمان | زبان | اللغة | pwap |
+| account.type | Cûre | جۆر | نوع | النوع | pwap (commission.voting.tableType; kmr spelled as in the Ferheng: "cûre"; fa, ar draft) |
 | theme.label | Tema | ڕووکار | پوسته | المظهر | dks.news (fa, ar draft) |
 | theme.auto | Xweber | خۆکار | خودکار | تلقائي | dks.news (fa, ar draft) |
 | theme.light | Ronî | ڕووناک | روشن | فاتح | dks.news (fa, ar draft) |

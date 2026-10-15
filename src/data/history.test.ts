@@ -58,6 +58,16 @@ describe('history', () => {
     const f = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: { _metadata: { lastProcessedHeight: 90, targetHeight: 120 } } }) });
     expect(await indexerLag(f)).toBe(30);
   });
+  it('a transaction that moved no funds carries its pallet and call; a name it cannot read is dropped', async () => {
+    const [bond, junk, none] = await loadActivity(ME, reply([
+      node({ id: '1-2-extrinsic', extrinsic: { fee: '29333412', success: true, module: 'staking', call: 'bond' } }),
+      node({ id: '1-3-extrinsic', extrinsic: { fee: '1', success: true, module: 'staking<b>', call: 'bond' } }),
+      node({ id: '1-4-extrinsic', extrinsic: { fee: '1', success: true } }),
+    ]));
+    expect(bond).toMatchObject({ call: 'staking.bond', direction: 'other', fee: 29333412n, ok: true });
+    expect(junk.call).toBeNull();
+    expect(none.call).toBeNull();
+  });
   it('says a non-transfer code is not a payment, and a failed one failed', async () => {
     const ok = reply([node({ id: '5-1-extrinsic', extrinsic: { fee: '1', success: true } })]);
     expect(await findPayment(CODE, ok)).toEqual({ kind: 'code', status: 'notAPayment', transfers: [] });

@@ -54,7 +54,7 @@ function TransferFacts({ a, now }: { a: Activity; now: number }) {
     <ul className="facts-list"><li>
       <dl className="facts">
         <div className="fact fact-amount">
-          <dt className="lead"><TokenIcon symbol={a.symbol} size={32} />{t('account.amount')}</dt>
+          <dt className="lead">{a.call ? t('account.type') : <><TokenIcon symbol={a.symbol} size={32} />{t('account.amount')}</>}</dt>
           <dd><ActivityAmount a={a} />{!a.ok && <span className="status-failed"> · {t('account.failed')}</span>}</dd>
         </div>
         {known && <div className="fact"><dt>{t(a.direction === 'received' ? 'account.from' : 'account.to')}</dt><dd><Addr value={a.counterparty!} /></dd></div>}

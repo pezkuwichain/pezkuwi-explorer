@@ -10,12 +10,15 @@ export type Activity = {
   id: string; when: number; direction: 'sent' | 'received' | 'other'; counterparty: string | null;
   // null = asset not in NETWORK.assets: consumers must NOT format an amount when decimals is null.
   symbol: string; decimals: number | null; amount: bigint; fee: bigint; ok: boolean; code: string | null;
+  // A transaction that moved no funds (staking.bond, revive.call, ...): its pallet and call, shown instead of an
+  // amount. null for a transfer, or when the indexer gave no readable name.
+  call: string | null;
 };
 type Node = {
   id: string; extrinsicHash: string | null; timestamp: string; address: string;
   transfer: { from: string; to: string; amount: string; fee: string; success: boolean } | null;
   assetTransfer: { assetId: string; from: string; to: string; amount: string; fee: string; success: boolean } | null;
-  extrinsic: { fee: string; success: boolean } | null;
+  extrinsic: { fee: string; success: boolean; module?: unknown; call?: unknown } | null;
 };
 // transfer/assetTransfer/extrinsic are JSON scalars on this schema (no sub-selection).
 const FIELDS = 'id extrinsicHash timestamp address transfer assetTransfer extrinsic';
@@ -66,6 +69,11 @@ function sameAccount(a: string, b: string | null): boolean {
   return x !== null && b !== null && x === b;
 }
 
+// A pallet or call name as the indexer gives it; anything else is not shown.
+const NAME_RE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+const callName = (e: Node['extrinsic']): string | null =>
+  e && typeof e.module === 'string' && typeof e.call === 'string' && NAME_RE.test(e.module) && NAME_RE.test(e.call) ? `${e.module}.${e.call}` : null;
+
 function toActivity(n: Node, me: string): Activity {
   const t = n.transfer ?? n.assetTransfer;
   const asset = n.assetTransfer ? NETWORK.assets.find((a) => String(a.id) === String(n.assetTransfer!.assetId)) : null;
@@ -74,13 +82,13 @@ function toActivity(n: Node, me: string): Activity {
   const code = validCode(n.extrinsicHash);
   if (!t) {
     return { id: n.id, when: Number(n.timestamp), direction: 'other', counterparty: null, symbol, decimals, amount: 0n,
-      fee: BigInt(n.extrinsic?.fee ?? '0'), ok: n.extrinsic?.success ?? true, code };
+      fee: BigInt(n.extrinsic?.fee ?? '0'), ok: n.extrinsic?.success ?? true, code, call: callName(n.extrinsic) };
   }
   const meN = normaliseAddress(me);
   const direction = sameAccount(t.from, meN) ? 'sent' : sameAccount(t.to, meN) ? 'received' : 'other';
   const counterparty = direction === 'sent' ? t.to : direction === 'received' ? t.from : null;
   return { id: n.id, when: Number(n.timestamp), direction, counterparty,
-    symbol, decimals, amount: BigInt(t.amount), fee: BigInt(t.fee), ok: t.success, code };
+    symbol, decimals, amount: BigInt(t.amount), fee: BigInt(t.fee), ok: t.success, code, call: null };
 }
 
 export async function loadActivity(address: string, fetcher: typeof fetch = fetch): Promise<Activity[]> {

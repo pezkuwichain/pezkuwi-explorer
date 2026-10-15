@@ -29,7 +29,7 @@ vi.mock('../data/history', async (orig) => {
 
 const act = (over: Partial<Activity>): Activity => ({
   id: '1-0-from', when: Math.floor(Date.now() / 1000) - 7200, direction: 'sent', counterparty: BOB,
-  symbol: 'HEZ', decimals: 12, amount: 1_000_000_000_000n, fee: 0n, ok: true, code: null, ...over,
+  symbol: 'HEZ', decimals: 12, amount: 1_000_000_000_000n, fee: 0n, ok: true, code: null, call: null, ...over,
 });
 const renderAccount = () =>
   render(<MemoryRouter><AccountProvider><Account /></AccountProvider></MemoryRouter>);
@@ -110,6 +110,12 @@ describe('Account', () => {
     expect(await screen.findByText(/This could not be loaded/)).toBeInTheDocument();
   });
 
+  it('a row for a transaction that moved no funds names it, never "0 HEZ"', async () => {
+    impl.activity = () => Promise.resolve([act({ direction: 'other', counterparty: null, amount: 0n, call: 'staking.bond' })]);
+    renderAccount();
+    expect(await screen.findByText('staking · bond')).toBeInTheDocument();
+    expect(screen.queryByText(/0\s*HEZ/)).toBeNull();
+  });
   it('an unknown-asset row shows its symbol and no amount', async () => {
     impl.activity = () => Promise.resolve([act({ symbol: '#777', decimals: null, amount: 123456789n })]);
     renderAccount();
@@ -222,6 +228,12 @@ describe('ActivityDetail', () => {
     detail(act({ symbol: '#777', decimals: null, amount: 123456789n }));
     expect(await screen.findByText('#777')).toBeInTheDocument();
     expect(screen.queryByText(/123/)).toBeNull();
+  });
+  it('a transaction that moved no funds: the detail says Type and the call, with no amount', async () => {
+    detail(act({ direction: 'other', counterparty: null, amount: 0n, call: 'revive.call' }));
+    expect(await screen.findByText('Type')).toBeInTheDocument();
+    expect(screen.getByText('revive · call')).toBeInTheDocument();
+    expect(screen.queryByText('Amount')).toBeNull();
   });
   it('a failed transaction heading says Failed', async () => {
     detail(act({ ok: false }));

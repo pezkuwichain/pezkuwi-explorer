@@ -14,8 +14,8 @@ export type NetworkConfig = {
 
 // The Asset Hub history indexer for Zagros, served by the explorer's own nginx (deploy/nginx-explorer.conf,
 // `location = /history/assethub`: POST only, rate-limited, proxied to the indexer's GraphQL on the host).
-// Same origin as the site, so the CSP's connect-src 'self' already allows it. Not enabled here: set
-// history.assetHub to this value once the indexer has caught up with the chain.
+// Same origin as the site, so the CSP's connect-src 'self' already allows it. Enabled below: the
+// indexer caught up with the chain on 2026-10-15 (last processed = target = 197855).
 export const ZAGROS_HISTORY_URL = 'https://explorer.pezkuwichain.io/history/assethub';
 
 export const NETWORK: NetworkConfig = {
@@ -32,8 +32,7 @@ export const NETWORK: NetworkConfig = {
     { id: 1000, symbol: 'wUSDT', decimals: 6 },
     { id: 2, symbol: 'wHEZ', decimals: 12 },
   ],
-  // history.* stays null until the owner switches it on (assetHub -> ZAGROS_HISTORY_URL, after the indexer has
-  // caught up). Every gate in docs/superpowers/specs/2026-10-15-explorer-design.md §9 is closed and tested:
+  // history.assetHub is on (the indexer caught up 2026-10-15); relay stays null: there is no relay indexer. Every gate in docs/superpowers/specs/2026-10-15-explorer-design.md §9 is closed and tested:
   //   1. Address-lookup verdict: an address lookup lists up to five recent transfers (direction, amount, counterparty, time, ✅/❌; a failed row reads "Failed", never "sent"/"received"), no single verdict; a single-transfer code shows amount, time and counterparty.
   //   2. Batch extrinsics: a code lists every transfer (up to 200 nodes); more than one transfer gets no single "Arrived", and a full page says there are more and gives no verdict.
   //   3. null === null is 'sent': toActivity compares addresses only when both are valid.
@@ -43,7 +42,7 @@ export const NETWORK: NetworkConfig = {
   //   7. `now` frozen at mount: relative times refresh on each history load and every minute.
   //   8. History test isolation: tests that set NETWORK.history.* restore it.
   // src/screens/HistoryEnabled.test.tsx runs the screens end to end with assetHub = ZAGROS_HISTORY_URL.
-  history: { assetHub: null, relay: null },
+  history: { assetHub: ZAGROS_HISTORY_URL, relay: null },
   walletConnectProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? '',
 };
 

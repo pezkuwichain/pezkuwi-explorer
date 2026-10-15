@@ -1,0 +1,48 @@
+{
+  "name": "pezkuwi-explorer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc -b --noEmit",
+    "check-deps": "node scripts/check-deps.mjs",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@pezkuwi/api": "16.5.39",
+    "@pezkuwi/extension-dapp": "0.62.27",
+    "@pezkuwi/util": "14.0.26",
+    "@pezkuwi/util-crypto": "14.0.26",
+    "@walletconnect/sign-client": "2.26.0",
+    "i18next": "26.4.5",
+    "jsqr": "1.4.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-i18next": "17.0.16",
+    "react-router-dom": "7.18.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "happy-dom": "20.14.5",
+    "jsdom": "30.1.2",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vite-plugin-pwa": "2.0.0",
+    "vitest": "5.0.4"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

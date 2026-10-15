@@ -1,0 +1,43 @@
+name: ci
+on:
+  pull_request: {}
+  push: { branches: [main] }
+  schedule:
+    - cron: '17 3 * * *'
+permissions: { contents: read }
+jobs:
+  build:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npm run check-deps
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: bundle size
+        run: test $(du -sk dist | cut -f1) -lt 4096
+  # Hits the live Zagros RPCs, so it never gates a pull request: main pushes and a nightly run only.
+  e2e:
+    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    env:
+      # Public Zagros address with a balance; not a secret.
+      SMOKE_ADDRESS: 5F3ydAf91e1kcSW5NWXgBamHowmJbjSz8b1Gvd41MyzLCNpd
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      # playwright.config.ts starts `vite preview` on 4173 and stops it when the run ends.
+      - run: npm run e2e

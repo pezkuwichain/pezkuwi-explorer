@@ -1,0 +1,60 @@
+import { expect, test, type Page } from '@playwright/test';
+import { decodeAddress, encodeAddress } from '@pezkuwi/util-crypto';
+
+// A public Zagros address that holds HEZ. Reads only; nothing here signs or sends.
+const SMOKE_ADDRESS = process.env.SMOKE_ADDRESS;
+if (!SMOKE_ADDRESS) throw new Error('SMOKE_ADDRESS is required');
+// The same account written with the Polkadot prefix, as a user copying from another wallet would paste it.
+const POLKADOT_FORM = encodeAddress(decodeAddress(SMOKE_ADDRESS), 0);
+
+const useLanguage = (page: Page, lang: string) =>
+  page.addInitScript((l) => localStorage.setItem('pezkuwi-explorer:lang', l), lang);
+
+async function pasteAndOpen(page: Page, address: string) {
+  await page.goto('/account/open');
+  await page.getByRole('button', { name: 'Paste address' }).click();
+  await page.getByPlaceholder('Paste your address here').fill(address);
+  await page.getByRole('button', { name: 'Open', exact: true }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(page.getByText(/\bHEZ\b/).first()).toBeVisible({ timeout: 30_000 });
+}
+
+test.beforeEach(({ page }) => useLanguage(page, 'en'));
+
+test('home shows the four buttons and the experts link, and the network light resolves', async ({ page }) => {
+  await page.goto('/');
+  for (const name of ['My account', 'Did my payment arrive?', 'Citizenship', 'Network']) {
+    await expect(page.getByRole('link', { name })).toBeVisible();
+  }
+  await expect(page.getByRole('link', { name: /For experts/ })).toBeVisible();
+  const light = page.getByRole('status');
+  await expect(light).not.toHaveText(/Checking/, { timeout: 30_000 });
+  await expect(light).toHaveText(/The network is working/);
+});
+
+test('a pasted Zagros address shows a HEZ balance', async ({ page }) => {
+  await pasteAndOpen(page, SMOKE_ADDRESS!);
+});
+
+test('a pasted Polkadot-prefix address of the same account works in a real browser', async ({ page }) => {
+  expect(POLKADOT_FORM).not.toBe(SMOKE_ADDRESS);
+  await pasteAndOpen(page, POLKADOT_FORM);
+});
+
+test('mobile viewport has no horizontal scroll', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: 'Network' })).toBeVisible();
+  const w = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(w).toBeLessThanOrEqual(360);
+});
+
+test('Sorani is right-to-left with no horizontal scroll at 360px', async ({ page }) => {
+  await useLanguage(page, 'ckb');
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: 'هەژمارەکەم' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.dir)).toBe('rtl');
+  const w = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(w).toBeLessThanOrEqual(360);
+});

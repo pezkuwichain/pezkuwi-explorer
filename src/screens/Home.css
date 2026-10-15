@@ -25,8 +25,14 @@
 .hero-note .retry { color: var(--hero-cta-text); background: var(--hero-cta-bg); border: 0; }
 .hero-bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .hero-address { font-family: var(--font-mono); font-size: 13px; color: var(--hero-soft); background: var(--chip-bg); padding: 6px 10px; border-radius: 10px; }
+/* The address and the way out sit together: signing out is visible, never behind a click. */
+.hero-who { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-inline-size: 0; }
+.hero-signout {
+  min-block-size: var(--tap); padding-inline: 14px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.45);
+  background: transparent; color: var(--hero-soft); font-weight: 700; font-size: 14px;
+}
 .hero-cta {
-  display: inline-flex; align-items: center; gap: 6px; min-block-size: var(--tap); padding-inline: 16px; border-radius: 999px;
+  flex: none; display: inline-flex; align-items: center; gap: 6px; min-block-size: var(--tap); padding-inline: 16px; border-radius: 999px;
   background: var(--hero-cta-bg); color: var(--hero-cta-text); font-weight: 700; font-size: 15px; text-decoration: none;
 }
 .hero-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: #FFFFFF; }

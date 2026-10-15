@@ -14,6 +14,7 @@ import './Home.css';
 // Opened account: the HEZ total and what else it holds. Fail-closed like the account screen: an error, never a partial total.
 function AccountHero({ address }: { address: string }) {
   const { t } = useTranslation();
+  const { forget } = useAccount();
   const b = useAsync(() => loadBalances(address), [address]);
   const native = b.data?.[0];
   return (
@@ -26,7 +27,10 @@ function AccountHero({ address }: { address: string }) {
       {b.status === 'loading' && <p className="hero-note">{t('state.loading')}</p>}
       {b.status === 'error' && <p className="hero-note">{t('state.error')} <button type="button" className="retry" onClick={b.retry}>{t('state.retry')}</button></p>}
       <div className="hero-bottom">
-        <bdi dir="ltr" className="hero-address" title={address}>{shortAddress(address)}</bdi>
+        <span className="hero-who">
+          <bdi dir="ltr" className="hero-address" title={address}>{shortAddress(address)}</bdi>
+          <button type="button" className="hero-signout" onClick={forget}>{t('app.signOut')}</button>
+        </span>
         <Link className="hero-cta" to="/account">{t('open.go')} <IconNext size={16} stroke={2.4} /></Link>
       </div>
     </section>

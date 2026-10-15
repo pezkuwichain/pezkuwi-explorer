@@ -67,6 +67,7 @@
   --tile-border: transparent; --tile-pay-chip: transparent; --tile-cit-chip: transparent; --tile-net-chip: transparent; --tile-act-chip: transparent;
   --tile-icon-size: 34px; --tile-chip-size: 34px;
   --citizen-bg: linear-gradient(135deg, #017A2F 0%, #015C24 46%, #0F111A 100%);
+  --bg-citizen: radial-gradient(90% 40% at 50% 22%, rgba(1, 122, 47, 0.14) 0%, #F4F5EF 70%);
   --vote-bar-nay: rgba(226, 35, 26, 0.55);
   --shadow-live: 0 0 0 10px rgba(1, 122, 47, 0.08);
 
@@ -105,6 +106,7 @@
     --tile-net-chip: rgba(42, 176, 242, 0.16); --tile-act-chip: rgba(47, 200, 100, 0.16);
     --tile-icon-size: 26px; --tile-chip-size: 48px;
     --vote-bar-nay: rgba(229, 52, 80, 0.55);
+    --bg-citizen: radial-gradient(90% 40% at 50% 22%, rgba(1, 122, 47, 0.25) 0%, #08090E 70%);
     --shadow-live: 0 0 0 10px rgba(47, 200, 100, 0.06);
   }
 }

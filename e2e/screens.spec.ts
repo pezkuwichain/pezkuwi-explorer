@@ -103,6 +103,17 @@ for (const scheme of ['dark', 'light'] as const) {
       await page.goto('/citizenship');
       await settled(page);
       await shot(page, 'citizenship', scheme);
+      await page.getByRole('button', { name: 'Rûyê paşîn nîşan bide' }).click();
+      await page.waitForTimeout(900); // the turn takes .8 s
+      await shot(page, 'citizenship-back', scheme);
+      // A name typed on this device appears on the card (and in its MRZ) and stays in this browser.
+      await page.getByRole('button', { name: 'Rûyê pêşîn nîşan bide' }).click();
+      await page.getByRole('button', { name: /Wêne û nav/ }).click();
+      await page.getByLabel('Nav', { exact: true }).fill('Rêber');
+      await page.getByLabel('Paşnav').fill('Çiyayî');
+      await page.getByRole('button', { name: 'Tomar bike' }).click();
+      await page.waitForTimeout(900);
+      await shot(page, 'citizenship-named', scheme);
       expect(blocked).toEqual([]);
     });
 
@@ -114,7 +125,7 @@ for (const scheme of ['dark', 'light'] as const) {
       expect(blocked).toEqual([]);
     });
 
-    test('home, account and network right to left (Sorani)', async ({ page }) => {
+    test('home, account, network and citizenship right to left (Sorani)', async ({ page }) => {
       const blocked = await setUp(page, { account: true, lang: 'ckb' });
       await page.goto('/');
       await settled(page);
@@ -125,6 +136,15 @@ for (const scheme of ['dark', 'light'] as const) {
       await page.goto('/network');
       await settled(page);
       await shot(page, 'network-ckb', scheme);
+      await page.goto('/citizenship');
+      await settled(page);
+      await shot(page, 'citizenship-ckb', scheme);
+      // The card's header line (both titles and the chip) fits without spilling, in Sorani too.
+      expect(await page.locator('.cid-front .cid-head').evaluate((e) => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
+      expect(await page.locator('.cid-front .cid-title-row').evaluate((e) => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
+      await page.locator('.cid-flip').click();
+      await page.waitForTimeout(900);
+      await shot(page, 'citizenship-back-ckb', scheme);
       // Figure and unit of each stat stay on one line.
       for (const v of await page.locator('.stat-value').all()) expect((await v.boundingBox())!.height).toBeLessThan(40);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

@@ -105,6 +105,27 @@ Turkish and English are written directly and are not listed.
 | network.aye | Erê | بەڵێ | موافق | نعم | draft (kmr "Erê" introduced by the mockup; Aye share of a vote) |
 | network.nay | Na | نەخێر | مخالف | لا | draft (kmr "Na" introduced by the mockup; Nay share of a vote) |
 | chain.relay / chain.assetHub / chain.people | Relay / Asset Hub / People | Relay / Asset Hub / People | Relay / Asset Hub / People | Relay / Asset Hub / People | brand (chain names, identical in every locale) |
+| cid.idName | Nasnameya welatî | ناسنامەی هاوڵاتی | کارت شناسایی شهروند | هوية المواطن | draft (citizen ID card) |
+| cid.photo | Wêne li cîhazê | وێنە لەسەر ئامێر | عکس روی این دستگاه | صورة على هذا الجهاز | draft (citizen ID card) |
+| cid.photoAlt | Wêneyê te | وێنەکەت | عکس شما | صورتك | draft (citizen ID card) |
+| cid.given | Nav | ناو | نام | الاسم | draft (citizen ID card) |
+| cid.surname | Paşnav | پاشناو | نام خانوادگی | اسم العائلة | draft (citizen ID card) |
+| cid.role | Rol | ڕۆڵ | نقش | الدور | draft (citizen ID card) |
+| cid.number | Hejmara welatî | ژمارەی هاوڵاتی | شماره شهروندی | رقم المواطن | draft (citizen ID card) |
+| cid.wallet | Navnîşana berîkê | ناونیشانی جزدان | آدرس کیف پول | عنوان المحفظة | draft (citizen ID card) |
+| cid.status | Statû | دۆخ | وضعیت | الحالة | draft (citizen ID card) |
+| cid.showBack | Rûyê paşîn nîşan bide | ڕووی پشتەوە پیشان بدە | نمایش پشت کارت | اعرض الوجه الخلفي | draft (citizen ID card) |
+| cid.showFront | Rûyê pêşîn nîşan bide | ڕووی پێشەوە پیشان بدە | نمایش روی کارت | اعرض الوجه الأمامي | draft (citizen ID card) |
+| cid.hintBack | Ji bo rûyê paşîn bitikîne | بۆ ڕووی پشتەوە دەستی لێ بدە | برای پشت کارت لمس کنید | المس لعرض الوجه الخلفي | draft (citizen ID card) |
+| cid.hintFront | Ji bo rûyê pêşîn bitikîne | بۆ ڕووی پێشەوە دەستی لێ بدە | برای روی کارت لمس کنید | المس لعرض الوجه الأمامي | draft (citizen ID card) |
+| cid.edit | Wêne û nav li vê cîhazê zêde bike | وێنە و ناو لەم ئامێرەدا زیاد بکە | افزودن عکس و نام در این دستگاه | أضف صورة واسمًا على هذا الجهاز | draft (citizen ID card) |
+| cid.localNote | Wêne û nav tenê li vê cîhazê dimînin; qet nayên şandin. | وێنە و ناو تەنها لەم ئامێرەدا دەمێننەوە؛ هەرگیز نانێردرێن. | عکس و نام فقط روی این دستگاه می‌مانند و هرگز ارسال نمی‌شوند. | تبقى الصورة والاسم على هذا الجهاز فقط ولا تُرسل إلى أي مكان. | draft (citizen ID card) |
+| cid.choosePhoto | Wêneyekî hilbijêre | وێنەیەک هەڵبژێرە | انتخاب عکس | اختر صورة | draft (citizen ID card) |
+| cid.save | Tomar bike | پاشەکەوت بکە | ذخیره | حفظ | draft (citizen ID card) |
+| cid.cancel | Betal bike | هەڵوەشاندنەوە | انصراف | إلغاء | draft (citizen ID card) |
+| cid.clear | Ji vê cîhazê jê bibe | لەم ئامێرەدا بیسڕەوە | حذف از این دستگاه | احذف من هذا الجهاز | draft (citizen ID card) |
+| cid.notImage | Ev pel ne wêne ye. | ئەم فایلە وێنە نییە. | این فایل تصویر نیست. | هذا الملف ليس صورة. | draft (citizen ID card) |
+| cid.notSaved | Ev gerok wan nahêle; ew tenê heta ku tu rûpelê bigirî xuya dibin. | ئەم وێبگەڕە هەڵیان ناگرێت؛ تەنها تا داخستنی پەڕەکە دەردەکەون. | این مرورگر آن‌ها را نگه نمی‌دارد؛ فقط تا بستن صفحه دیده می‌شوند. | لا يحتفظ هذا المتصفح بها؛ تظهر فقط حتى تغلق الصفحة. | draft (citizen ID card) |
 
 Notes on tiki.*: the English and Turkish role names are also unreviewed renderings of Kurmanci titles. Rewsenbir is rendered as "Creator" (not "Writer"; see project decision). Feqi ("Religious Student"), Axa ("Aga"), Hekem ("Arbiter"), Pêseng ("Pioneer"), Karguzar ("Administrator") are culturally loaded and need a native-speaker check in every language.
 
@@ -113,3 +134,9 @@ mockup. Every kmr word the mockup introduced (Mal, Hesab, Îro, Duh, Te wergirt,
 Beş, Gav, Karta hemwelatiyê) is a draft until a native speaker confirms it, as are all ckb, fa and ar cells. The
 mockup's "2 saet berê" is not a new string: relative times come from time.* ("Berî 2 saet") where the browser has no
 Kurmanji relative-time data. The role name Perwerdekar shown on the citizen screen is the on-chain variant (tiki.*).
+
+Citizen ID card (2026-10-15): the cid.* rows label the digital citizen card and its local photo/name form; all kmr,
+ckb, fa and ar cells are drafts (kmr "Rûyê pêşîn/paşîn", "Wêne li cîhazê", "Hejmara welatî", "Navnîşana berîkê" and
+"Statû" come from the approved mockup). Brand text on the card, identical in every language and not translated:
+"KOMARA KURDISTAN", "کۆماری کوردستان", "DIJITAL KURDISTAN", "WELATÎ", "HER BÎJÎ KURDISTAN", "e-ID", "ON-CHAIN · NFT",
+"PEZKUWICHAIN" and the MRZ.

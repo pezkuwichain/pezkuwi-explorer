@@ -48,3 +48,5 @@ export const IconPerson = (p: P) => <Svg {...p}><circle cx="12" cy="8" r="4" /><
 export const IconHall = (p: P) => <Svg {...p}><path d="M4 19h16" /><path d="M6 19V9l6-5 6 5v10" /><path d="M10 19v-5h4v5" /></Svg>;
 export const IconLines = (p: P) => <Svg {...p}><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h10" /></Svg>;
 export const IconExternal = (p: P) => <Svg {...p}><path d="M7 17L17 7" /><path d="M7 7h10v10" /></Svg>;
+export const IconRotate = (p: P) => <Svg {...p}><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8" /><path d="M21 3v5h-5" /></Svg>;
+export const IconPen = (p: P) => <Svg {...p}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></Svg>;

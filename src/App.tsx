@@ -5,6 +5,7 @@ import Home from './screens/Home';
 import OpenAccount from './screens/OpenAccount';
 import Account from './screens/Account';
 import ActivityDetail from './screens/ActivityDetail';
+import PaymentStatus from './screens/PaymentStatus';
 
 // Each later screen task adds its own route here.
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
             <Route path="account/open" element={<OpenAccount />} />
             <Route path="account" element={<Account />} />
             <Route path="account/activity/:id" element={<ActivityDetail />} />
+            <Route path="payment" element={<PaymentStatus />} />
           </Route>
         </Routes>
       </AccountProvider>

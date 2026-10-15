@@ -20,8 +20,9 @@ export default defineConfig({
         short_name: 'Explorer',
         start_url: '/',
         display: 'standalone',
-        background_color: '#ffffff',
-        theme_color: '#14a05a',
+        // The Pezkuwi navy of the dark theme; the icons are the Newroz flame on the same navy.
+        background_color: '#08090E',
+        theme_color: '#08090E',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },

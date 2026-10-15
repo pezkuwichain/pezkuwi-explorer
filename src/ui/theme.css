@@ -1,92 +1,127 @@
-/* Inter is split by script; unicode-range loads the Latin-extended file only when
-   a page needs it (Turkish and Kurmanji letters such as ş, ğ, ı). */
+/* Brand type, self-hosted (OFL, see /fonts/OFL.txt). Each family is split by script; unicode-range loads
+   the Latin-extended file only when a page needs it (Kurmanji and Turkish letters such as ê, î, ş, ğ, ı). */
 @font-face {
-  font-family: Inter; font-weight: 100 900; font-display: swap;
-  src: url('/fonts/Inter-latin.woff2') format('woff2');
+  font-family: 'Plus Jakarta Sans'; font-weight: 200 800; font-display: swap;
+  src: url('/fonts/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: Inter; font-weight: 100 900; font-display: swap;
-  src: url('/fonts/Inter-latin-ext.woff2') format('woff2');
+  font-family: 'Plus Jakarta Sans'; font-weight: 200 800; font-display: swap;
+  src: url('/fonts/plus-jakarta-sans-latin-ext-wght-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Space Grotesk'; font-weight: 300 700; font-display: swap;
+  src: url('/fonts/space-grotesk-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Space Grotesk'; font-weight: 300 700; font-display: swap;
+  src: url('/fonts/space-grotesk-latin-ext-wght-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'JetBrains Mono'; font-weight: 100 800; font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'JetBrains Mono'; font-weight: 100 800; font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-ext-wght-normal.woff2') format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: 'Noto Sans Arabic'; font-weight: 100 900; font-display: swap;
   src: url('/fonts/NotoSansArabic.woff2') format('woff2');
 }
+
+/* Tokens. Light = mockup direction B ("Roj"), dark = direction A ("Berîk", the Pezkuwi Wallet look).
+   Kurdistan palette only (kesk, sor, zer, fire) plus navy/neutral; no pink, magenta or purple. Text colours
+   are chosen for WCAG AA on the surfaces they sit on; the brand kesk #009639 carries white text below AA,
+   so buttons and filled cards use kesk-700 #017A2F. */
 :root {
-  --green: #1ec76e; --green-strong: #14a05a; --gold: #eeae1f; --red: #d93a3a;
-  --bg: #ffffff; --surface: #f4f6f8; --text: #0d1117; --muted: #4b5563; --on-green: #0d1117;
-  --radius: 20px; --tap: 56px;
-  font-family: Inter, 'Noto Sans Arabic', system-ui, sans-serif; font-size: 17px; line-height: 1.5;
+  --kesk: #009639; --kesk-700: #017A2F; --positive: #2FC864; --zer: #FDB813; --fire: #FF7A00; --info: #2AB0F2;
+  --sor: #E2231A; --negative: #E53450;
+
+  --bg: #F4F5EF;
+  --bg-home: #F4F5EF;
+  --bg-answer-ok: radial-gradient(90% 45% at 50% 30%, rgba(0, 150, 57, 0.16) 0%, #F4F5EF 70%);
+  --bg-answer-bad: radial-gradient(90% 45% at 50% 30%, rgba(226, 35, 26, 0.12) 0%, #F4F5EF 70%);
+  --bg-answer-wait: radial-gradient(90% 45% at 50% 30%, rgba(253, 184, 19, 0.20) 0%, #F4F5EF 70%);
+  --surface: #FFFFFF; --surface-sunk: #EEF0E8; --border: #E3E5DC; --border-strong: #D9DBD2; --divider: #E3E5DC;
+  --text: #0F111A; --text-strong: #0F111A; --muted: #5B5F6B; --muted-strong: #3A3E49;
+  --link: #017A2F; --focus: #0F111A;
+  --tab-bg: #FFFFFF; --tab-border: #E3E5DC; --tab-active: #017A2F; --tab-idle: #5B5F6B;
+  --primary: #017A2F; --on-primary: #FFFFFF;
+  --hero-bg: #017A2F; --hero-blob: rgba(253, 184, 19, 0.22); --hero-border: transparent; --hero-text: #FFFFFF; --hero-soft: rgba(255, 255, 255, 0.92);
+  --chip-bg: rgba(0, 0, 0, 0.22); --hero-ring: #017A2F; --hero-cta-bg: #FFFFFF; --hero-cta-text: #017A2F;
+  --ok-text: #017A2F; --ok-soft: #DDF3E4; --ok-line: rgba(1, 122, 47, 0.35);
+  --zer-text: #7A5600; --zer-icon: #B37F00; --zer-soft: #FFF4D6; --zer-line: rgba(179, 127, 0, 0.35);
+  --fire-text: #8A3C00; --fire-icon: #C25700; --fire-soft: #FFE6D1;
+  --info-text: #00557D; --info-icon: #0A79AF; --info-soft: #DDF1FC; --info-line: rgba(10, 121, 175, 0.35);
+  --bad-text: #B3261E; --bad-soft: #FDE4E2; --bad-line: rgba(179, 38, 30, 0.35);
+  --tile-pay-bg: #FFF4D6; --tile-pay-text: #3D2C00; --tile-pay-icon: #B37F00;
+  --tile-cit-bg: #FFE6D1; --tile-cit-text: #4A2200; --tile-cit-icon: #C25700;
+  --tile-net-bg: #DDF1FC; --tile-net-text: #002E44; --tile-net-icon: #0A79AF;
+  --tile-act-bg: #DDF3E4; --tile-act-text: #00331A; --tile-act-icon: #017A2F;
+  --tile-border: transparent; --tile-pay-chip: transparent; --tile-cit-chip: transparent; --tile-net-chip: transparent; --tile-act-chip: transparent;
+  --tile-icon-size: 34px; --tile-chip-size: 34px;
+  --citizen-bg: linear-gradient(135deg, #009639 0%, #017A2F 46%, #0F111A 100%);
+  --vote-bar-nay: rgba(226, 35, 26, 0.55);
+  --shadow-live: 0 0 0 10px rgba(1, 122, 47, 0.08);
+
+  --font-body: 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', 'Noto Sans Arabic', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --tap: 44px; --tabbar: 84px;
+  color-scheme: light dark;
+  font-family: var(--font-body); font-size: 16px; line-height: 1.45;
   color: var(--text); background: var(--bg);
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #0d1117; --surface: #161b22; --text: #f0f3f6; --muted: #9ca3af; }
+  :root {
+    --bg: #08090E;
+    --bg-home: radial-gradient(120% 60% at 50% -10%, #0B3D22 0%, #08090E 55%);
+    --bg-answer-ok: radial-gradient(90% 45% at 50% 30%, rgba(47, 200, 100, 0.22) 0%, #08090E 70%);
+    --bg-answer-bad: radial-gradient(90% 45% at 50% 30%, rgba(229, 52, 80, 0.18) 0%, #08090E 70%);
+    --bg-answer-wait: radial-gradient(90% 45% at 50% 30%, rgba(253, 184, 19, 0.18) 0%, #08090E 70%);
+    --surface: rgba(153, 158, 199, 0.10); --surface-sunk: rgba(0, 0, 0, 0.28); --border: rgba(153, 158, 199, 0.16);
+    --border-strong: rgba(153, 158, 199, 0.24); --divider: rgba(153, 158, 199, 0.12);
+    --text: rgba(255, 255, 255, 0.88); --text-strong: #FFFFFF; --muted: rgba(255, 255, 255, 0.56); --muted-strong: rgba(255, 255, 255, 0.72);
+    --link: #2FC864; --focus: #FDB813;
+    --tab-bg: rgba(15, 17, 26, 0.92); --tab-border: rgba(153, 158, 199, 0.16); --tab-active: #2FC864; --tab-idle: rgba(255, 255, 255, 0.56);
+    --hero-bg: linear-gradient(160deg, #017A2F 0%, #0B2A1A 70%); --hero-blob: transparent; --hero-border: rgba(47, 200, 100, 0.35);
+    --hero-soft: rgba(255, 255, 255, 0.92); --chip-bg: rgba(0, 0, 0, 0.25); --hero-ring: #0B2A1A;
+    --ok-text: #7BE59D; --ok-soft: rgba(47, 200, 100, 0.14); --ok-line: rgba(47, 200, 100, 0.35);
+    --zer-text: #FDB813; --zer-icon: #FDB813; --zer-soft: rgba(253, 184, 19, 0.16); --zer-line: rgba(253, 184, 19, 0.35);
+    --fire-text: #FF9A3D; --fire-icon: #FF9A3D; --fire-soft: rgba(255, 122, 0, 0.16);
+    --info-text: #5CC4F6; --info-icon: #5CC4F6; --info-soft: rgba(42, 176, 242, 0.16); --info-line: rgba(42, 176, 242, 0.35);
+    --bad-text: #FF8A80; --bad-soft: rgba(229, 52, 80, 0.16); --bad-line: rgba(229, 52, 80, 0.28);
+    --tile-pay-bg: var(--surface); --tile-pay-text: var(--text); --tile-pay-icon: #FDB813;
+    --tile-cit-bg: var(--surface); --tile-cit-text: var(--text); --tile-cit-icon: #FF9A3D;
+    --tile-net-bg: var(--surface); --tile-net-text: var(--text); --tile-net-icon: #5CC4F6;
+    --tile-act-bg: var(--surface); --tile-act-text: var(--text); --tile-act-icon: #2FC864;
+    --tile-border: var(--border); --tile-pay-chip: rgba(253, 184, 19, 0.16); --tile-cit-chip: rgba(255, 122, 0, 0.16);
+    --tile-net-chip: rgba(42, 176, 242, 0.16); --tile-act-chip: rgba(47, 200, 100, 0.16);
+    --tile-icon-size: 26px; --tile-chip-size: 48px;
+    --vote-bar-nay: rgba(229, 52, 80, 0.55);
+    --shadow-live: 0 0 0 10px rgba(47, 200, 100, 0.06);
+  }
 }
-:root[dir='rtl'] { font-family: 'Noto Sans Arabic', Inter, system-ui, sans-serif; }
-body { margin: 0; background: var(--bg); }
-button, a.button { min-height: var(--tap); font-size: 20px; border-radius: var(--radius); }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+:root[dir='rtl'] {
+  --font-body: 'Noto Sans Arabic', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-display: 'Noto Sans Arabic', 'Space Grotesk', system-ui, sans-serif;
+}
 
-.page { max-inline-size: 640px; margin-inline: auto; min-block-size: 100dvh; display: flex; flex-direction: column; }
-.page main { flex: 1; }
-.top { display: flex; justify-content: space-between; align-items: center; padding: 16px; gap: 12px; }
-.logo { block-size: 40px; inline-size: auto; }
-.back { display: inline-flex; align-items: center; gap: 8px; min-inline-size: var(--tap); padding-inline: 16px; border: 0; background: var(--surface); color: var(--text); font-weight: 600; cursor: pointer; }
-:root[dir='rtl'] .icon-back { transform: scaleX(-1); }
-.lang { min-block-size: var(--tap); padding-inline: 12px; font-size: 20px; border-radius: var(--radius); border: 2px solid var(--muted); background: var(--surface); color: var(--text); }
-.grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; }
-.big-button { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 12px; box-sizing: border-box; min-block-size: var(--tap); background: var(--green); color: var(--on-green); font-size: 20px; font-weight: 600; text-align: center; border-radius: var(--radius); text-decoration: none; }
-.big-button:hover { background: var(--green-strong); }
-:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
-@media (prefers-color-scheme: dark) { :focus-visible { outline-color: var(--gold); } }
-footer { text-align: center; padding: 24px 16px; font-size: 17px; }
-footer a { color: var(--muted); display: inline-block; min-block-size: var(--tap); line-height: var(--tap); }
-.card { background: var(--surface); border: 2px solid transparent; border-radius: var(--radius); padding: 14px; margin: 16px; }
-/* Spec 4.2: a failing source greys out its own card. Muted text and a dashed border (same 2px width, so no layout shift); not opacity, which would sink contrast. */
-.card-loading { color: var(--muted); }
-.card-error { color: var(--muted); border-color: var(--muted); border-style: dashed; }
-.card-error button { color: var(--text); background: var(--bg); border: 2px solid var(--text); padding-inline: 16px; cursor: pointer; }
-/* In-content links: --text with underline (AA on both surfaces; --green-strong is ~3.4:1 on light). Footer, button and big links have their own rules. */
-.card a { display: inline-flex; align-items: center; min-block-size: var(--tap); color: var(--text); text-decoration: underline; text-underline-offset: 3px; font-weight: 600; }
-.card h2 { margin-block: 0 8px; font-size: 20px; }
-.light { margin: 16px; padding: 16px; border-radius: var(--radius); background: var(--surface); font-weight: 600; text-align: center; }
-.light-up span { color: var(--green); }
-.light-down span { color: var(--red); }
-.light-checking span { color: var(--gold); }
-
-.stack { display: flex; flex-direction: column; gap: 16px; }
-.stack textarea { font-size: 20px; padding: 12px; border-radius: var(--radius); border: 2px solid var(--muted); background: var(--surface); color: var(--text); }
-button.big, a.big { display: flex; align-items: center; justify-content: center; min-block-size: var(--tap); padding: 12px 16px; background: var(--green); color: var(--on-green); border: 0; font-weight: 600; text-decoration: none; cursor: pointer; }
-.scanner { inline-size: 100%; border-radius: var(--radius); background: #000; }
-.wc-uri { overflow-wrap: anywhere; font-size: 17px; }
-[role="alert"] { color: var(--error, #b42318); font-weight: 600; }
-/* Full-screen answer: fills the viewport under the form. Accent colours are used only on large text (>=24px bold, 3:1 needed); body text stays --text. */
-:root { --gold-text: #8a5a00; }
-@media (prefers-color-scheme: dark) { :root { --gold-text: var(--gold); } }
-.big-mark { margin: 0; font-size: 96px; line-height: 1.1; text-align: center; }
-.answer { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 16px; min-block-size: 60vh; padding: 24px; box-sizing: border-box; border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 20px; }
-.answer h2 { margin: 0; font-size: 2rem; font-weight: 700; }
-.answer p { margin: 0; }
-.answer-arrived h2 { color: var(--green-strong); }
-.answer-failed h2 { color: var(--red); }
-.answer-onTheWay h2 { color: var(--gold-text); }
-
-/* Citizenship */
+body { margin: 0; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; }
+h1, h2, h3 { margin: 0; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--link); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+:root[dir='rtl'] .flip { transform: scaleX(-1); }
 .sr-only { position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.steps li { flex: 1 1 140px; min-block-size: var(--tap); box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 8px 12px; border-radius: var(--radius); border: 2px solid var(--muted); background: var(--bg); color: var(--text); font-size: 17px; text-align: center; }
-.steps li.done { background: var(--green); border-color: var(--green-strong); color: var(--on-green); font-weight: 600; }
-.steps li[aria-current='step'] { outline: 3px solid var(--text); outline-offset: 2px; font-weight: 700; }
-@media (prefers-color-scheme: dark) { .steps li[aria-current='step'] { outline-color: var(--gold); } }
-.badges { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.badges li { padding: 8px 16px; border-radius: 999px; background: var(--bg); color: var(--text); border: 2px solid var(--muted); font-size: 17px; }
-.big-number { margin: 0; font-size: 2.5rem; font-weight: 700; line-height: 1.2; }
-
-/* Payment lookup: the transfers behind an answer */
-/* Lists of transfers fill the width and read from the start; only single verdicts are centred full-screen. */
-.answer-recent, .answer-several, .answer-incomplete { min-block-size: auto; align-items: stretch; text-align: start; }
-.payments { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; inline-size: 100%; }
-.payments li { padding: 8px 12px; border-radius: var(--radius); background: var(--bg); font-size: 17px; overflow-wrap: anywhere; }
-.code { overflow-wrap: anywhere; font-family: ui-monospace, monospace; }
+.mono, .code { font-family: var(--font-mono); }
+.code { overflow-wrap: anywhere; }
+.display { font-family: var(--font-display); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

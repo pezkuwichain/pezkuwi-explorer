@@ -37,7 +37,7 @@ function AccountHero({ address }: { address: string }) {
 function OpenHero() {
   const { t } = useTranslation();
   return (
-    <section className="hero">
+    <section className="hero hero-open">
       <h2 className="hero-title">{t('open.title')}</h2>
       <div className="hero-ways">
         <Link className="hero-way" to="/account/open?way=wallet"><IconWallet size={20} />{t('open.wallet')}</Link>

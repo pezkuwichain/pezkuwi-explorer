@@ -62,6 +62,13 @@ describe('Layout', () => {
     setLanguage('kmr');
   });
 
+  it('inner screens keep the language picker in their header', () => {
+    setLanguage('en');
+    render(<MemoryRouter><PageHeader title="Deep" /></MemoryRouter>);
+    expect(within(screen.getByRole('banner')).getByRole('combobox', { name: 'Language' })).toBeInTheDocument();
+    setLanguage('kmr');
+  });
+
   it('isolates the footer domain as left-to-right in every locale', () => {
     for (const lang of ['kmr', 'ckb', 'tr', 'en', 'fa', 'ar'] as const) {
       setLanguage(lang);

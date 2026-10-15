@@ -73,6 +73,9 @@ describe('Network', () => {
     renderIt();
     const rows = await within(await screen.findByRole('list')).findAllByRole('listitem');
     expect(rows[0]).toHaveTextContent('#7');
+    expect(rows[0]).toHaveTextContent('Asset Hub');
+    expect(rows[0].querySelector('img[src="/chains/assethub.png"]')).not.toBeNull();
+    expect(rows[1]).toHaveTextContent('Relay');
     expect(rows[0]).toHaveTextContent('Aye 68%');
     expect(rows[0]).toHaveTextContent('Nay 32%');
     // Nobody has voted yet: no percentages are invented.
@@ -84,7 +87,7 @@ describe('Network', () => {
     impl.load = () => Promise.resolve({ ...full, treasury: 40_258_000n * 10n ** 12n });
     renderIt();
     const value = await screen.findByTitle('40,258,000 HEZ');
-    expect(value).toHaveTextContent('40.2M HEZ');
+    expect(value).toHaveTextContent('≈40.2M HEZ');
   });
 
   it('retry reloads', async () => {

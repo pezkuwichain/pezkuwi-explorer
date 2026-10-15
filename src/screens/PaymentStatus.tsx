@@ -120,6 +120,8 @@ function FoundAnswer({ p, now }: { p: Found; now: number }) {
 // The background glow follows the answer: green for arrived, red for did not arrive, gold while on its way.
 const tone = (res: Answer | null) =>
   !res ? '' : res.r === 'onTheWay' ? ' glow-wait' : res.r !== 'found' ? '' : res.p.status === 'arrived' ? ' glow-ok' : res.p.status === 'failed' ? ' glow-bad' : '';
+// The way on to the account belongs under an answer about a payment, not under an error or a "not found".
+const aboutAPayment = (res: Answer) => res.r === 'found' && ['arrived', 'failed', 'several', 'incomplete'].includes(res.p.status);
 const centred = (res: Answer) => res.r !== 'found' || res.p.status === 'arrived' || res.p.status === 'failed';
 
 export default function PaymentStatus() {
@@ -183,8 +185,10 @@ export default function PaymentStatus() {
       <div className={`screen payment${tone(res)}`}>
         <form role="search" className="search" onSubmit={submit}>
           <div className="search-row">
-            <input className="field" dir="ltr" enterKeyHint="search" autoComplete="off" spellCheck={false} aria-label={t('payment.placeholder')}
-              value={q} onChange={(e) => { latest.current++; setBusy(false); setRes(null); setQ(e.target.value); }} placeholder={t('payment.placeholder')} />
+            {/* Two wrapping lines show a whole 66-character code; Enter looks it up (a code never needs a newline). */}
+            <textarea className="field code-field" dir="ltr" rows={2} enterKeyHint="search" autoComplete="off" spellCheck={false} aria-label={t('payment.placeholder')}
+              value={q} onChange={(e) => { latest.current++; setBusy(false); setRes(null); setQ(e.target.value); }} placeholder={t('payment.placeholder')}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }} />
             {!scanning && <button type="button" className="scan-button" aria-label={t('open.scan')}
               onClick={() => { latest.current++; setBusy(false); setRes(null); setScanning(true); }}><IconScan size={22} /></button>}
           </div>
@@ -203,7 +207,7 @@ export default function PaymentStatus() {
           {res.r === 'noCamera' && <p role="alert" className="alert">{t('open.noCamera')}</p>}
           {res.r === 'error' && <p className="lead-text">{t('state.error')}</p>}
         </div>}
-        {res && <Link className="btn btn-primary" to="/account">{t('home.account')}</Link>}
+        {res && aboutAPayment(res) && <Link className="btn btn-primary" to="/account">{t('home.account')}</Link>}
       </div>
     </>
   );

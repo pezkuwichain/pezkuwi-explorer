@@ -59,14 +59,14 @@
   --zer-text: #7A5600; --zer-icon: #B37F00; --zer-soft: #FFF4D6; --zer-line: rgba(179, 127, 0, 0.35);
   --fire-text: #8A3C00; --fire-icon: #C25700; --fire-soft: #FFE6D1;
   --info-text: #00557D; --info-icon: #0A79AF; --info-soft: #DDF1FC; --info-line: rgba(10, 121, 175, 0.35);
-  --bad-text: #B3261E; --bad-soft: #FDE4E2; --bad-line: rgba(179, 38, 30, 0.35);
+  --bad-text: #B3261E; --bad-soft: #FDE4E2; --bad-line: rgba(179, 38, 30, 0.35); --bad-chip-in-row: #FFFFFF;
   --tile-pay-bg: #FFF4D6; --tile-pay-text: #3D2C00; --tile-pay-icon: #B37F00;
   --tile-cit-bg: #FFE6D1; --tile-cit-text: #4A2200; --tile-cit-icon: #C25700;
   --tile-net-bg: #DDF1FC; --tile-net-text: #002E44; --tile-net-icon: #0A79AF;
   --tile-act-bg: #DDF3E4; --tile-act-text: #00331A; --tile-act-icon: #017A2F;
   --tile-border: transparent; --tile-pay-chip: transparent; --tile-cit-chip: transparent; --tile-net-chip: transparent; --tile-act-chip: transparent;
   --tile-icon-size: 34px; --tile-chip-size: 34px;
-  --citizen-bg: linear-gradient(135deg, #009639 0%, #017A2F 46%, #0F111A 100%);
+  --citizen-bg: linear-gradient(135deg, #017A2F 0%, #015C24 46%, #0F111A 100%);
   --vote-bar-nay: rgba(226, 35, 26, 0.55);
   --shadow-live: 0 0 0 10px rgba(1, 122, 47, 0.08);
 
@@ -96,7 +96,7 @@
     --zer-text: #FDB813; --zer-icon: #FDB813; --zer-soft: rgba(253, 184, 19, 0.16); --zer-line: rgba(253, 184, 19, 0.35);
     --fire-text: #FF9A3D; --fire-icon: #FF9A3D; --fire-soft: rgba(255, 122, 0, 0.16);
     --info-text: #5CC4F6; --info-icon: #5CC4F6; --info-soft: rgba(42, 176, 242, 0.16); --info-line: rgba(42, 176, 242, 0.35);
-    --bad-text: #FF8A80; --bad-soft: rgba(229, 52, 80, 0.16); --bad-line: rgba(229, 52, 80, 0.28);
+    --bad-text: #FF8A80; --bad-soft: rgba(229, 52, 80, 0.16); --bad-line: rgba(229, 52, 80, 0.28); --bad-chip-in-row: rgba(229, 52, 80, 0.16);
     --tile-pay-bg: var(--surface); --tile-pay-text: var(--text); --tile-pay-icon: #FDB813;
     --tile-cit-bg: var(--surface); --tile-cit-text: var(--text); --tile-cit-icon: #FF9A3D;
     --tile-net-bg: var(--surface); --tile-net-text: var(--text); --tile-net-icon: #5CC4F6;

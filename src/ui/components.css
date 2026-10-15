@@ -66,6 +66,8 @@
 .chip-ok { background: var(--ok-soft); color: var(--ok-text); }
 .chip-zer { background: var(--zer-soft); color: var(--zer-icon); }
 .chip-bad { background: var(--bad-soft); color: var(--bad-text); }
+/* On a failed row's red tint the chip needs its own ground to stand out (white in the light theme). */
+.row-failed .chip-bad { background: var(--bad-chip-in-row); border: 1px solid var(--bad-line); }
 .chip-plain { background: var(--surface-sunk); color: var(--muted-strong); }
 .day { margin: 4px 0 0; font-size: 12px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); }
 

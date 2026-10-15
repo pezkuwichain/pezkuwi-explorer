@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAccount } from '../account/AccountContext';
@@ -12,9 +12,8 @@ import { ActivityAmount } from '../ui/ActivityAmount';
 import { ActivityChip } from '../ui/ActivityChip';
 import { BigAmount } from '../ui/BigAmount';
 import { ChainIcon, TokenIcon } from '../ui/assetIcons';
-import { IconCopy } from '../ui/icons';
+import { IconCheck, IconCopy } from '../ui/icons';
 import { dayKey, dayLabel, formatNumber, relativeTime } from '../lib/format';
-import { shortAddress } from '../lib/address';
 import { useNow } from '../hooks/useNow';
 import type { ChainKey } from '../config/network';
 import './Account.css';
@@ -22,16 +21,36 @@ import './Account.css';
 type Hist = { status: 'loading' | 'ok' | 'error' | 'preparing'; data?: Activity[] };
 const CHAINS: ChainKey[] = ['relay', 'assetHub', 'people'];
 
+// Copies the address. The chip says Copied (or Could not copy) for two seconds; each copy changes the live
+// region's text (an invisible mark alternates), so a second copy is announced again.
+const NOTE_MS = 2000;
 function CopyAddress({ address }: { address: string }) {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-  const copy = () => navigator.clipboard?.writeText(address).then(() => setCopied(true), () => {});
+  const [note, setNote] = useState<'copied' | 'copyFailed' | null>(null);
+  const [count, setCount] = useState(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const show = (n: 'copied' | 'copyFailed') => {
+    clearTimeout(timer.current);
+    setNote(n);
+    setCount((c) => c + 1);
+    timer.current = setTimeout(() => setNote(null), NOTE_MS);
+  };
+  const copy = async () => {
+    try {
+      if (!navigator.clipboard) throw new Error('no clipboard');
+      await navigator.clipboard.writeText(address);
+      show('copied');
+    } catch { show('copyFailed'); }
+  };
   return (
     <>
-      <button type="button" className="copy-chip" onClick={copy}>
-        <span className="sr-only">{t('account.copy')}: </span><bdi dir="ltr" title={address}>{shortAddress(address)}</bdi><IconCopy size={14} />
+      <button type="button" className={`copy-chip${note === 'copyFailed' ? ' copy-failed' : ''}`} onClick={() => void copy()}>
+        <span className="sr-only">{t('account.copy')}: </span>
+        {note ? <span aria-hidden="true">{t(`account.${note}`)}</span> : <bdi dir="ltr" title={address}>{`${address.slice(0, 4)}…${address.slice(-5)}`}</bdi>}
+        {note === 'copied' ? <IconCheck size={14} /> : <IconCopy size={14} />}
       </button>
-      <span className="sr-only" aria-live="polite">{copied ? t('account.copied') : ''}</span>
+      <span className="sr-only" role="status">{note ? t(`account.${note}`) + (count % 2 ? '\u200B' : '') : ''}</span>
     </>
   );
 }

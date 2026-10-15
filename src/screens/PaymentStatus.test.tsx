@@ -208,6 +208,37 @@ describe('PaymentStatus', () => {
     expect(signal.aborted).toBe(true);
     expect(screen.getByRole('button', { name: 'Scan QR' })).toBeInTheDocument();
   });
+  it('offers the account button only under an answer about a payment', async () => {
+    const cases: [unknown, boolean][] = [
+      [arrived(), true], [code('failed', [tr({ ok: false })]), true], [code('several', [tr({ id: 'a' }), tr({ id: 'b' })]), true],
+      [code('incomplete', [tr({})]), true], [code('notAPayment', []), false],
+    ];
+    for (const [answer, shown] of cases) {
+      find.mockResolvedValue(answer); await ask();
+      await screen.findByRole('status');
+      await waitFor(() => expect(screen.queryByText(/Loading/)).toBeNull());
+      expect(!!screen.queryByRole('link', { name: 'My account' })).toBe(shown);
+      document.body.innerHTML = '';
+    }
+    for (const fail of [new InvalidLookupError(), new NotIndexedError(), new Error('x')]) {
+      find.mockRejectedValue(fail); await ask();
+      await screen.findByRole('status');
+      expect(screen.queryByRole('link', { name: 'My account' })).toBeNull();
+      document.body.innerHTML = '';
+    }
+    find.mockResolvedValue({ status: 'notFound' }); lag.mockResolvedValue(0); await ask();
+    await screen.findByText(/We could not find this payment yet/);
+    expect(screen.queryByRole('link', { name: 'My account' })).toBeNull();
+  });
+  it('the field shows a whole code on two wrapping lines, and Enter looks it up', async () => {
+    find.mockResolvedValue(arrived()); await mount();
+    const field = screen.getByPlaceholderText('Paste the transaction code or an address');
+    expect(field.tagName).toBe('TEXTAREA');
+    expect(field).toHaveAttribute('rows', '2');
+    fireEvent.change(field, { target: { value: CODE } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(await screen.findByText('Arrived')).toBeInTheDocument();
+  });
   it('clears the answer as soon as the input changes', async () => {
     find.mockResolvedValue(arrived()); await ask();
     expect(await screen.findByText('Arrived')).toBeInTheDocument();

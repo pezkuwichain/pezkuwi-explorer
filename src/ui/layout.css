@@ -21,7 +21,8 @@
 .lang-pill:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 .page-header { display: flex; align-items: center; gap: 8px; padding: 14px 12px 6px; }
-.page-header h1 { font-family: var(--font-display); font-size: 22px; font-weight: 700; flex-grow: 1; color: var(--text-strong); line-height: 1.2; }
+.page-header h1 { font-family: var(--font-display); font-size: 22px; font-weight: 700; flex: 1; min-inline-size: 0; color: var(--text-strong); line-height: 1.2; overflow-wrap: anywhere; }
+.lang-compact { padding-inline: 12px; font-size: 13px; flex: none; }
 .back {
   inline-size: var(--tap); block-size: var(--tap); flex: none; border-radius: 999px; border: 0; background: transparent;
   display: inline-flex; align-items: center; justify-content: center; color: var(--text);

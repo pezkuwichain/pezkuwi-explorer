@@ -5,6 +5,7 @@ import { Card } from '../ui/Card';
 import { liveKey } from '../ui/liveKey';
 import PageHeader from '../ui/PageHeader';
 import { BigAmount } from '../ui/BigAmount';
+import { ChainIcon } from '../ui/assetIcons';
 import { IconBank, IconShield } from '../ui/icons';
 import { NETWORK } from '../config/network';
 import { formatPercent } from '../lib/format';
@@ -23,7 +24,7 @@ function Referendum({ v }: { v: Vote }) {
   const aye = ayeShare(v);
   return (
     <li className="referendum">
-      <span className="ref-title"><bdi dir="ltr">#{v.index}</bdi></span>
+      <span className="ref-title"><bdi dir="ltr">#{v.index}</bdi><span className="ref-chain"><ChainIcon chain={v.chain} size={18} />{t(`chain.${v.chain}`)}</span></span>
       {/* The bar is drawn from the same numbers written under it; it adds no information of its own. */}
       <span className={`tally${aye === null ? ' tally-empty' : ''}`} aria-hidden="true"><span className="tally-aye" style={{ inlineSize: `${aye ?? 0}%` }} /></span>
       {aye !== null && <span className="tally-text">

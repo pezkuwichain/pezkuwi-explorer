@@ -5,6 +5,7 @@ import { validCode, type Activity } from '../data/history';
 import { Addr, Amount } from '../ui/Layout';
 import { ActivityAmount } from '../ui/ActivityAmount';
 import { NETWORK } from '../config/network';
+import { intlTag } from '../lib/format';
 import PageHeader from '../ui/PageHeader';
 import { TokenIcon } from '../ui/assetIcons';
 import { IconCheck, IconCross } from '../ui/icons';
@@ -46,7 +47,7 @@ export default function ActivityDetail() {
         <dl className="facts">
           <div className="fact fact-amount"><dt className="lead"><TokenIcon symbol={a.symbol} size={32} />{t('account.amount')}</dt><dd><ActivityAmount a={a} /></dd></div>
           {a.counterparty && <div className="fact"><dt>{t(a.direction === 'sent' ? 'account.to' : 'account.from')}</dt><dd><Addr value={a.counterparty} /></dd></div>}
-          <div className="fact"><dt>{t('account.when')}</dt><dd>{new Date(a.when * 1000).toLocaleString(i18n.language)}</dd></div>
+          <div className="fact"><dt>{t('account.when')}</dt><dd>{new Date(a.when * 1000).toLocaleString(intlTag(i18n.language))}</dd></div>
           {a.code && <div className="fact"><dt>{t('account.code')}</dt><dd><bdi dir="ltr" className="code">{a.code}</bdi></dd></div>}
           <div className="fact"><dt>{t('account.fee')}</dt><dd><Amount value={a.fee} decimals={NETWORK.native.decimals} symbol={NETWORK.native.symbol} /></dd></div>
         </dl>

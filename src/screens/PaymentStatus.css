@@ -5,6 +5,8 @@
 .search { display: flex; flex-direction: column; gap: 10px; }
 .search-row { display: flex; gap: 8px; }
 .search-row .field { flex: 1; min-inline-size: 0; }
+.code-field { resize: none; min-block-size: 52px; padding-block: 10px; line-height: 1.4; overflow-wrap: anywhere; word-break: break-all; font-size: 14px; }
+.search-row { align-items: flex-start; }
 .scan-button {
   inline-size: 52px; block-size: 52px; flex: none; border-radius: 16px; border: 1px solid var(--border-strong);
   background: var(--surface); color: var(--text); display: inline-flex; align-items: center; justify-content: center;

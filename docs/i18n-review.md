@@ -97,6 +97,7 @@ Turkish and English are written directly and are not listed.
 | account.amount | Mîqdar | بڕ | مبلغ | المبلغ | draft (kmr "Mîqdar" introduced by the mockup) |
 | account.copy | Kopî bike | کۆپی بکە | کپی آدرس | نسخ العنوان | draft (kmr "Kopî bike" introduced by the mockup; screen-reader label of the address chip) |
 | account.copied | Hat kopîkirin | کۆپی کرا | کپی شد | تم النسخ | draft (spoken after the address is copied) |
+| account.copyFailed | Kopî nebû | کۆپی نەکرا | کپی نشد | تعذّر النسخ | draft (review fix: shown on the address chip when the browser refuses to copy) |
 | account.tokens | Token | تۆکنەکان | توکن‌ها | العملات | draft (kmr "Token" from the mockup; label of the token list) |
 | citizenship.card | Karta hemwelatiyê | کارتی هاوڵاتیبوون | کارت شهروندی | بطاقة المواطنة | draft (kmr "Karta hemwelatiyê" from the mockup; label of the citizen card) |
 | citizenship.steps | Gav | هەنگاوەکان | مراحل | الخطوات | draft (kmr "Gav" from the mockup; label of the step bar) |

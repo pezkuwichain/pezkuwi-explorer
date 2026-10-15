@@ -12,6 +12,8 @@
   border-radius: 999px; background: var(--hero-blob); pointer-events: none;
 }
 .hero > * { position: relative; }
+/* The ways in sit on translucent grounds; the sun behind them would make a button two-tone. */
+.hero-open::before { display: none; }
 .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .hero-label { font-size: 15px; font-weight: 500; color: var(--hero-soft); }
 .token-stack { display: flex; }

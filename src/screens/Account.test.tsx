@@ -61,6 +61,38 @@ describe('Account', () => {
     expect(tokens).toEqual(['HEZPezkuwiChain5', 'PEZAsset Hub1,250']);
   });
 
+  it('marks with ≈ every figure that lost digits, and only those', async () => {
+    impl.balances = () => Promise.resolve([
+      { symbol: 'HEZ', decimals: 12, amount: 4_999_960_000_000n, perChain: { relay: 2_999_960_000_000n, assetHub: 1_000_000_000_000n, people: 1_000_000_000_000n } },
+    ]);
+    renderAccount();
+    const total = await screen.findByTitle('4.99996 HEZ');
+    expect(total).toHaveTextContent('≈4.9999 HEZ');
+    expect([...document.querySelectorAll('.chain-amount')].map((c) => c.textContent)).toEqual(['≈2.9999', '1', '1']);
+  });
+
+  it('the address chip says Copied for two seconds after each copy, and says so when copying fails', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      renderAccount();
+      const chip = screen.getByRole('button', { name: /Copy address/ });
+      await flush(async () => { fireEvent.click(chip); });
+      expect(writeText).toHaveBeenCalledWith(ALICE);
+      expect(chip).toHaveTextContent('Copied');
+      expect(screen.getByRole('status')).toHaveTextContent('Copied');
+      await flush(async () => { vi.advanceTimersByTime(2000); });
+      expect(chip).not.toHaveTextContent('Copied');
+      writeText.mockRejectedValue(new Error('denied'));
+      await flush(async () => { fireEvent.click(chip); });
+      expect(chip).toHaveTextContent('Could not copy');
+    } finally {
+      vi.useRealTimers();
+      Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    }
+  });
+
   it('puts activity under Today and Yesterday headers', async () => {
     const now = Math.floor(Date.now() / 1000);
     const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); yesterday.setHours(12, 0, 0, 0);
@@ -181,6 +213,16 @@ describe('ActivityDetail', () => {
   it('a failed transaction heading says Failed', async () => {
     detail(act({ ok: false }));
     expect(await screen.findByRole('heading', { name: /Failed/ })).toBeInTheDocument();
+  });
+  it('writes the date with the same language tag as the day headers', async () => {
+    await i18n.changeLanguage('kmr');
+    const spy = vi.spyOn(Date.prototype, 'toLocaleString');
+    try {
+      detail(act({}));
+      await screen.findByText('Qediya');
+      expect(spy.mock.calls.map((c) => c[0])).toContain('ku');
+      expect(spy.mock.calls.map((c) => c[0])).not.toContain('kmr');
+    } finally { spy.mockRestore(); await i18n.changeLanguage('en'); }
   });
   it('shows a well-formed transaction code', async () => {
     const code = '0x' + 'ab'.repeat(32);

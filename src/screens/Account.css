@@ -3,6 +3,8 @@
   border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--muted-strong);
   font: 500 13px var(--font-mono);
 }
+.copy-chip svg { flex: none; }
+.copy-chip.copy-failed { color: var(--bad-text); border-color: var(--bad-line); }
 .total-card { padding: 18px; border-radius: 24px; display: flex; flex-direction: column; gap: 12px; }
 .total-card .card-title { font-size: 14px; font-weight: 500; color: var(--muted); }
 .total-amount .num { font-size: 40px; }

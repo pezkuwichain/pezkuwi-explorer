@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useAsync } from '../hooks/useAsync';
-import { loadNetwork } from '../data/network';
+import { loadLiveness } from '../data/network';
 
 // Rule: loading -> checking; live === true -> up; anything else (down, null, failed load) -> down.
 export function Light({ status, live }: { status: 'loading' | 'ok' | 'error'; live?: boolean | null }) {
@@ -10,6 +10,6 @@ export function Light({ status, live }: { status: 'loading' | 'ok' | 'error'; li
 }
 
 export default function StatusLight() {
-  const s = useAsync(() => loadNetwork(), []);
-  return <Light status={s.status} live={s.data?.live} />;
+  const s = useAsync(() => loadLiveness(), []);
+  return <Light status={s.status} live={s.data} />;
 }

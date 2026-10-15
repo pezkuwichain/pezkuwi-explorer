@@ -37,6 +37,15 @@ const settled = async <T>(p: Promise<T>): Promise<T | null> => {
   try { return await p; } catch { return null; }
 };
 
+const isLive = (chainNow: number, deviceNow: number) => deviceNow - chainNow < LIVE_WINDOW_MS;
+
+// The home-screen light: one read from the relay only, so a slow Asset Hub or People chain
+// cannot hold the light on "checking". null = the relay could not be read.
+export async function loadLiveness(deps = { getApi: realGetApi, now: () => Date.now() }): Promise<boolean | null> {
+  const ts = await settled(withTimeout((deps.getApi('relay') as never as Promise<Api>).then((a) => a.query.timestamp.now()), REQUEST_TIMEOUT_MS));
+  return ts ? isLive(ts.toNumber(), deps.now()) : null;
+}
+
 export async function loadNetwork(deps = { getApi: realGetApi, now: () => Date.now() }): Promise<NetworkOverview> {
   const chains: ChainKey[] = ['relay', 'assetHub', 'people'];
   const api = (c: ChainKey) => deps.getApi(c) as never as Promise<Api>;
@@ -52,7 +61,7 @@ export async function loadNetwork(deps = { getApi: realGetApi, now: () => Date.n
       .map(([k]) => ({ chain: c, index: k.args[0].toNumber() })))),
   ]);
   return {
-    live: ts ? deps.now() - ts.toNumber() < LIVE_WINDOW_MS : null,
+    live: ts ? isLive(ts.toNumber(), deps.now()) : null,
     validators: validators ? validators.length : null,
     votes: refs.every((r) => r !== null) ? refs.flat() : null,
     treasury: treasury ? treasury.data.free.toBigInt() : null,

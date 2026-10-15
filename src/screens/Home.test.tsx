@@ -5,7 +5,9 @@ import i18n from '../i18n';
 import { AccountProvider } from '../account/AccountContext';
 import Home from './Home';
 
-vi.mock('../data/network', () => ({ loadNetwork: () => Promise.resolve({ live: true, validators: 4, votes: [], treasury: 0n }) }));
+const full = vi.fn();
+// The home light reads only the relay; the full overview (three chains) must not gate it.
+vi.mock('../data/network', () => ({ loadLiveness: () => Promise.resolve(true), loadNetwork: () => full() }));
 
 describe('Home', () => {
   it('shows the four big buttons with links', async () => {
@@ -15,5 +17,6 @@ describe('Home', () => {
       expect(screen.getByRole('link', { name: label })).toHaveAttribute('href', href);
     }
     expect(await screen.findByText('The network is working')).toBeInTheDocument();
+    expect(full).not.toHaveBeenCalled();
   });
 });

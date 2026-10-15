@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { loadNetwork } from './network';
+import { loadLiveness, loadNetwork } from './network';
 
 const NOW = 1_800_000_000_000;
 const fakeApi = (chain: string) => ({
@@ -41,5 +41,24 @@ describe('loadNetwork', () => {
     expect(r.live).toBeNull();
     expect(r.validators).toBeNull();
     expect(r.treasury).toBe(99n);
+  });
+});
+
+describe('loadLiveness', () => {
+  it('asks only the relay chain', async () => {
+    const asked: string[] = [];
+    const r = await loadLiveness({ getApi: (c: string) => { asked.push(c); return fake(c); }, now: () => NOW } as never);
+    expect(r).toBe(true);
+    expect(asked).toEqual(['relay']);
+  });
+  it('uses the same 90 s window', async () => {
+    expect(await loadLiveness({ getApi: fake, now: () => NOW + 54_000 } as never)).toBe(true);
+    expect(await loadLiveness({ getApi: fake, now: () => NOW + 114_000 } as never)).toBe(false);
+  });
+  it('is null when the relay cannot be read', async () => {
+    expect(await loadLiveness({ getApi: failing('relay'), now: () => NOW } as never)).toBeNull();
+  });
+  it('is unaffected by the other chains being down', async () => {
+    expect(await loadLiveness({ getApi: failing('assetHub', 'people'), now: () => NOW } as never)).toBe(true);
   });
 });

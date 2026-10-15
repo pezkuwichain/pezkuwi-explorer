@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act as flush, fireEvent, render, screen } from '@testing-library/react';
+import { act as flush, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import i18n from '../i18n';
 import { AccountProvider } from '../account/AccountContext';
@@ -44,8 +44,74 @@ describe('Account', () => {
 
   it('shows balances and an honest "being prepared" history when not indexed', async () => {
     renderAccount();
-    expect(await screen.findByText('5 HEZ')).toBeInTheDocument();
+    expect(await screen.findByTitle('5 HEZ')).toHaveTextContent('5 HEZ');
     expect(await screen.findByText('This section is being prepared.')).toBeInTheDocument();
+  });
+
+  it('breaks the HEZ total down by chain and lists each token', async () => {
+    impl.balances = () => Promise.resolve([
+      { symbol: 'HEZ', decimals: 12, amount: 5_000_000_000_000n, perChain: { relay: 2_000_000_000_000n, assetHub: 1_000_000_000_000n, people: 2_000_000_000_000n } },
+      { symbol: 'PEZ', decimals: 12, amount: 1_250_000_000_000_000n },
+    ]);
+    renderAccount();
+    await screen.findByTitle('5 HEZ');
+    const chains = [...document.querySelectorAll('.chain-tile')].map((c) => c.textContent);
+    expect(chains).toEqual(['Relay2', 'Asset Hub1', 'People2']);
+    const tokens = within(screen.getByRole('region', { name: 'Tokens' })).getAllByRole('listitem').map((r) => r.textContent);
+    expect(tokens).toEqual(['HEZPezkuwiChain5', 'PEZAsset Hub1,250']);
+  });
+
+  it('marks with ≈ every figure that lost digits, and only those', async () => {
+    impl.balances = () => Promise.resolve([
+      { symbol: 'HEZ', decimals: 12, amount: 4_999_960_000_000n, perChain: { relay: 2_999_960_000_000n, assetHub: 1_000_000_000_000n, people: 1_000_000_000_000n } },
+    ]);
+    renderAccount();
+    const total = await screen.findByTitle('4.99996 HEZ');
+    expect(total).toHaveTextContent('≈4.9999 HEZ');
+    expect([...document.querySelectorAll('.chain-amount')].map((c) => c.textContent)).toEqual(['≈2.9999', '1', '1']);
+  });
+
+  it('the header holds only back, title and language; the address chip sits in the total card', async () => {
+    renderAccount();
+    await screen.findByTitle('5 HEZ');
+    const chip = screen.getByRole('button', { name: /Copy address/ });
+    expect(chip.closest('.total-card')).not.toBeNull();
+    const header = screen.getByRole('banner');
+    expect(within(header).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Back']);
+    expect(within(header).getByRole('combobox', { name: 'Language' })).toBeInTheDocument();
+  });
+
+  it('the address chip says Copied for two seconds after each copy, and says so when copying fails', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    renderAccount();
+    await screen.findByTitle('5 HEZ');
+    const chip = screen.getByRole('button', { name: /Copy address/ });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      await flush(async () => { fireEvent.click(chip); });
+      expect(writeText).toHaveBeenCalledWith(ALICE);
+      expect(chip).toHaveTextContent('Copied');
+      expect(screen.getByRole('status')).toHaveTextContent('Copied');
+      await flush(async () => { vi.advanceTimersByTime(2000); });
+      expect(chip).not.toHaveTextContent('Copied');
+      writeText.mockRejectedValue(new Error('denied'));
+      await flush(async () => { fireEvent.click(chip); });
+      expect(chip).toHaveTextContent('Could not copy');
+    } finally {
+      vi.useRealTimers();
+      Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    }
+  });
+
+  it('puts activity under Today and Yesterday headers', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); yesterday.setHours(12, 0, 0, 0);
+    impl.activity = () => Promise.resolve([act({ id: 'a', when: now }), act({ id: 'b', when: Math.floor(yesterday.getTime() / 1000), direction: 'received' })]);
+    renderAccount();
+    expect(await screen.findByRole('heading', { name: 'Today' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Yesterday' })).toBeInTheDocument();
+    expect(screen.getByText('You received')).toBeInTheDocument();
   });
 
   it('a failing balance source shows the error card, not a spinner', async () => {
@@ -148,7 +214,7 @@ describe('ActivityDetail', () => {
   it('valid state renders amount and counterparty', async () => {
     detail(act({}));
     expect(await screen.findByText('1 HEZ')).toBeInTheDocument();
-    expect(screen.getByText(/To:/)).toBeInTheDocument();
+    expect(screen.getByText('To').nextElementSibling?.querySelector(`bdi[title="${BOB}"]`)).not.toBeNull();
   });
   it('unknown asset renders the symbol with no amount', async () => {
     detail(act({ symbol: '#777', decimals: null, amount: 123456789n }));
@@ -158,6 +224,16 @@ describe('ActivityDetail', () => {
   it('a failed transaction heading says Failed', async () => {
     detail(act({ ok: false }));
     expect(await screen.findByRole('heading', { name: /Failed/ })).toBeInTheDocument();
+  });
+  it('writes the date with the same language tag as the day headers', async () => {
+    await i18n.changeLanguage('kmr');
+    const spy = vi.spyOn(Date.prototype, 'toLocaleString');
+    try {
+      detail(act({}));
+      await screen.findByText('Qediya');
+      expect(spy.mock.calls.map((c) => c[0])).toContain('ku');
+      expect(spy.mock.calls.map((c) => c[0])).not.toContain('kmr');
+    } finally { spy.mockRestore(); await i18n.changeLanguage('en'); }
   });
   it('shows a well-formed transaction code', async () => {
     const code = '0x' + 'ab'.repeat(32);

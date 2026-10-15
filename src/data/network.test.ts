@@ -3,13 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { loadLiveness, loadNetwork } from './network';
 
 const NOW = 1_800_000_000_000;
+const big = (v: bigint) => ({ toBigInt: () => v });
+const ongoing = (ayes: bigint, nays: bigint) => ({ isOngoing: true, asOngoing: { tally: { ayes: big(ayes), nays: big(nays), support: big(0n) } } });
 const fakeApi = (chain: string) => ({
   query: {
     timestamp: { now: () => Promise.resolve({ toNumber: () => (chain === 'relay' ? NOW - 6_000 : NOW) }) },
     session: { validators: () => Promise.resolve(new Array(4)) },
     referenda: { referendumInfoFor: { entries: () => Promise.resolve(
-      chain === 'assetHub' ? [[{ args: [{ toNumber: () => 3 }] }, { unwrap: () => ({ isOngoing: true }) }],
-                               [{ args: [{ toNumber: () => 2 }] }, { unwrap: () => ({ isOngoing: false }) }]] : []) } },
+      chain === 'assetHub' ? [[{ args: [{ toNumber: () => 3 }] }, { unwrap: () => ongoing(68n, 32n) }],
+                               [{ args: [{ toNumber: () => 2 }] }, { unwrap: () => ({ isOngoing: false, get asOngoing(): never { throw new Error('not ongoing'); } }) }]] : []) } },
     system: { account: () => Promise.resolve({ data: { free: { toBigInt: () => 99n } } }) },
   },
 }) as never;
@@ -19,7 +21,15 @@ const failing = (...down: string[]) => (chain: string) => (down.includes(chain) 
 describe('loadNetwork', () => {
   it('reports liveness, validators, ongoing votes and treasury', async () => {
     const r = await loadNetwork({ getApi: fake, now: () => NOW });
-    expect(r).toEqual({ live: true, validators: 4, votes: [{ chain: 'assetHub', index: 3 }], treasury: 99n });
+    expect(r).toEqual({ live: true, validators: 4, votes: [{ chain: 'assetHub', index: 3, ayes: 68n, nays: 32n }], treasury: 99n });
+  });
+  it('a vote whose tally cannot be read fails the votes field only', async () => {
+    const broken = (chain: string) => Promise.resolve({ ...(fakeApi(chain) as object), query: { ...(fakeApi(chain) as { query: object }).query,
+      referenda: { referendumInfoFor: { entries: () => Promise.resolve([[{ args: [{ toNumber: () => 1 }] }, { unwrap: () => ({ isOngoing: true, asOngoing: {} }) }]]) } } } }) as never;
+    const r = await loadNetwork({ getApi: broken, now: () => NOW });
+    expect(r.votes).toBeNull();
+    expect(r.validators).toBe(4);
+    expect(r.treasury).toBe(99n);
   });
   it('reports live up to 90 s behind and not live beyond it', async () => {
     expect((await loadNetwork({ getApi: fake, now: () => NOW + 54_000 })).live).toBe(true); // 60 s behind

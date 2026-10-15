@@ -1,0 +1,25 @@
+.payment { gap: 14px; }
+.payment.glow-ok { background: var(--bg-answer-ok); }
+.payment.glow-bad { background: var(--bg-answer-bad); }
+.payment.glow-wait { background: var(--bg-answer-wait); }
+.search { display: flex; flex-direction: column; gap: 10px; }
+.search-row { display: flex; gap: 8px; }
+.search-row .field { flex: 1; min-inline-size: 0; }
+.code-field { resize: none; min-block-size: 52px; padding-block: 10px; line-height: 1.4; overflow-wrap: anywhere; word-break: break-all; font-size: 14px; }
+.search-row { align-items: flex-start; }
+.scan-button {
+  inline-size: 52px; block-size: 52px; flex: none; border-radius: 16px; border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--text); display: inline-flex; align-items: center; justify-content: center;
+}
+/* The answer fills the screen under the form; single verdicts are centred, lists read from the start. */
+.answer { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+.answer-centred { justify-content: center; text-align: center; padding-inline: 8px; }
+.answer-preparing { justify-content: center; text-align: center; }
+.answer .verdict { inline-size: 100%; }
+.answer .facts-list { list-style: none; margin: 10px 0 0; padding: 0; inline-size: 100%; }
+.lead-text { margin: 0; font-size: 17px; color: var(--muted-strong); line-height: 1.5; }
+.lead-text bdi { font-family: var(--font-mono); color: var(--text); }
+.list-heading { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--text-strong); }
+.group { margin: 6px 0 0; font-weight: 700; color: var(--bad-text); }
+.payment .row-title { font-weight: 600; }
+.payment .row-title bdi[title] { font-family: var(--font-mono); font-size: 13px; }

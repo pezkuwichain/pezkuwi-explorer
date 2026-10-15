@@ -5,18 +5,26 @@ import { useAccount } from '../account/AccountContext';
 import { extensionAccounts, NoWalletError, RejectedError } from '../account/connectors/extension';
 import { walletConnectAccounts } from '../account/connectors/walletconnect';
 import { scanQr } from '../account/connectors/qr';
+import PageHeader from '../ui/PageHeader';
+import { IconPaste, IconScan, IconWallet } from '../ui/icons';
+import './OpenAccount.css';
 
 type Mode = 'menu' | 'paste' | 'scan' | 'pick' | 'wc';
 const NEXT_PAGES = ['/account', '/citizenship', '/payment', '/network'] as const;
+// The home card links straight into one way in (?way=paste|scan|wallet); anything else opens the menu.
+const WAYS = ['paste', 'scan', 'wallet'] as const;
 
 export default function OpenAccount() {
   const { t } = useTranslation();
   const { open } = useAccount();
   const nav = useNavigate();
   // Only the app's own pages: anything else (another site, a protocol-relative URL) falls back to the account.
-  const asked = useSearchParams()[0].get('next');
+  const [params] = useSearchParams();
+  const asked = params.get('next');
   const next = NEXT_PAGES.find((p) => p === asked) ?? '/account';
-  const [mode, setMode] = useState<Mode>('menu');
+  const way = WAYS.find((w) => w === params.get('way'));
+  const [mode, setMode] = useState<Mode>(way === 'paste' || way === 'scan' ? way : 'menu');
+  const walletAsked = useRef(false);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [choices, setChoices] = useState<string[]>([]);
@@ -57,6 +65,15 @@ export default function OpenAccount() {
 
   useEffect(() => () => wcCtl.current?.abort(), []);
 
+  // Arriving with ?way=wallet starts the wallet flow once (the ref survives StrictMode's effect replay).
+  useEffect(() => {
+    if (way !== 'wallet' || walletAsked.current) return;
+    walletAsked.current = true;
+    void wallet();
+    // wallet only closes over stable setters and refs for this one start.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [way]);
+
   // The scan lives and dies with scan mode: leaving it (or unmounting) aborts the
   // loop, and scanQr's finally block releases the camera.
   useEffect(() => {
@@ -74,28 +91,30 @@ export default function OpenAccount() {
   }, [mode, video]);
 
   return (
-    <div className="stack">
-      <h1>{t('open.title')}</h1>
-      {mode === 'menu' && <>
-        <button className="big" onClick={wallet}>{t('open.wallet')}</button>
-        <button className="big" onClick={() => { setError(null); setMode('scan'); }}>{t('open.scan')}</button>
-        <button className="big" onClick={() => { setError(null); setMode('paste'); }}>{t('open.paste')}</button>
-      </>}
-      {mode === 'paste' && <>
-        <textarea dir="ltr" value={text} onChange={(e) => setText(e.target.value)} placeholder={t('open.pastePlaceholder')} rows={3} />
-        <button className="big" onClick={() => finish(text)}>{t('open.go')}</button>
-      </>}
-      {mode === 'scan' && <video ref={setVideo} playsInline muted className="scanner" />}
-      {mode === 'wc' && wcUri?.startsWith('wc:') && <>
-        {/* The raw wc: URI is the scheme both wallet apps register for pairing. */}
-        <a className="big button" href={wcUri}>{t('open.wallet')}</a>
-        {/* Some wallets (iOS) do not register the wc: scheme, so the link can do nothing. */}
-        <p>{t('open.wcHint')}</p>
-        <bdi dir="ltr" className="wc-uri">{wcUri}</bdi>
-      </>}
-      {mode === 'pick' && choices.map((a) => <button key={a} className="big" onClick={() => finish(a)}><bdi dir="ltr">{a}</bdi></button>)}
-      {(mode === 'scan' || mode === 'wc') && <button className="big" onClick={back}>{t('app.back')}</button>}
-      {error && <p role="alert">{error}</p>}
-    </div>
+    <>
+      <PageHeader title={t('open.title')} />
+      <div className="screen open">
+        {mode === 'menu' && <div className="ways">
+          <button type="button" className="way way-main" onClick={wallet}><span className="way-icon"><IconWallet /></span>{t('open.wallet')}</button>
+          <button type="button" className="way" onClick={() => { setError(null); setMode('scan'); }}><span className="way-icon"><IconScan /></span>{t('open.scan')}</button>
+          <button type="button" className="way" onClick={() => { setError(null); setMode('paste'); }}><span className="way-icon"><IconPaste /></span>{t('open.paste')}</button>
+        </div>}
+        {mode === 'paste' && <>
+          <textarea className="field" dir="ltr" value={text} onChange={(e) => setText(e.target.value)} placeholder={t('open.pastePlaceholder')} rows={3} />
+          <button type="button" className="btn btn-primary" onClick={() => finish(text)}>{t('open.go')}</button>
+        </>}
+        {mode === 'scan' && <video ref={setVideo} playsInline muted className="scanner" />}
+        {mode === 'wc' && wcUri?.startsWith('wc:') && <>
+          {/* The raw wc: URI is the scheme both wallet apps register for pairing. */}
+          <a className="btn btn-primary" href={wcUri}>{t('open.wallet')}</a>
+          {/* Some wallets (iOS) do not register the wc: scheme, so the link can do nothing. */}
+          <p className="hint">{t('open.wcHint')}</p>
+          <bdi dir="ltr" className="wc-uri">{wcUri}</bdi>
+        </>}
+        {mode === 'pick' && <div className="ways">{choices.map((a) => <button type="button" key={a} className="way way-address" onClick={() => finish(a)}><bdi dir="ltr">{a}</bdi></button>)}</div>}
+        {(mode === 'scan' || mode === 'wc') && <button type="button" className="btn btn-quiet" onClick={back}>{t('app.back')}</button>}
+        {error && <p role="alert" className="alert">{error}</p>}
+      </div>
+    </>
   );
 }

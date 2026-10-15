@@ -17,9 +17,15 @@ describe('loadBalances', () => {
   it('sums HEZ across relay, Asset Hub and People and lists non-zero assets', async () => {
     const r = await loadBalances('5Grw', { getApi: fake });
     expect(r).toEqual([
-      { symbol: 'HEZ', decimals: 12, amount: 113n },
+      { symbol: 'HEZ', decimals: 12, amount: 113n, perChain: { relay: 3n, assetHub: 10n, people: 100n } },
       { symbol: 'PEZ', decimals: 12, amount: 5n },
     ]);
+  });
+
+  it('the per-chain native amounts add up to the HEZ total', async () => {
+    const [hez] = await loadBalances('5Grw', { getApi: fake });
+    const { relay, assetHub, people } = hez.perChain!;
+    expect(relay + assetHub + people).toBe(hez.amount);
   });
 
   it('fails closed when the People chain rejects (no partial HEZ total)', async () => {

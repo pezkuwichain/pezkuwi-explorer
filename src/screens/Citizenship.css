@@ -1,0 +1,41 @@
+.citizenship { background: var(--bg-citizen, transparent); }
+.citizen-card-state { min-block-size: 120px; display: flex; flex-direction: column; justify-content: center; }
+.personal { display: flex; flex-direction: column; gap: 8px; }
+.personal-open { min-block-size: 52px; border-radius: 16px; font-size: 15px; }
+.personal-note { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
+.personal-form { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); }
+.personal-field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted-strong); }
+.personal-input { font-family: var(--font-body); }
+.personal-photo { display: flex; align-items: center; gap: 12px; }
+.personal-photo img { border-radius: 8px; object-fit: cover; }
+.personal-pick { flex: 1; min-block-size: 48px; font-size: 15px; cursor: pointer; }
+.personal-pick:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
+.personal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.personal-form .btn-text { align-self: center; }
+.steps-card { padding: 16px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.steps li { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; font-size: 13px; font-weight: 600; color: var(--muted-strong); }
+.step-dot {
+  inline-size: 40px; block-size: 40px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--border-strong); color: var(--muted); font-weight: 700; box-sizing: border-box;
+}
+.steps li.done { color: var(--text-strong); }
+.steps li.done .step-dot { background: var(--kesk-700); border-color: transparent; color: #FFFFFF; }
+.tick { display: inline-flex; }
+.steps li[aria-current='step'] { color: var(--zer-text); font-weight: 700; }
+.steps li[aria-current='step'] .step-dot { background: var(--zer); color: #08090E; box-shadow: 0 0 0 5px rgba(253, 184, 19, 0.22); }
+
+.roles { background: transparent; border: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.roles.card-error { border: 1px dashed var(--border-strong); padding: 16px; border-radius: 20px; }
+.badges { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 8px; min-block-size: 40px; padding-inline: 14px; box-sizing: border-box;
+  border-radius: 999px; font-size: 15px; font-weight: 600; color: var(--text-strong); border: 1px solid;
+}
+.badge-ok { background: var(--ok-soft); border-color: var(--ok-line); }
+.badge-ok svg { color: var(--ok-text); }
+.badge-zer { background: var(--zer-soft); border-color: var(--zer-line); }
+.badge-zer svg { color: var(--zer-icon); }
+.badge-info { background: var(--info-soft); border-color: var(--info-line); }
+.badge-info svg { color: var(--info-icon); }
+.experts-button { margin-block-start: auto; font-size: 16px; }

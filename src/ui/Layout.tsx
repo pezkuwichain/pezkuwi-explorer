@@ -1,10 +1,12 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
 import { shortAddress } from '../lib/address';
 import { formatAmount } from '../lib/format';
 import LanguagePicker from './LanguagePicker';
-import { IconBack } from './icons';
+import TabBar from './TabBar';
+import { DesktopShell } from './DesktopShell';
 import { ErrorBoundary } from './ErrorBoundary';
+import './layout.css';
 
 export const Addr = ({ value }: { value: string }) => <bdi dir="ltr" title={value}>{shortAddress(value)}</bdi>;
 
@@ -14,21 +16,23 @@ export function Amount({ value, decimals, symbol }: { value: bigint; decimals: n
 }
 
 export default function Layout() {
-  const { t } = useTranslation();
-  const nav = useNavigate();
-  // Deep links open with no in-app history; going back must still land somewhere useful.
-  const goBack = () => (((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0 ? nav(-1) : nav('/'));
   const { pathname } = useLocation();
   const home = pathname === '/';
   return (
-    <div className="page">
-      <header className="top">
-        {home ? <img className="logo" src="/logo.png" alt={t('app.name')} width={136} height={40} /> :
-          <button className="back" onClick={goBack}><IconBack /> {t('app.back')}</button>}
-        <LanguagePicker />
-      </header>
+    <DesktopShell>
+    <div className={`page${home ? ' page-home' : ''}`}>
+      {/* Inner screens carry their own header (back button and title, see PageHeader). */}
+      {home && (
+        <header className="brand">
+          <img className="brand-mark" src="/brand/newroz-flame.svg" alt="" width={30} height={30} />
+          <span className="brand-name">Pezkuwi</span>
+          <LanguagePicker />
+        </header>
+      )}
       <main><ErrorBoundary key={pathname}><Outlet /></ErrorBoundary></main>
-      <footer><a href="https://apps.pezkuwichain.io" rel="noopener"><Trans i18nKey="app.experts" components={{ domain: <bdi dir="ltr" /> }} /></a></footer>
+      {home && <footer className="experts"><a href="https://apps.pezkuwichain.io" rel="noopener"><Trans i18nKey="app.experts" components={{ domain: <bdi dir="ltr" /> }} /></a></footer>}
+      <TabBar />
     </div>
+    </DesktopShell>
   );
 }

@@ -16,6 +16,8 @@ const tr = (over: Partial<Activity>): Activity => ({
   id: '9-1-from', when: HOUR_AGO(), direction: 'sent', counterparty: THEM,
   symbol: 'HEZ', decimals: 12, amount: 1_000_000_000_000n, fee: 0n, ok: true, code: CODE, ...over,
 });
+// The screen's content under its header (the header has its own Back button).
+const content = () => document.querySelector('.screen') as HTMLElement;
 const code = (status: string, transfers: Activity[]) => ({ kind: 'code', status, transfers });
 const arrived = () => code('arrived', [tr({})]);
 
@@ -42,7 +44,7 @@ describe('PaymentStatus', () => {
     expect(screen.getByText('This section is being prepared.')).toBeInTheDocument();
     expect(screen.queryByPlaceholderText('Paste the transaction code or an address')).toBeNull();
     expect(screen.queryByRole('search')).toBeNull();
-    expect(screen.queryByRole('button')).toBeNull();
+    expect(within(content()).queryByRole('button')).toBeNull();
     expect(find).not.toHaveBeenCalled();
   });
   it('arrived', async () => { find.mockResolvedValue(arrived()); await ask(); expect(await screen.findByText('Arrived')).toBeInTheDocument(); });
@@ -80,7 +82,7 @@ describe('PaymentStatus', () => {
     expect(row).toHaveTextContent('Failed');
     expect(row).not.toHaveTextContent('1 HEZ to');
     expect(row).toHaveTextContent('2 hours ago');
-    expect(row).toHaveTextContent('❌');
+    expect(row.querySelector('.status-failed')).toHaveTextContent('Failed');
     expect(row.querySelector(`bdi[title="${THEM}"]`)).not.toBeNull();
   });
   // No "went through" heading may sit above a failed row.
@@ -89,7 +91,7 @@ describe('PaymentStatus', () => {
       const list = h.parentElement!.querySelector('h2 + p + ul, h2 + ul');
       expect(list).not.toBeNull();
       for (const li of list!.querySelectorAll('li')) {
-        expect(li).not.toHaveTextContent('❌');
+        expect(within(li as HTMLElement).queryByRole('img', { name: 'Failed' })).toBeNull();
         expect(li).not.toHaveTextContent('Failed');
       }
     }
@@ -103,7 +105,7 @@ describe('PaymentStatus', () => {
     const rows = screen.getAllByRole('listitem');
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent('1 HEZ to');
-    expect(rows[0]).toHaveTextContent('✅');
+    expect(within(rows[0]).getByRole('img', { name: 'Done' })).toBeInTheDocument();
     expect(rows[1]).toHaveTextContent('2 HEZ to');
     expect(rows[1].querySelector(`bdi[title="${ME}"]`)).not.toBeNull();
     expect(screen.queryByText('These did not go through')).toBeNull();
@@ -120,7 +122,7 @@ describe('PaymentStatus', () => {
     const badRows = [...badList.querySelectorAll('li')];
     expect(badRows).toHaveLength(1);
     expect(badRows[0]).toHaveTextContent('Failed');
-    expect(badRows[0]).toHaveTextContent('❌');
+    expect(within(badRows[0]).getByRole('img', { name: 'Failed' })).toBeInTheDocument();
     expect(badRows[0]).not.toHaveTextContent('1 HEZ to');
     expect(badRows[0].querySelector(`bdi[title="${THEM}"]`)).not.toBeNull();
     noFailedUnderWentThrough();
@@ -157,19 +159,19 @@ describe('PaymentStatus', () => {
     expect(screen.getByText(/Latest payments of/).querySelector(`bdi[title="${ME}"]`)).not.toBeNull();
     expect(rows[0]).toHaveTextContent(/Received 1 HEZ from/);
     expect(rows[0]).toHaveTextContent('2 hours ago');
-    expect(rows[0]).toHaveTextContent('✅');
+    expect(within(rows[0]).getByRole('img', { name: 'Done' })).toBeInTheDocument();
     expect(rows[0].querySelector(`bdi[title="${THEM}"]`)).not.toBeNull();
-    // A failed row uses no sent/received verb: amount, Failed, counterparty, time, ❌.
+    // A failed row uses no sent/received verb: amount, Failed, counterparty, time, marked Failed.
     expect(rows[1]).not.toHaveTextContent(/Sent|Received/);
     expect(rows[1]).toHaveTextContent('#777');
     expect(rows[1]).toHaveTextContent('Failed');
     expect(rows[1]).toHaveTextContent('2 hours ago');
     expect(rows[1].querySelector(`bdi[title="${THEM}"]`)).not.toBeNull();
     expect(rows[1]).not.toHaveTextContent('123');
-    expect(rows[1]).toHaveTextContent('❌');
+    expect(within(rows[1]).getByRole('img', { name: 'Failed' })).toBeInTheDocument();
     expect(rows[2]).not.toHaveTextContent(/Sent|Received/);
     expect(rows[2]).toHaveTextContent('Failed');
-    expect(rows[2]).toHaveTextContent('From:');
+    expect(rows[2]).toHaveTextContent('From 5FHneW…M694ty');
   });
   it('an address lookup shows at most five transfers', async () => {
     const many = Array.from({ length: 8 }, (_, i) => tr({ id: `r${i}`, direction: 'received' }));
@@ -202,9 +204,40 @@ describe('PaymentStatus', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Scan QR' }));
     await waitFor(() => expect(scan).toHaveBeenCalled());
     const signal = scan.mock.calls[0][1] as AbortSignal;
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(within(content()).getByRole('button', { name: 'Back' }));
     expect(signal.aborted).toBe(true);
     expect(screen.getByRole('button', { name: 'Scan QR' })).toBeInTheDocument();
+  });
+  it('offers the account button only under an answer about a payment', async () => {
+    const cases: [unknown, boolean][] = [
+      [arrived(), true], [code('failed', [tr({ ok: false })]), true], [code('several', [tr({ id: 'a' }), tr({ id: 'b' })]), true],
+      [code('incomplete', [tr({})]), true], [code('notAPayment', []), false],
+    ];
+    for (const [answer, shown] of cases) {
+      find.mockResolvedValue(answer); await ask();
+      await screen.findByRole('status');
+      await waitFor(() => expect(screen.queryByText(/Loading/)).toBeNull());
+      expect(!!screen.queryByRole('link', { name: 'My account' })).toBe(shown);
+      document.body.innerHTML = '';
+    }
+    for (const fail of [new InvalidLookupError(), new NotIndexedError(), new Error('x')]) {
+      find.mockRejectedValue(fail); await ask();
+      await screen.findByRole('status');
+      expect(screen.queryByRole('link', { name: 'My account' })).toBeNull();
+      document.body.innerHTML = '';
+    }
+    find.mockResolvedValue({ status: 'notFound' }); lag.mockResolvedValue(0); await ask();
+    await screen.findByText(/We could not find this payment yet/);
+    expect(screen.queryByRole('link', { name: 'My account' })).toBeNull();
+  });
+  it('the field shows a whole code on two wrapping lines, and Enter looks it up', async () => {
+    find.mockResolvedValue(arrived()); await mount();
+    const field = screen.getByPlaceholderText('Paste the transaction code or an address');
+    expect(field.tagName).toBe('TEXTAREA');
+    expect(field).toHaveAttribute('rows', '2');
+    fireEvent.change(field, { target: { value: CODE } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(await screen.findByText('Arrived')).toBeInTheDocument();
   });
   it('clears the answer as soon as the input changes', async () => {
     find.mockResolvedValue(arrived()); await ask();
@@ -220,6 +253,6 @@ describe('PaymentStatus', () => {
     done(arrived());
     await new Promise((x) => setTimeout(x, 20));
     expect(screen.queryByText('Arrived')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+    expect(within(content()).getByRole('button', { name: 'Back' })).toBeInTheDocument();
   });
 });

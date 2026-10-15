@@ -87,5 +87,73 @@ Turkish and English are written directly and are not listed.
 | state.retry | Dîsa biceribîne | دووبارە هەوڵبدەرەوە | تلاش دوباره | حاول مجددًا | pwap |
 | time.minutesAgo / hoursAgo / daysAgo | kmr: Berî {{count}} deqîqe / saet / roj | ckb: پێش {{count}} خولەک / کاتژمێر / ڕۆژ | fa: {{count}} دقیقه / ساعت / روز پیش | ar: منذ {{count}} دقيقة / ساعة / يوم | draft |
 | tiki.* (58 role names, all on-chain Tiki variants) | kmr = on-chain variant names verbatim (no translation) | ckb drafts: هاوڵاتی / ئەندامی پەرلەمان / سەرۆکی پەرلەمان / سەرۆک / وەزیر / ئەندامی دیوان / دادوەر / داواکار / یاساناس / نۆتەر / گەنجینەدار / باجگر / بەڕێوەبەری سەرچاوەکان / کارپێکەری تۆڕ / شارەزای ئاسایشی سایبەری / بەڕێوەبەری داتا / قسەکەر / تۆمارکەر / باڵیۆز / ناوبژیوان / پارێزەری کولتووری / پشکنەر / کۆنترۆڵکەری کوالیتی / مەلا / فەقێ / پەروەردەکار / بەرهەمهێنەر / بەڕێوەبەری پڕۆژە / سەرۆکی کۆمەڵە / بەڕێوەبەری کۆمەڵگە / ئاغا / پێشەنگ / ڕاوێژکار / حەکەم / مامۆستا / بازرگان / سەرۆک وەزیران / وەزیری دارایی / وەزیری بەرگری / وەزیری دادگا / وەزیری بڵاوکراوەکان / وەزیری تەندروستی / وەزیری ئاو / وەزیری کولتوور / بەرنامەنووس / وەرگێڕ / ئابووریناس / ژمێریار / ڕۆژنامەوان / شارەزای بازاڕکردن / ئاماریناس / پشتڕاستکەرەوە / هەڵبژێر / جێبەجێکار / کارگوزار / پلانساز | fa drafts: شهروند / نماینده پارلمان / رئیس مجلس / رئیس‌جمهور / وزیر / عضو دیوان / قاضی / دادستان / حقوقدان / سردفتر / خزانه‌دار / مأمور مالیات / مدیر منابع / اپراتور شبکه / متخصص امنیت سایبری / مدیر داده / سخنگو / ثبت‌کننده / سفیر / میانجی / نگهبان فرهنگی / بازرس / کنترل‌کننده کیفیت / ملا / طلبه علوم دینی / آموزگار / تولیدکننده محتوا / مدیر پروژه / رئیس انجمن / مدیر انجمن / آغا / پیشگام / مشاور / داور / معلم / بازرگان / نخست‌وزیر / وزیر دارایی / وزیر دفاع / وزیر دادگستری / وزیر نشریات / وزیر بهداشت / وزیر آب / وزیر فرهنگ / برنامه‌نویس / مترجم / اقتصاددان / حسابدار / روزنامه‌نگار / متخصص بازاریابی / آمارشناس / تأییدکننده / رأی‌دهنده / مجری / کارگزار / برنامه‌ریز | ar drafts: مواطن / نائب في البرلمان / رئيس البرلمان / الرئيس / وزير / عضو الديوان / قاضٍ / مدعٍ عام / حقوقي / كاتب عدل / أمين الخزينة / جابي الضرائب / مدير الموارد / مشغّل الشبكة / خبير الأمن السيبراني / مدير البيانات / متحدث رسمي / مسجّل / سفير / وسيط / حارس الثقافة / مفتش / مراقب الجودة / ملا / طالب علم شرعي / مربٍّ / صانع محتوى / مدير المشروع / رئيس الجمعية / مشرف المجتمع / آغا / رائد / مستشار / حكم / معلم / تاجر / رئيس الوزراء / وزير المالية / وزير الدفاع / وزير العدل / وزير النشر / وزير الصحة / وزير المياه / وزير الثقافة / مبرمج / مترجم / اقتصادي / محاسب / صحفي / أخصائي التسويق / إحصائي / مدقّق / ناخب / منفّذ / مسؤول إداري / مخطط | draft |
+| tab.label | Beş | بەشەکان | بخش‌ها | الأقسام | draft (kmr "Beş" from the approved mockup; aria-label of the bottom tab bar) |
+| tab.home | Mal | ماڵەوە | خانه | الرئيسية | draft (kmr "Mal" introduced by the mockup) |
+| tab.account | Hesab | هەژمار | حساب | الحساب | draft (kmr "Hesab" introduced by the mockup) |
+| day.today | Îro | ئەمڕۆ | امروز | اليوم | draft (kmr "Îro" introduced by the mockup; activity day header) |
+| day.yesterday | Duh | دوێنێ | دیروز | أمس | draft (kmr "Duh", the mockup's "duh"; activity day header) |
+| account.receivedShort | Te wergirt | وەرتگرت | دریافت کردید | استلمت | draft (kmr "Te wergirt" introduced by the mockup; activity row title) |
+| account.sentShort | Te şand | ناردت | فرستادید | أرسلت | draft (kmr "Te şand" introduced by the mockup; activity row title) |
+| account.amount | Mîqdar | بڕ | مبلغ | المبلغ | draft (kmr "Mîqdar" introduced by the mockup) |
+| account.copy | Kopî bike | کۆپی بکە | کپی آدرس | نسخ العنوان | draft (kmr "Kopî bike" introduced by the mockup; screen-reader label of the address chip) |
+| account.copied | Hat kopîkirin | کۆپی کرا | کپی شد | تم النسخ | draft (spoken after the address is copied) |
+| account.copyFailed | Kopî nebû | کۆپی نەکرا | کپی نشد | تعذّر النسخ | draft (review fix: shown on the address chip when the browser refuses to copy) |
+| account.tokens | Token | تۆکنەکان | توکن‌ها | العملات | draft (kmr "Token" from the mockup; label of the token list) |
+| citizenship.card | Karta hemwelatiyê | کارتی هاوڵاتیبوون | کارت شهروندی | بطاقة المواطنة | draft (kmr "Karta hemwelatiyê" from the mockup; label of the citizen card) |
+| citizenship.steps | Gav | هەنگاوەکان | مراحل | الخطوات | draft (kmr "Gav" from the mockup; label of the step bar) |
+| app.expertsShort | Ji bo pisporan | بۆ شارەزایان | برای متخصصان | للخبراء | draft (same words as app.experts without the domain; the button on Citizenship) |
+| network.aye | Erê | بەڵێ | موافق | نعم | draft (kmr "Erê" introduced by the mockup; Aye share of a vote) |
+| network.nay | Na | نەخێر | مخالف | لا | draft (kmr "Na" introduced by the mockup; Nay share of a vote) |
+| chain.relay / chain.assetHub / chain.people | Relay / Asset Hub / People | Relay / Asset Hub / People | Relay / Asset Hub / People | Relay / Asset Hub / People | brand (chain names, identical in every locale) |
+| cid.idName | Nasnameya welatî | ناسنامەی هاوڵاتی | کارت شناسایی شهروند | هوية المواطن | draft (citizen ID card) |
+| cid.photo | Wêne li cîhazê | وێنە لەسەر ئامێر | عکس روی این دستگاه | صورة على هذا الجهاز | draft (citizen ID card) |
+| cid.photoAlt | Wêneyê te | وێنەکەت | عکس شما | صورتك | draft (citizen ID card) |
+| cid.given | Nav | ناو | نام | الاسم | draft (citizen ID card) |
+| cid.surname | Paşnav | پاشناو | نام خانوادگی | اسم العائلة | draft (citizen ID card) |
+| cid.role | Rol | ڕۆڵ | نقش | الدور | draft (citizen ID card) |
+| cid.number | Hejmara welatî | ژمارەی هاوڵاتی | شماره شهروندی | رقم المواطن | draft (citizen ID card) |
+| cid.wallet | Navnîşana berîkê | ناونیشانی جزدان | آدرس کیف پول | عنوان المحفظة | draft (citizen ID card) |
+| cid.status | Statû | دۆخ | وضعیت | الحالة | draft (citizen ID card) |
+| cid.showBack | Rûyê paşîn nîşan bide | ڕووی پشتەوە پیشان بدە | نمایش پشت کارت | اعرض الوجه الخلفي | draft (citizen ID card) |
+| cid.showFront | Rûyê pêşîn nîşan bide | ڕووی پێشەوە پیشان بدە | نمایش روی کارت | اعرض الوجه الأمامي | draft (citizen ID card) |
+| cid.hintBack | Ji bo rûyê paşîn bitikîne | بۆ ڕووی پشتەوە دەستی لێ بدە | برای پشت کارت لمس کنید | المس لعرض الوجه الخلفي | draft (citizen ID card) |
+| cid.hintFront | Ji bo rûyê pêşîn bitikîne | بۆ ڕووی پێشەوە دەستی لێ بدە | برای روی کارت لمس کنید | المس لعرض الوجه الأمامي | draft (citizen ID card) |
+| cid.edit | Wêne û nav li vê cîhazê zêde bike | وێنە و ناو لەم ئامێرەدا زیاد بکە | افزودن عکس و نام در این دستگاه | أضف صورة واسمًا على هذا الجهاز | draft (citizen ID card) |
+| cid.localNote | Wêne û nav tenê li vê cîhazê dimînin; qet nayên şandin. | وێنە و ناو تەنها لەم ئامێرەدا دەمێننەوە؛ هەرگیز نانێردرێن. | عکس و نام فقط روی این دستگاه می‌مانند و هرگز ارسال نمی‌شوند. | تبقى الصورة والاسم على هذا الجهاز فقط ولا تُرسل إلى أي مكان. | draft (citizen ID card) |
+| cid.choosePhoto | Wêneyekî hilbijêre | وێنەیەک هەڵبژێرە | انتخاب عکس | اختر صورة | draft (citizen ID card) |
+| cid.save | Tomar bike | پاشەکەوت بکە | ذخیره | حفظ | draft (citizen ID card) |
+| cid.cancel | Betal bike | هەڵوەشاندنەوە | انصراف | إلغاء | draft (citizen ID card) |
+| cid.clear | Ji vê cîhazê jê bibe | لەم ئامێرەدا بیسڕەوە | حذف از این دستگاه | احذف من هذا الجهاز | draft (citizen ID card) |
+| cid.notImage | Ev pel ne wêne ye. | ئەم فایلە وێنە نییە. | این فایل تصویر نیست. | هذا الملف ليس صورة. | draft (citizen ID card) |
+| cid.notSaved | Ev gerok wan nahêle; ew tenê heta ku tu rûpelê bigirî xuya dibin. | ئەم وێبگەڕە هەڵیان ناگرێت؛ تەنها تا داخستنی پەڕەکە دەردەکەون. | این مرورگر آن‌ها را نگه نمی‌دارد؛ فقط تا بستن صفحه دیده می‌شوند. | لا يحتفظ هذا المتصفح بها؛ تظهر فقط حتى تغلق الصفحة. | draft (citizen ID card) |
+| mascot.hello | Silav! Ez Pez im. | سڵاو! من پێزم. | سلام! من پز هستم. | مرحبًا! أنا بيز. | draft (desktop mascot speech bubble) |
+| mascot.say1 | Hesabê xwe bi yek tikandinê bibîne. | هەژمارەکەت بە یەک دەستلێدان ببینە. | حسابت را با یک لمس ببین. | شاهد حسابك بلمسة واحدة. | draft (desktop mascot speech bubble) |
+| mascot.say2 | Dayîna te gihîşt? Li vir bipirse. | پارەدانەکەت گەیشت؟ لێرە بپرسە. | پرداختت رسید؟ اینجا بپرس. | هل وصلت دفعتك؟ اسأل هنا. | draft (desktop mascot speech bubble) |
+| mascot.say3 | Tor dixebite — Zagros zindî ye. | تۆڕ کار دەکات — زاگرۆس زیندووە. | شبکه کار می‌کند — زاگرس زنده است. | الشبكة تعمل — زاغروس حيّة. | draft (desktop mascot speech bubble) |
+| mascot.say4 | Nasnameya te ya Dijital Kurdistanê li vir e. | ناسنامەی کوردستانی دیجیتاڵیت لێرەیە. | کارت شناسایی کردستان دیجیتال تو اینجاست. | هويتك في كردستان الرقمية هنا. | draft (desktop mascot speech bubble) |
+| mascot.say5 | HEZ û PEZ — pereyê Dijital Kurdistanê. | HEZ و PEZ — پارەی کوردستانی دیجیتاڵ. | HEZ و PEZ — پول کردستان دیجیتال. | HEZ و PEZ — مال كردستان الرقمية. | draft (desktop mascot speech bubble) |
+| mascot.say6 | Bi telefona xwe veke — QR-ê bişopîne. | لە مۆبایلەکەتدا بیکەرەوە — QR سکان بکە. | روی گوشی‌ات باز کن — QR را اسکن کن. | افتحه على هاتفك — امسح رمز QR. | draft (desktop mascot speech bubble) |
+| mascot.alt1 | Pez, maskota Pezkuwi, bi cilên kurdî | پێز، ماسکۆتی Pezkuwi، بە جلی کوردی | پز، نماد Pezkuwi، با لباس کردی | بيز، تميمة Pezkuwi، بملابس كردية | draft (desktop mascot picture description) |
+| mascot.alt2 | Pez rûniştî, bi êlekeke kurdî | پێز دانیشتووە، بە کەواوەیەکی کوردی | پز نشسته، با جلیقه کردی | بيز جالسًا بصدرية كردية | draft (desktop mascot picture description) |
+| mascot.alt3 | Pez bi cilên kevneşopî | پێز بە جلی نەریتی | پز با لباس سنتی | بيز بالزي التقليدي | draft (desktop mascot picture description) |
+| mascot.alt4 | Pez li ber bajarekî kevn û çiyayan | پێز لەبەردەم شارێکی کۆن و چیاکان | پز جلوی یک شهر قدیمی و کوه‌ها | بيز أمام مدينة قديمة وجبال | draft (desktop mascot picture description) |
+| mascot.alt5 | Pez li ber bircên nû | پێز لەبەردەم تاوەرە نوێیەکان | پز جلوی برج‌های مدرن | بيز أمام أبراج حديثة | draft (desktop mascot picture description) |
+| mascot.alt6 | Pez li ser piyan, li meydanekê | پێز لەسەر پێ، لە گۆڕەپانێکدا | پز ایستاده در یک میدان | بيز واقفًا في ساحة | draft (desktop mascot picture description) |
 
 Notes on tiki.*: the English and Turkish role names are also unreviewed renderings of Kurmanci titles. Rewsenbir is rendered as "Creator" (not "Writer"; see project decision). Feqi ("Religious Student"), Axa ("Aga"), Hekem ("Arbiter"), Pêseng ("Pioneer"), Karguzar ("Administrator") are culturally loaded and need a native-speaker check in every language.
+
+Redesign (2026-10-15): the rows from tab.label to network.nay and the chain.* row were added with the approved
+mockup. Every kmr word the mockup introduced (Mal, Hesab, Îro, Duh, Te wergirt, Te şand, Mîqdar, Kopî bike, Erê, Na,
+Beş, Gav, Karta hemwelatiyê) is a draft until a native speaker confirms it, as are all ckb, fa and ar cells. The
+mockup's "2 saet berê" is not a new string: relative times come from time.* ("Berî 2 saet") where the browser has no
+Kurmanji relative-time data. The role name Perwerdekar shown on the citizen screen is the on-chain variant (tiki.*).
+
+Citizen ID card (2026-10-15): the cid.* rows label the digital citizen card and its local photo/name form; all kmr,
+ckb, fa and ar cells are drafts (kmr "Rûyê pêşîn/paşîn", "Wêne li cîhazê", "Hejmara welatî", "Navnîşana berîkê" and
+"Statû" come from the approved mockup). Brand text on the card, identical in every language and not translated:
+"KOMARA KURDISTAN", "کۆماری کوردستان", "DIJITAL KURDISTAN", "WELATÎ", "HER BÎJÎ KURDISTAN", "e-ID", "ON-CHAIN · NFT",
+"PEZKUWICHAIN" and the MRZ.
+
+Desktop mascots (2026-10-15): mascot.hello and mascot.say1–say6 are the speech bubbles of the desktop layout; the kmr
+cells are the approved mockup's sentences (without its brackets) and are drafts like every ckb, fa and ar cell.
+mascot.alt1–alt6 describe the pictures. The name "Pez" is a placeholder until the owner names the mascot.

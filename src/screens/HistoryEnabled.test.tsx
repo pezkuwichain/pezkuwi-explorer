@@ -74,7 +74,7 @@ describe('history switched on (ZAGROS_HISTORY_URL)', () => {
     ask(CODE);
     expect(await screen.findByRole('heading', { name: 'Arrived' })).toBeInTheDocument();
     const row = within(screen.getByRole('status')).getByRole('listitem');
-    expect(row).toHaveTextContent('1 HEZ to');
+    expect(row).toHaveTextContent('1 HEZ');
     expect(row).toHaveTextContent('2 hours ago');
     expect(row.querySelector(`bdi[title="${BOB}"]`)).not.toBeNull();
   });

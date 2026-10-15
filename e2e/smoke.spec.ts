@@ -21,10 +21,14 @@ async function pasteAndOpen(page: Page, address: string) {
 
 test.beforeEach(({ page }) => useLanguage(page, 'en'));
 
-test('home shows the four buttons and the experts link, and the network light resolves', async ({ page }) => {
+test('home shows the four tiles, the way in, the tabs and the experts link, and the network light resolves', async ({ page }) => {
   await page.goto('/');
-  for (const name of ['My account', 'Did my payment arrive?', 'Citizenship', 'Network']) {
-    await expect(page.getByRole('link', { name })).toBeVisible();
+  const main = page.getByRole('main');
+  for (const name of ['Did my payment arrive?', 'Citizenship', 'Network', 'Recent activity', 'Open with my wallet']) {
+    await expect(main.getByRole('link', { name })).toBeVisible();
+  }
+  for (const name of ['Home', 'Account', 'Citizenship', 'Network']) {
+    await expect(page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name })).toBeVisible();
   }
   await expect(page.getByRole('link', { name: /For experts/ })).toBeVisible();
   const light = page.getByRole('status');
@@ -44,7 +48,7 @@ test('a pasted Polkadot-prefix address of the same account works in a real brows
 test('mobile viewport has no horizontal scroll', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Network' })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: 'Network' })).toBeVisible();
   const w = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(w).toBeLessThanOrEqual(360);
 });
@@ -53,7 +57,7 @@ test('Sorani is right-to-left with no horizontal scroll at 360px', async ({ page
   await useLanguage(page, 'ckb');
   await page.setViewportSize({ width: 360, height: 740 });
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'هەژمارەکەم' })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: 'تۆڕ' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.dir)).toBe('rtl');
   const w = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(w).toBeLessThanOrEqual(360);

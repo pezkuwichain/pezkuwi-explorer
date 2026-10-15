@@ -1,0 +1,9 @@
+.ways { display: flex; flex-direction: column; gap: 10px; }
+.way {
+  display: flex; align-items: center; gap: 14px; min-block-size: 64px; padding: 10px 16px; border-radius: 18px; box-sizing: border-box;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text-strong); font-weight: 700; font-size: 17px; text-align: start;
+}
+.way-icon { inline-size: 44px; block-size: 44px; border-radius: 12px; flex: none; display: inline-flex; align-items: center; justify-content: center; background: var(--ok-soft); color: var(--ok-text); }
+.way-main { background: var(--primary); border-color: transparent; color: var(--on-primary); }
+.way-main .way-icon { background: rgba(255, 255, 255, 0.16); color: #FFFFFF; }
+.way-address { font-family: var(--font-mono); font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }

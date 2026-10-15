@@ -1,0 +1,110 @@
+/* Shared pieces: cards, buttons, chips, rows, figures. Screen-specific rules live next to each screen. */
+.screen { display: flex; flex-direction: column; gap: 16px; padding: 8px 20px 20px; flex: 1; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 16px; }
+.card-title { font-size: 16px; font-weight: 700; color: var(--text-strong); }
+.card-note { margin: 0; color: var(--muted-strong); }
+/* A failing source greys out its own card: muted text and a dashed border (same width, no layout shift). */
+.card-error { border-style: dashed; border-color: var(--border-strong); }
+.retry {
+  min-block-size: var(--tap); margin-block-start: 8px; padding-inline: 16px; border-radius: 999px;
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-weight: 700;
+}
+
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-block-size: 56px; padding: 8px 20px; box-sizing: border-box;
+  border-radius: 18px; border: 0; font-weight: 700; font-size: 17px; text-decoration: none; text-align: center;
+}
+.btn-primary { background: var(--primary); color: var(--on-primary); }
+.btn-primary:disabled { opacity: 0.7; cursor: progress; }
+.btn-quiet { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); }
+.btn-text { background: transparent; color: var(--muted-strong); font-weight: 600; font-size: 15px; min-block-size: var(--tap); }
+
+.pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; font-weight: 700; font-size: 13px; padding-inline: 10px; block-size: 26px; }
+.pill-ok { background: var(--ok-soft); color: var(--ok-text); }
+
+.light { display: inline-flex; align-items: center; gap: 8px; margin: 0; block-size: 30px; padding-inline: 12px; border-radius: 999px; font-size: 14px; font-weight: 600; }
+.light .dot { inline-size: 8px; block-size: 8px; border-radius: 999px; flex: none; }
+.light-up { background: var(--ok-soft); color: var(--ok-text); }
+.light-up .dot { background: var(--positive); box-shadow: 0 0 0 4px rgba(47, 200, 100, 0.22); }
+.light-down { background: var(--bad-soft); color: var(--bad-text); }
+.light-down .dot { background: var(--negative); box-shadow: 0 0 0 4px rgba(229, 52, 80, 0.22); }
+.light-checking { background: var(--zer-soft); color: var(--zer-text); }
+.light-checking .dot { background: var(--zer); }
+
+.token-icon { border-radius: 999px; flex: none; object-fit: cover; }
+.token-unknown {
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; overflow: hidden;
+  background: var(--surface-sunk); border: 1px solid var(--border-strong); color: var(--muted-strong);
+  font-size: 10px; font-weight: 700; font-family: var(--font-mono);
+}
+.token-unknown::after { content: attr(data-label); direction: ltr; }
+.token-unknown.size-26 { inline-size: 26px; block-size: 26px; font-size: 8px; }
+.token-unknown.size-32 { inline-size: 32px; block-size: 32px; font-size: 9px; }
+.token-unknown.size-36 { inline-size: 36px; block-size: 36px; }
+.chain-icon { border-radius: 999px; flex: none; }
+
+.big-amount { display: inline-flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.big-amount .num { font-family: var(--font-display); font-weight: 700; color: var(--text-strong); letter-spacing: -1px; line-height: 1; }
+.big-amount .sym { font-family: var(--font-display); font-weight: 600; color: var(--muted-strong); }
+
+/* Rows: a list of things (tokens, activity, transfers). */
+.rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.row {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface);
+  border: 1px solid var(--border); color: inherit; text-decoration: none; min-block-size: var(--tap);
+}
+.row-failed { background: var(--bad-soft); border-color: var(--bad-line); }
+.row-main { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; gap: 2px; }
+.row-title { font-weight: 600; font-size: 15px; color: var(--text-strong); }
+.row-sub { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.row-sub bdi { font-family: var(--font-mono); }
+.row-amount { font-family: var(--font-display); font-weight: 600; font-size: 16px; white-space: nowrap; color: var(--text-strong); }
+.row-amount.in { color: var(--ok-text); }
+.row-amount.muted { color: var(--muted); }
+.row-chip { inline-size: 40px; block-size: 40px; border-radius: 12px; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+.chip-ok { background: var(--ok-soft); color: var(--ok-text); }
+.chip-zer { background: var(--zer-soft); color: var(--zer-icon); }
+.chip-bad { background: var(--bad-soft); color: var(--bad-text); }
+/* On a failed row's red tint the chip needs its own ground to stand out (white in the light theme). */
+.row-failed .chip-bad { background: var(--bad-chip-in-row); border: 1px solid var(--bad-line); }
+.chip-plain { background: var(--surface-sunk); color: var(--muted-strong); }
+.day { margin: 4px 0 0; font-size: 12px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); }
+
+/* Key/value lines inside a card (amount, from/to, when, fee). */
+.facts { margin: 0; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; text-align: start; }
+.fact { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; font-size: 14px; border-block-end: 1px solid var(--divider); }
+.fact:last-child { border-block-end: 0; }
+.fact dt { color: var(--muted); }
+.fact dd { margin: 0; text-align: end; overflow-wrap: anywhere; color: var(--text); }
+.fact dd bdi[title] { font-family: var(--font-mono); }
+.fact-amount { padding: 14px 16px; }
+.fact-amount dt { flex: 1; }
+.fact-amount .lead { display: inline-flex; align-items: center; gap: 12px; flex: 1; }
+.fact-amount dd { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text-strong); }
+.status-failed { color: var(--bad-text); font-weight: 700; }
+
+/* The full-screen answer: a big round mark, a big word, one sentence, then the facts. */
+.verdict { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; }
+.big-mark {
+  inline-size: 132px; block-size: 132px; border-radius: 999px; margin: 0; flex: none;
+  display: flex; align-items: center; justify-content: center; border: 2px solid;
+}
+.big-mark svg { inline-size: 68px; block-size: 68px; }
+.mark-ok { background: var(--ok-soft); border-color: var(--ok-line); color: var(--positive); box-shadow: 0 0 0 14px rgba(47, 200, 100, 0.07); }
+.mark-bad { background: var(--bad-soft); border-color: var(--bad-line); color: var(--negative); box-shadow: 0 0 0 14px rgba(229, 52, 80, 0.07); }
+.mark-wait { background: var(--zer-soft); border-color: var(--zer-line); color: var(--zer-icon); box-shadow: 0 0 0 14px rgba(253, 184, 19, 0.07); }
+.verdict-word { font-family: var(--font-display); font-size: 40px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.5px; line-height: 1.1; }
+.verdict-text { margin: 0; font-size: 17px; color: var(--muted-strong); line-height: 1.5; }
+.verdict-text bdi { font-family: var(--font-mono); color: var(--text); }
+
+/* Inputs and messages shared by the open-account and payment screens. */
+.field {
+  inline-size: 100%; box-sizing: border-box; min-block-size: 52px; padding: 14px 16px; border-radius: 16px;
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-family: var(--font-mono); font-size: 15px;
+}
+.field::placeholder { color: var(--muted); font-family: var(--font-body); }
+.scanner { inline-size: 100%; border-radius: 20px; background: #000; }
+.hint { margin: 0; color: var(--muted-strong); }
+.wc-uri { overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+.alert { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--bad-soft); color: var(--bad-text); font-weight: 600; }

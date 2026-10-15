@@ -1,0 +1,60 @@
+.home { display: flex; flex-direction: column; flex: 1; }
+.home-status { padding: 4px 20px 0; display: flex; }
+
+.hero {
+  position: relative; overflow: hidden; margin: 16px 20px 0; padding: 20px; border-radius: 24px;
+  background: var(--hero-bg); border: 1px solid var(--hero-border); color: var(--hero-text);
+  display: flex; flex-direction: column; gap: 14px;
+}
+/* The daylight theme's gold sun in the corner (transparent in the dark theme). */
+.hero::before {
+  content: ''; position: absolute; inset-inline-end: -40px; inset-block-end: -60px; inline-size: 200px; block-size: 200px;
+  border-radius: 999px; background: var(--hero-blob); pointer-events: none;
+}
+.hero > * { position: relative; }
+/* The ways in sit on translucent grounds; the sun behind them would make a button two-tone. */
+.hero-open::before { display: none; }
+.hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hero-label { font-size: 15px; font-weight: 500; color: var(--hero-soft); }
+.token-stack { display: flex; }
+.token-stack .token-icon { border: 2px solid var(--hero-ring); margin-inline-start: -8px; box-sizing: content-box; }
+.token-stack .token-icon:first-child { margin-inline-start: 0; }
+.hero-amount .num { font-size: 44px; color: #FFFFFF; }
+.hero-amount .sym { font-size: 22px; color: var(--hero-soft); }
+.hero-note { margin: 0; color: var(--hero-soft); }
+.hero-note .retry { color: var(--hero-cta-text); background: var(--hero-cta-bg); border: 0; }
+.hero-bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hero-address { font-family: var(--font-mono); font-size: 13px; color: var(--hero-soft); background: var(--chip-bg); padding: 6px 10px; border-radius: 10px; }
+.hero-cta {
+  display: inline-flex; align-items: center; gap: 6px; min-block-size: var(--tap); padding-inline: 16px; border-radius: 999px;
+  background: var(--hero-cta-bg); color: var(--hero-cta-text); font-weight: 700; font-size: 15px; text-decoration: none;
+}
+.hero-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: #FFFFFF; }
+.hero-ways { display: flex; flex-direction: column; gap: 8px; }
+.hero-way {
+  display: flex; align-items: center; gap: 10px; min-block-size: 48px; padding-inline: 16px; border-radius: 14px;
+  background: var(--chip-bg); color: #FFFFFF; font-weight: 600; font-size: 15px; text-decoration: none;
+}
+.hero-way:first-child { background: var(--hero-cta-bg); color: var(--hero-cta-text); font-weight: 700; }
+
+.tiles { margin: 18px 20px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.tile {
+  min-block-size: 148px; box-sizing: border-box; padding: 16px; border-radius: 20px; border: 1px solid var(--tile-border);
+  text-decoration: none; display: flex; flex-direction: column; justify-content: space-between; gap: 12px;
+}
+.tile-icon {
+  inline-size: var(--tile-chip-size); block-size: var(--tile-chip-size); border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+@media (prefers-color-scheme: light) { .tile-icon { justify-content: flex-start; } }
+.tile-icon svg { inline-size: var(--tile-icon-size); block-size: var(--tile-icon-size); }
+.tile-label { font-weight: 700; font-size: 18px; line-height: 1.25; }
+.tile-pay { background: var(--tile-pay-bg); color: var(--tile-pay-text); }
+.tile-pay .tile-icon { background: var(--tile-pay-chip); color: var(--tile-pay-icon); }
+.tile-cit { background: var(--tile-cit-bg); color: var(--tile-cit-text); }
+.tile-cit .tile-icon { background: var(--tile-cit-chip); color: var(--tile-cit-icon); }
+.tile-net { background: var(--tile-net-bg); color: var(--tile-net-text); }
+.tile-net .tile-icon { background: var(--tile-net-chip); color: var(--tile-net-icon); }
+.tile-act { background: var(--tile-act-bg); color: var(--tile-act-text); }
+.tile-act .tile-icon { background: var(--tile-act-chip); color: var(--tile-act-icon); }
+@media (prefers-color-scheme: light) { .tile { border-radius: 24px; min-block-size: 150px; } }

@@ -26,6 +26,15 @@ export const NETWORK: NetworkConfig = {
     { id: 1000, symbol: 'wUSDT', decimals: 6 },
     { id: 2, symbol: 'wHEZ', decimals: 12 },
   ],
+  // Before setting history.* to a real indexer (see docs/superpowers/specs/2026-10-15-explorer-design.md §9):
+  //   1. Address-lookup verdict: a lookup by address must show the amount, the time and the counterparty of the payment it found (or a list of recent payments), not a bare ✅ — today it reports only the newest transfer as "Arrived".
+  //   2. Batch extrinsics: a code that covers several transfers (a batch) must report every transfer, not only the first one.
+  //   3. null === null is 'sent': in toActivity, an unparseable `from` and an unparseable account both normalise to null and compare equal, so the row reads "sent"; compare only when both are valid addresses.
+  //   4. NaN event index: eventIdx returns NaN for an id without a numeric second segment and the sort comparator then misorders; treat a non-numeric index as last explicitly.
+  //   5. Activity.code validation: the indexer's extrinsicHash is shown as the transaction code; accept it only when it is 0x followed by 64 hex digits.
+  //   6. Empty list markup: the activity card renders an empty list element next to the "no activity yet" sentence; render one or the other.
+  //   7. `now` frozen at mount: relative times on the account screen are computed against the time the screen opened; refresh it so "2 minutes ago" does not stay true for an hour.
+  //   8. History test isolation: tests that set NETWORK.history.* must restore it, so no test depends on another's indexer setting.
   history: { assetHub: null, relay: null },
   walletConnectProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? '',
 };

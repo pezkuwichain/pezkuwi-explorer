@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
-import { dayKey, dayLabel, formatAmount, formatCompact, formatNumber, formatPercent, relativeTime } from './format';
+import { dayKey, dayLabel, formatAmount, formatCompact, formatExact, formatNumber, formatPercent, relativeTime } from './format';
 
 describe('formatAmount', () => {
   it('formats whole and fractional HEZ', () => {
@@ -16,8 +16,10 @@ describe('formatAmount', () => {
   it('respects 6-decimal assets', () => {
     expect(formatAmount(1_500_000n, 6, 'wUSDT', 'en')).toBe('1.5 wUSDT');
   });
-  it('shows at most 4 fractional digits once the whole part is non-zero', () => {
-    expect(formatAmount(1_234_567_890_000n, 12, 'HEZ', 'en')).toBe('1.2345 HEZ');
+  it('shows at most 4 fractional digits once the whole part is non-zero, marked ≈ when digits were cut', () => {
+    expect(formatAmount(1_234_567_890_000n, 12, 'HEZ', 'en')).toBe('≈1.2345 HEZ');
+    expect(formatAmount(4_999_960_000_000n, 12, 'HEZ', 'en')).toBe('≈4.9999 HEZ');
+    expect(formatAmount(4_999_900_000_000n, 12, 'HEZ', 'en')).toBe('4.9999 HEZ');
   });
 });
 
@@ -47,7 +49,7 @@ describe('localised digits', () => {
   });
 
   it('keeps exact truncation with localised fraction digits', () => {
-    expect(formatAmount(1_234_567_890_000n, 12, 'HEZ', 'fa')).toBe(
+    expect(formatAmount(1_234_567_890_000n, 12, 'HEZ', 'fa')).toBe('≈' +
       new Intl.NumberFormat('fa').format(1n) +
         new Intl.NumberFormat('fa').formatToParts(1.5).find((p) => p.type === 'decimal')!.value +
         [...'2345'].map((d) => new Intl.NumberFormat('fa').format(BigInt(d))).join('') +
@@ -82,13 +84,25 @@ describe('relativeTime with a translator', () => {
 describe('formatCompact', () => {
   const HEZ = (whole: bigint, frac = 0n) => whole * 10n ** 12n + frac;
   it('shortens large amounts to one fractional digit with a scale word', () => {
-    expect(formatCompact(HEZ(40_258_000n), 12, 'en')).toBe('40.2M');
-    expect(formatCompact(HEZ(1_234n), 12, 'en')).toBe('1.2K');
+    expect(formatCompact(HEZ(40_258_000n), 12, 'en')).toBe('≈40.2M');
+    expect(formatCompact(HEZ(1_234n), 12, 'en')).toBe('≈1.2K');
     expect(formatCompact(HEZ(3_500_000_000_000n), 12, 'en')).toBe('3.5T');
+    expect(formatCompact(HEZ(40_200_000n), 12, 'en')).toBe('40.2M');
   });
   it('truncates instead of rounding up, so a figure never reads higher than it is', () => {
-    expect(formatCompact(HEZ(1_999_999n), 12, 'en')).toBe('1.9M');
-    expect(formatCompact(HEZ(999n, 999_999_999_999n), 12, 'en')).toBe('999.9999');
+    expect(formatCompact(HEZ(1_999_999n), 12, 'en')).toBe('≈1.9M');
+    expect(formatCompact(HEZ(999n, 999_999_999_999n), 12, 'en')).toBe('≈999.9999');
+  });
+  it('truncates before formatting, so a browser without roundingMode cannot round up', () => {
+    const Real = Intl.NumberFormat;
+    // A runtime that ignores roundingMode rounds half-expand: 1.96M would read 2M.
+    const spy = vi.spyOn(Intl, 'NumberFormat').mockImplementation(function (tag: string, o?: Intl.NumberFormatOptions) {
+      const rest = { ...o }; delete rest.roundingMode; return new Real(tag, rest);
+    } as never);
+    try {
+      expect(formatCompact(HEZ(1_960_000n), 12, 'en')).toBe('≈1.9M');
+      expect(formatCompact(HEZ(19_990n), 12, 'en')).toBe('≈19.9K');
+    } finally { spy.mockRestore(); }
   });
   it('below a thousand it is the exact amount, as formatAmount shows it', () => {
     expect(formatCompact(HEZ(7n), 12, 'en')).toBe('7');
@@ -102,6 +116,13 @@ describe('formatCompact', () => {
   });
   it('handles huge values without scientific notation', () => {
     expect(formatCompact(10n ** 30n, 12, 'en')).not.toMatch(/e/i);
+  });
+});
+
+describe('formatExact', () => {
+  it('writes every digit, never ≈', () => {
+    expect(formatExact(4_999_960_000_000n, 12, 'HEZ', 'en')).toBe('4.99996 HEZ');
+    expect(formatExact(40_258_000n * 10n ** 12n, 12, 'HEZ', 'en')).toBe('40,258,000 HEZ');
   });
 });
 

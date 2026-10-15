@@ -32,45 +32,52 @@ export function formatInteger(value: bigint, locale: string): string {
   return numberFormat(locale).format(value);
 }
 
+// What people read: at most 4 fractional digits once the whole part is non-zero. Digits are cut, never
+// rounded, and a figure that lost digits is marked "≈" so it is never mistaken for the exact amount.
 export function formatAmount(value: bigint, decimals: number, symbol: string, locale: string): string {
-  return `${formatUnits(value, decimals, locale)} ${symbol}`;
+  return `${formatUnits(value, decimals, locale, false)} ${symbol}`;
 }
 
-// The number part of formatAmount: exact, truncated to 4 fractional digits once the whole part is non-zero.
-export const formatNumber = (value: bigint, decimals: number, locale: string) => formatUnits(value, decimals, locale);
-function formatUnits(value: bigint, decimals: number, locale: string): string {
+// Every digit, no "≈": for titles and anywhere the exact amount must be readable.
+export function formatExact(value: bigint, decimals: number, symbol: string, locale: string): string {
+  return `${formatUnits(value, decimals, locale, true)} ${symbol}`;
+}
+
+// The number part of formatAmount.
+export const formatNumber = (value: bigint, decimals: number, locale: string) => formatUnits(value, decimals, locale, false);
+function formatUnits(value: bigint, decimals: number, locale: string, exact: boolean): string {
   const neg = value < 0n;
   const abs = neg ? -value : value;
   const base = 10n ** BigInt(decimals);
   const whole = abs / base;
   let frac = (abs % base).toString().padStart(decimals, '0').replace(/0+$/, '');
-  if (whole > 0n && frac.length > 4) frac = frac.slice(0, 4).replace(/0+$/, '');
+  const cut = !exact && whole > 0n && frac.length > 4;
+  if (cut) frac = frac.slice(0, 4).replace(/0+$/, '');
   const nf = numberFormat(locale);
   const sep = nf.formatToParts(1.5).find((p) => p.type === 'decimal')?.value ?? '.';
   // Localise fraction digits with the same formatter as the whole part (truncation, not rounding, keeps exactness).
   const localFrac = frac.replace(/[0-9]/g, (d) => nf.format(BigInt(d)));
   const wholeText = nf.format(whole);
-  return `${neg ? '-' : ''}${wholeText}${localFrac ? sep + localFrac : ''}`;
+  return `${cut ? '≈' : ''}${neg ? '-' : ''}${wholeText}${localFrac ? sep + localFrac : ''}`;
 }
 
-const compactFormats = new Map<string, Intl.NumberFormat>();
-
-// A short figure for big totals (40.2M): one fractional digit, truncated so it never reads higher than the
-// chain says, with the locale's own scale words and digits. Below a thousand it is the exact formatUnits text.
+// A short figure for big totals (40.2M): the locale's own scale words and digits, at most one fractional digit.
+// The value is cut to that precision in bigint before Intl sees it, so no runtime (with or without
+// roundingMode) can round it up; "≈" marks a cut figure. Below a thousand it is formatAmount's number.
 export function formatCompact(value: bigint, decimals: number, locale: string): string {
   const base = 10n ** BigInt(decimals);
   const abs = value < 0n ? -value : value;
   const whole = abs / base;
-  if (whole < 1000n) return formatUnits(value, decimals, locale);
-  const tag = intlTag(locale);
-  let nf = compactFormats.get(tag);
-  if (!nf) {
-    nf = new Intl.NumberFormat(tag, { notation: 'compact', maximumFractionDigits: 1, roundingMode: 'trunc' });
-    compactFormats.set(tag, nf);
-  }
-  // Only two or three significant digits are shown, so a Number carries enough of the value.
-  const n = Number(whole) + Number(((abs % base) * 1000n) / base) / 1000;
-  return nf.format(value < 0n ? -n : n);
+  if (whole < 1000n) return formatUnits(value, decimals, locale, false);
+  const digits = whole.toString().length;
+  // Thousands scale: 1–3 digits before the scale word, plus the one fractional digit shown.
+  const shown = ((digits - 1) % 3) + 2;
+  const step = 10n ** BigInt(digits - shown);
+  const kept = whole - (whole % step);
+  const cut = kept !== whole || abs % base !== 0n;
+  const nf = new Intl.NumberFormat(intlTag(locale), { notation: 'compact', maximumFractionDigits: 1, roundingMode: 'trunc' });
+  // kept has at most four significant digits, so a Number holds it exactly.
+  return `${cut ? '≈' : ''}${nf.format(value < 0n ? -Number(kept) : Number(kept))}`;
 }
 
 export function relativeTime(unixSeconds: number, now: number, locale: string, t?: Translate): string {

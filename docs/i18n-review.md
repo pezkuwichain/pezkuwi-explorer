@@ -44,6 +44,7 @@ Turkish and English are written directly and are not listed.
 | account.ok | Qediya | تەواو | انجام شد | تم | draft |
 | account.failed | Bi ser neket | سەرکەوتوو نەبوو | ناموفق | فشل | draft (kmr: pwap verbatim) |
 | account.empty | Hîna tu çalakî tune. | هێشتا هیچ چالاکییەک نییە. | هنوز فعالیتی نیست. | لا يوجد نشاط بعد. | draft |
+| account.code | Koda dayînê | کۆدی پارەدان | کد تراکنش | رمز العملية | draft (the code shown on an activity; same wording as the "transaction code" in payment.placeholder) |
 | payment.title | Dayîna min gihîşt? | پارەدانەکەم گەیشت؟ | پرداخت من رسید؟ | هل وصلت دفعتي؟ | draft |
 | payment.placeholder | Koda dayînê an navnîşanekê bixe vir | کۆدی پارەدان یان ناونیشانێک لێرە دابنێ | کد تراکنش یا یک آدرس را بچسبانید | الصق رمز العملية أو عنوانًا | draft |
 | payment.arrived | Gihîşt | گەیشت | رسید | وصلت | draft |

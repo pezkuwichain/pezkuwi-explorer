@@ -28,20 +28,24 @@ chain state queries, developer tools, sudo).
 
 ## 3. Screens
 
-Every screen: back button top-left, everything reachable with one thumb, no
-technical vocabulary ("block", "extrinsic", "hash", "pallet", "era" never appear).
+Every screen: a bottom tab bar (Home · Account · Citizenship · Network), inner screens a back
+button and title at the top, everything reachable with one thumb, no technical vocabulary
+("block", "extrinsic", "hash", "pallet", "era" never appear).
 
 ### 3.1 Home
-- Logo and language picker at the top (default Kurmancî).
-- A 2×2 grid of large square buttons, each an icon plus one word:
-  **My account** · **Did my payment arrive?** · **Citizenship** · **Network**.
-- A small status light at the bottom: green "The network is working".
+- Newroz flame, "Pezkuwi" and the language pill at the top (default Kurmancî), then the
+  status light ("The network is working").
+- The account card: the HEZ total, the tokens held, the short address and **Open**; with
+  no account yet, the same card offers the three ways in.
+- A 2×2 grid of tiles: **Did my payment arrive?** · **Citizenship** · **Network** ·
+  **Recent activity**.
 
 ### 3.2 My account
 - First visit: three large buttons — **Open with my wallet** · **Scan QR** ·
   **Paste address**.
-- Once open: total balance on top, one card per asset (HEZ, PEZ, USDT, …), then a
-  plain-language timeline ("You sent 5 HEZ to Ali · 2 hours ago ✅").
+- Once open: total HEZ on top with where it sits (Relay · Asset Hub · People), one row per
+  token (HEZ, PEZ, USDT, …), then a plain-language timeline under day headers
+  ("You sent · Ali · 2 hours ago   −5 HEZ", a red row for a failed one).
 - Tapping a timeline entry opens a detail page: who, how much, when, fee, a large
   success/failure mark.
 - The device remembers the account; next visit opens it directly. A
@@ -49,14 +53,15 @@ technical vocabulary ("block", "extrinsic", "hash", "pallet", "era" never appear
 
 ### 3.3 Did my payment arrive?
 - One search box: "Paste the transaction code or an address", plus QR scan.
-- Full-screen answer: ✅ **Arrived** / ⏳ **On its way** / ❌ **Did not arrive**, with
-  one explanatory sentence (e.g. "Not sent because the fee was not enough — your money
+- Full-screen answer: a large round mark and word, **Arrived** / **On its way** /
+  **Did not arrive**, the facts (amount, to, when, fee) and one explanatory sentence (e.g. "Not sent because the fee was not enough — your money
   is still in your account").
 
 ### 3.4 Citizenship
 - Uses the open account, or offers the same three entry buttons.
-- Application progress as a step bar: Applied → Approved → Citizen.
-- Tikis (roles) shown as badges; trust score as a single number.
+- The digital citizen card (citizenship NFT number, address, trust score), then the
+  application progress as a three-step bar: Applied → Approved → Citizen.
+- Tikis (roles) shown as badges with an icon.
 
 ### 3.5 Network
 - One large light: "The network is working".
@@ -116,15 +121,19 @@ for review rather than guessed.
 
 ## 6. Visual identity
 
-Matches `pezkuwichain.io`:
+Matches the Pezkuwi Wallet app (redesign approved 2026-10-15; brand rules in the wallet's
+BRAND.md):
 
-- **Colours:** green `#1ec76e` / `#14a05a` as the primary (buttons, "Arrived"), gold
-  `#eeae1f` as the accent, red only for "Did not arrive", dark surface `#0d1117`.
-- **Theme:** follows the phone's setting; light is the default.
-- **Type:** Inter, and Noto Sans Arabic for Arabic script, self-hosted (no third-party
-  font requests). Body at least 17 px, buttons 20 px or larger.
-- **Touch targets:** at least 56 px tall.
-- **Icons:** large, single-colour, understandable without words.
+- **Colours:** the Kurdistan palette only — kesk `#009639` / kesk-700 `#017A2F`, positive
+  `#2FC864`, sor `#E2231A` / negative `#E53450`, zer `#FDB813`, fire `#FF7A00`, info
+  `#2AB0F2` — on navy (`#08090E` screen, periwinkle `#999EC7` tints for surfaces). No pink,
+  magenta or purple. Buttons carrying white text use kesk-700 (AA).
+- **Theme:** follows the phone's setting: dark is the wallet look, light the daylight variant.
+- **Type:** Space Grotesk (figures, titles), Plus Jakarta Sans (text), JetBrains Mono
+  (addresses, codes), Noto Sans Arabic for Arabic script; self-hosted (no third-party font
+  requests). Body 16 px.
+- **Touch targets:** at least 44 px.
+- **Icons:** one outline set, 2 px stroke, round caps; the brand mark is the Newroz flame.
 - **Accessibility:** WCAG 2.1 AA contrast, screen-reader labels, respects
   reduced-motion.
 

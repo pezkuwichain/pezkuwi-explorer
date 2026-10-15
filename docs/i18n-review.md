@@ -22,14 +22,14 @@ Turkish and English are written directly and are not listed.
 | status.down | Tor bersiv nade | تۆڕ وەڵام نادات | شبکه پاسخ نمی‌دهد | الشبكة لا تستجيب | draft |
 | status.checking | Tor tê kontrol kirin… | تۆڕ دەپشکنرێت… | در حال بررسی شبکه… | جارٍ فحص الشبكة… | draft |
 | open.title | Hesabê xwe veke | هەژمارەکەت بکەرەوە | حساب خود را باز کنید | افتح حسابك | draft |
-| open.wallet | Bi berîka xwe veke | بە جزدانەکەم بیکەرەوە | با کیف پول من باز کن | افتح بمحفظتي | draft |
-| open.wcHint | Heke berîka te venebe, vegere û li şûna wê navnîşana xwe bixe vir an jî koda QR bişopîne. | ئەگەر جزدانەکەت نەکرایەوە، بگەڕێوە و لەجیاتی ئەوە ناونیشانەکەت دابنێ یان سکانی بکە. | اگر کیف پول شما باز نشد، برگردید و به جای آن آدرس خود را بچسبانید یا اسکن کنید. | إذا لم تُفتح محفظتك، ارجع والصق عنوانك أو امسحه ضوئيًا بدلًا من ذلك. | draft (shown under the wallet link; some wallets, e.g. on iOS, do not open from it) |
+| open.wallet | Bi cuzdana xwe veke | بە جزدانەکەم بیکەرەوە | با کیف پول من باز کن | افتح بمحفظتي | draft |
+| open.wcHint | Heke cuzdana te venebe, vegere û li şûna wê navnîşana xwe bixe vir an jî koda QR bişopîne. | ئەگەر جزدانەکەت نەکرایەوە، بگەڕێوە و لەجیاتی ئەوە ناونیشانەکەت دابنێ یان سکانی بکە. | اگر کیف پول شما باز نشد، برگردید و به جای آن آدرس خود را بچسبانید یا اسکن کنید. | إذا لم تُفتح محفظتك، ارجع والصق عنوانك أو امسحه ضوئيًا بدلًا من ذلك. | draft (shown under the wallet link; some wallets, e.g. on iOS, do not open from it) |
 | open.scan | Koda QR Bişopîne | سکانی کۆدی QR بکە | اسکن QR | مسح رمز QR | pwap |
 | open.paste | Navnîşanê bixe vir | ناونیشان لێرە دابنێ | چسباندن آدرس | لصق العنوان | draft |
 | open.pastePlaceholder | Navnîşana xwe li vir bixe | ناونیشانەکەت لێرە دابنێ | آدرس خود را اینجا بچسبانید | الصق عنوانك هنا | draft |
 | open.invalid | Ev navnîşan ne derbasdar e. Kontrol bike û dîsa biceribîne. | ئەم ناونیشانە دروست نییە. بیپشکنە و دووبارە هەوڵبدەرەوە. | این آدرس معتبر نیست. آن را بررسی کنید و دوباره تلاش کنید. | هذا العنوان غير صالح. تحقق منه وحاول مجددًا. | draft |
-| open.noWallet | Li ser vê cîhazê berîkeke Pezkuwi nehat dîtin. | لەم ئامێرەدا جزدانی Pezkuwi نەدۆزرایەوە. | هیچ کیف پول Pezkuwi در این دستگاه پیدا نشد. | لم يتم العثور على محفظة Pezkuwi على هذا الجهاز. | draft |
-| open.rejected | Berîkê hesabek parve nekir. | جزدانەکە هەژمارێکی هاوبەش نەکرد. | کیف پول حسابی را به اشتراک نگذاشت. | لم تشارك المحفظة أي حساب. | draft |
+| open.noWallet | Li ser vê cîhazê cuzdaneke Pezkuwi nehat dîtin. | لەم ئامێرەدا جزدانی Pezkuwi نەدۆزرایەوە. | هیچ کیف پول Pezkuwi در این دستگاه پیدا نشد. | لم يتم العثور على محفظة Pezkuwi على هذا الجهاز. | draft |
+| open.rejected | Cuzdanê hesabek parve nekir. | جزدانەکە هەژمارێکی هاوبەش نەکرد. | کیف پول حسابی را به اشتراک نگذاشت. | لم تشارك المحفظة أي حساب. | draft |
 | open.noCamera | Kamera venebû. Tu dikarî li şûna wê navnîşanê bixî vir. | کامێرا نەکرایەوە. دەتوانیت لەجیاتی ئەوە ناونیشانەکە دابنێیت. | دوربین باز نشد. می‌توانید به جای آن آدرس را بچسبانید. | تعذر فتح الكاميرا. يمكنك لصق العنوان بدلًا من ذلك. | draft |
 | open.go | Veke | بیکەرەوە | باز کن | افتح | draft |
 | account.total | Giştî | کۆی گشتی | مجموع | المجموع | draft |
@@ -112,7 +112,7 @@ Turkish and English are written directly and are not listed.
 | cid.surname | Paşnav | پاشناو | نام خانوادگی | اسم العائلة | draft (citizen ID card) |
 | cid.role | Rol | ڕۆڵ | نقش | الدور | draft (citizen ID card) |
 | cid.number | Hejmara welatî | ژمارەی هاوڵاتی | شماره شهروندی | رقم المواطن | draft (citizen ID card) |
-| cid.wallet | Navnîşana berîkê | ناونیشانی جزدان | آدرس کیف پول | عنوان المحفظة | draft (citizen ID card) |
+| cid.wallet | Navnîşana cuzdanê | ناونیشانی جزدان | آدرس کیف پول | عنوان المحفظة | draft (citizen ID card) |
 | cid.status | Statû | دۆخ | وضعیت | الحالة | draft (citizen ID card) |
 | cid.showBack | Rûyê paşîn nîşan bide | ڕووی پشتەوە پیشان بدە | نمایش پشت کارت | اعرض الوجه الخلفي | draft (citizen ID card) |
 | cid.showFront | Rûyê pêşîn nîşan bide | ڕووی پێشەوە پیشان بدە | نمایش روی کارت | اعرض الوجه الأمامي | draft (citizen ID card) |
@@ -149,7 +149,7 @@ mockup's "2 saet berê" is not a new string: relative times come from time.* ("B
 Kurmanji relative-time data. The role name Perwerdekar shown on the citizen screen is the on-chain variant (tiki.*).
 
 Citizen ID card (2026-10-15): the cid.* rows label the digital citizen card and its local photo/name form; all kmr,
-ckb, fa and ar cells are drafts (kmr "Rûyê pêşîn/paşîn", "Wêne li cîhazê", "Hejmara welatî", "Navnîşana berîkê" and
+ckb, fa and ar cells are drafts (kmr "Rûyê pêşîn/paşîn", "Wêne li cîhazê", "Hejmara welatî", "Navnîşana cuzdanê" and
 "Statû" come from the approved mockup). Brand text on the card, identical in every language and not translated:
 "KOMARA KURDISTAN", "کۆماری کوردستان", "DIJITAL KURDISTAN", "WELATÎ", "HER BÎJÎ KURDISTAN", "e-ID", "ON-CHAIN · NFT",
 "PEZKUWICHAIN" and the MRZ.

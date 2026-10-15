@@ -1,0 +1,30 @@
+/* Inter is split by script; unicode-range loads the Latin-extended file only when
+   a page needs it (Turkish and Kurmanji letters such as ş, ğ, ı). */
+@font-face {
+  font-family: Inter; font-weight: 100 900; font-display: swap;
+  src: url('/fonts/Inter-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: Inter; font-weight: 100 900; font-display: swap;
+  src: url('/fonts/Inter-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Noto Sans Arabic'; font-weight: 100 900; font-display: swap;
+  src: url('/fonts/NotoSansArabic.woff2') format('woff2');
+}
+:root {
+  --green: #1ec76e; --green-strong: #14a05a; --gold: #eeae1f; --red: #d93a3a;
+  --bg: #ffffff; --surface: #f4f6f8; --text: #0d1117; --muted: #4b5563; --on-green: #0d1117;
+  --radius: 20px; --tap: 56px;
+  font-family: Inter, 'Noto Sans Arabic', system-ui, sans-serif; font-size: 17px; line-height: 1.5;
+  color: var(--text); background: var(--bg);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0d1117; --surface: #161b22; --text: #f0f3f6; --muted: #9ca3af; }
+}
+:root[dir='rtl'] { font-family: 'Noto Sans Arabic', Inter, system-ui, sans-serif; }
+body { margin: 0; background: var(--bg); }
+button, a.button { min-height: var(--tap); font-size: 20px; border-radius: var(--radius); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

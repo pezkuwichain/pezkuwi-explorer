@@ -43,7 +43,13 @@ button, a.button { min-height: var(--tap); font-size: 20px; border-radius: var(-
 @media (prefers-color-scheme: dark) { :focus-visible { outline-color: var(--gold); } }
 footer { text-align: center; padding: 24px 16px; font-size: 17px; }
 footer a { color: var(--muted); display: inline-block; min-block-size: var(--tap); line-height: var(--tap); }
-.card { background: var(--surface); border-radius: var(--radius); padding: 16px; margin: 16px; }
+.card { background: var(--surface); border: 2px solid transparent; border-radius: var(--radius); padding: 14px; margin: 16px; }
+/* Spec 4.2: a failing source greys out its own card. Muted text and a dashed border (same 2px width, so no layout shift); not opacity, which would sink contrast. */
+.card-loading { color: var(--muted); }
+.card-error { color: var(--muted); border-color: var(--muted); border-style: dashed; }
+.card-error button { color: var(--text); background: var(--bg); border: 2px solid var(--text); padding-inline: 16px; cursor: pointer; }
+/* In-content links: --text with underline (AA on both surfaces; --green-strong is ~3.4:1 on light). Footer, button and big links have their own rules. */
+.card a { display: inline-flex; align-items: center; min-block-size: var(--tap); color: var(--text); text-decoration: underline; text-underline-offset: 3px; font-weight: 600; }
 .card h2 { margin-block: 0 8px; font-size: 20px; }
 .light { margin: 16px; padding: 16px; border-radius: var(--radius); background: var(--surface); font-weight: 600; text-align: center; }
 .light-up span { color: var(--green); }

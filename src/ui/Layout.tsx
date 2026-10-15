@@ -4,6 +4,7 @@ import { shortAddress } from '../lib/address';
 import { formatAmount } from '../lib/format';
 import LanguagePicker from './LanguagePicker';
 import TabBar from './TabBar';
+import { DesktopShell } from './DesktopShell';
 import { ErrorBoundary } from './ErrorBoundary';
 import './layout.css';
 
@@ -18,6 +19,7 @@ export default function Layout() {
   const { pathname } = useLocation();
   const home = pathname === '/';
   return (
+    <DesktopShell>
     <div className={`page${home ? ' page-home' : ''}`}>
       {/* Inner screens carry their own header (back button and title, see PageHeader). */}
       {home && (
@@ -31,5 +33,6 @@ export default function Layout() {
       {home && <footer className="experts"><a href="https://apps.pezkuwichain.io" rel="noopener"><Trans i18nKey="app.experts" components={{ domain: <bdi dir="ltr" /> }} /></a></footer>}
       <TabBar />
     </div>
+    </DesktopShell>
   );
 }

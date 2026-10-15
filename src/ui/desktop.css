@@ -1,0 +1,73 @@
+/* Desktop (>= 900px): the approved layout E — the app in a phone frame, the mascots around it.
+   Positions follow the mockup at 1440×960 and scale down below. The bezel stays dark in both themes. */
+.desk {
+  --desk-bg: radial-gradient(60% 55% at 50% 45%, rgba(1, 122, 47, 0.16) 0%, #F4F5EF 62%), #F4F5EF;
+  --desk-text: #0F111A; --desk-soft: #5B5F6B; --desk-pill: rgba(15, 17, 26, 0.04); --desk-pill-line: #D9DBD2;
+  --glass-bg: #FFFFFF; --glass-line: #E3E5DC; --glass-text: #0F111A;
+  position: relative; min-block-size: 100vh; overflow: hidden; background: var(--desk-bg); color: var(--desk-text);
+}
+@media (prefers-color-scheme: dark) {
+  .desk {
+    --desk-bg: radial-gradient(60% 55% at 50% 45%, rgba(1, 122, 47, 0.28) 0%, #08090E 62%), #05081C;
+    --desk-text: rgba(255, 255, 255, 0.88); --desk-soft: rgba(255, 255, 255, 0.56); --desk-pill: rgba(153, 158, 199, 0.08); --desk-pill-line: rgba(153, 158, 199, 0.24);
+    --glass-bg: rgba(153, 158, 199, 0.16); --glass-line: rgba(153, 158, 199, 0.28); --glass-text: rgba(255, 255, 255, 0.92);
+  }
+}
+.desk-head { position: absolute; inset-inline: 48px; inset-block-start: 32px; display: flex; align-items: center; gap: 12px; z-index: 3; }
+.desk-name { font-family: var(--font-display); font-weight: 700; font-size: 22px; flex: 1; }
+:root[dir='rtl'] .desk-name { font-family: 'Space Grotesk', system-ui, sans-serif; }
+.desk-experts {
+  display: inline-flex; align-items: center; gap: 6px; min-block-size: var(--tap); box-sizing: border-box; padding-inline: 16px; border-radius: 999px;
+  border: 1px solid var(--desk-pill-line); background: var(--desk-pill); color: var(--desk-text); font-size: 15px; font-weight: 600; text-decoration: none;
+}
+.desk-foot { position: absolute; inset-inline: 0; inset-block-end: 22px; margin: 0; text-align: center; font-size: 13px; color: var(--desk-soft); }
+
+.phone {
+  position: absolute; left: 50%; top: 92px; transform-origin: 50% 0; z-index: 2;
+  inline-size: 414px; block-size: 844px; box-sizing: border-box; padding: 12px; border-radius: 58px;
+  background: linear-gradient(145deg, #2A2F3A, #0D1016 45%, #1F232C);
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55), inset 0 0 0 2px rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+/* translateZ makes the screen the containing block for position: fixed, so the tab bar is the frame's. */
+.phone-screen { position: relative; inline-size: 390px; block-size: 820px; border-radius: 46px; overflow: hidden; background: var(--bg); transform: translateZ(0); contain: layout paint; }
+.phone-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.phone-scroll::-webkit-scrollbar { display: none; }
+/* A status-bar strip under the notch, so no header text sits behind it. */
+.phone-scroll .page { min-block-size: 820px; padding-block-start: 30px; }
+.phone-notch { position: absolute; inset-block-start: 10px; left: 50%; transform: translateX(-50%); inline-size: 110px; block-size: 30px; border-radius: 999px; background: #000; z-index: 20; pointer-events: none; }
+
+.desk-side { position: absolute; inline-size: 400px; display: flex; flex-direction: column; gap: 28px; z-index: 1; }
+.desk-start { inset-inline-start: 56px; inset-block-start: 120px; }
+.desk-end { inset-inline-end: 56px; inset-block-start: 150px; align-items: flex-end; }
+.mascot { margin: 0; display: flex; align-items: flex-end; gap: 14px; }
+.desk-end .mascot { flex-direction: row-reverse; }
+.desk-start .mascot-1 { margin-inline-start: 60px; }
+.desk-end .mascot-1 { margin-inline-end: 60px; }
+.mascot img { inline-size: 160px; block-size: 176px; object-fit: cover; object-position: 50% 35%; border-radius: 24px; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35); flex: none; }
+.mascot-big img { inline-size: 170px; block-size: 196px; object-position: 50% 30%; }
+.bubble { margin-block-end: 34px; padding: 14px 16px; font-size: 16px; font-weight: 700; line-height: 1.35; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25); max-inline-size: 216px; }
+.mascot-big .bubble { margin-block-end: 40px; padding: 16px 18px; font-size: 17px; }
+.desk-start .bubble { border-radius: 20px; border-end-start-radius: 6px; }
+.desk-end .bubble { border-radius: 20px; border-end-end-radius: 6px; }
+.bubble span { font-weight: 500; color: #3A3E49; }
+.bubble-white { background: #FFFFFF; color: #0F111A; }
+.bubble-zer { background: #FDB813; color: #1A1300; }
+.bubble-kesk { background: #017A2F; color: #FFFFFF; }
+.bubble-glass { background: var(--glass-bg); border: 1px solid var(--glass-line); color: var(--glass-text); font-weight: 600; box-shadow: none; }
+
+/* Narrower desktops: smaller mascots, then only the first one on each side; nothing reaches the frame. */
+@media (max-width: 1359px) {
+  .desk-side { inline-size: calc((100vw - 414px) / 2 - 40px); gap: 20px; }
+  .desk-start { inset-inline-start: 20px; }
+  .desk-end { inset-inline-end: 20px; }
+  .desk-start .mascot-1 { margin-inline-start: 30px; }
+  .desk-end .mascot-1 { margin-inline-end: 30px; }
+  .mascot img, .mascot-big img { inline-size: 120px; block-size: 136px; }
+  .bubble, .mascot-big .bubble { font-size: 14px; padding: 12px 14px; margin-block-end: 24px; max-inline-size: 170px; }
+}
+@media (max-width: 1179px) {
+  .mascot-1, .mascot-2 { display: none; }
+  .mascot, .desk-end .mascot { flex-direction: column; align-items: flex-start; }
+  .desk-end .mascot { align-items: flex-end; }
+  .bubble, .mascot-big .bubble { margin-block-end: 0; }
+}

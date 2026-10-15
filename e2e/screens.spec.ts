@@ -139,9 +139,12 @@ for (const scheme of ['dark', 'light'] as const) {
       await page.goto('/citizenship');
       await settled(page);
       await shot(page, 'citizenship-ckb', scheme);
-      // The card's header line (both titles and the chip) fits without spilling, in Sorani too.
-      expect(await page.locator('.cid-front .cid-head').evaluate((e) => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
-      expect(await page.locator('.cid-front .cid-title-row').evaluate((e) => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
+      // The card's header line fits in Sorani too: the Sorani title ends before the chip, the chip inside the card.
+      const ckbTitle = (await page.locator('.cid-front .cid-title-ckb').boundingBox())!;
+      const chip = (await page.locator('.cid-front .cid-chip').boundingBox())!;
+      const card = (await page.locator('.cid-front').boundingBox())!;
+      expect(ckbTitle.x + ckbTitle.width).toBeLessThanOrEqual(chip.x + 0.5);
+      expect(chip.x + chip.width).toBeLessThanOrEqual(card.x + card.width);
       await page.locator('.cid-flip').click();
       await page.waitForTimeout(900);
       await shot(page, 'citizenship-back-ckb', scheme);
@@ -159,3 +162,55 @@ for (const scheme of ['dark', 'light'] as const) {
     });
   });
 }
+
+// Desktop (approved layout E): the app in a phone frame with the mascots around it, at two window sizes.
+for (const scheme of ['dark', 'light'] as const) {
+  test.describe(`desktop, ${scheme} theme`, () => {
+    test.use({ colorScheme: scheme, deviceScaleFactor: 1 });
+    for (const [w, h] of [[1440, 960], [1180, 800]] as const) {
+      test(`${w}×${h}: frame, mascots, tab bar inside the frame`, async ({ page }) => {
+        const blocked = await setUp(page, { account: true });
+        await page.setViewportSize({ width: w, height: h });
+        await page.goto('/');
+        await settled(page);
+        await expect(page.locator('.mascot img').first()).toBeVisible();
+        await page.waitForFunction(() => [...document.querySelectorAll<HTMLImageElement>('.mascot img')].filter((i) => i.offsetParent).every((i) => i.complete));
+        const frame = (await page.locator('.phone-screen').boundingBox())!;
+        const tabs = (await page.locator('.tabbar').boundingBox())!;
+        expect(tabs.x).toBeGreaterThanOrEqual(frame.x - 1);
+        expect(tabs.x + tabs.width).toBeLessThanOrEqual(frame.x + frame.width + 1);
+        expect(tabs.y + tabs.height).toBeLessThanOrEqual(frame.y + frame.height + 1);
+        expect(tabs.y).toBeGreaterThan(frame.y + frame.height / 2);
+        // No visible mascot card overlaps the phone.
+        for (const m of await page.locator('.mascot').all()) {
+          const b = await m.boundingBox();
+          if (!b) continue;
+          expect(b.x + b.width <= (await page.locator('.phone').boundingBox())!.x + 1 || b.x >= (await page.locator('.phone').boundingBox())!.x + (await page.locator('.phone').boundingBox())!.width - 1).toBe(true);
+        }
+        await page.screenshot({ path: `test-results/screens/desktop-${w}x${h}-${scheme}.png` });
+        expect(blocked).toEqual([]);
+      });
+    }
+    test('1440×960 right to left (Sorani): the mascot sides mirror', async ({ page }) => {
+      await setUp(page, { account: true, lang: 'ckb' });
+      await page.setViewportSize({ width: 1440, height: 960 });
+      await page.goto('/');
+      await settled(page);
+      const start = (await page.locator('.desk-start').boundingBox())!;
+      expect(start.x).toBeGreaterThan(720);
+      await page.screenshot({ path: `test-results/screens/desktop-1440x960-ckb-${scheme}.png` });
+    });
+  });
+}
+
+test('at phone width there is no frame and no mascot picture is requested', async ({ page }) => {
+  const asked: string[] = [];
+  page.on('request', (r) => { if (r.url().includes('/mascots/')) asked.push(r.url()); });
+  await setUp(page, { account: false });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('.phone')).toHaveCount(0);
+  expect(asked).toEqual([]);
+  await page.screenshot({ path: 'test-results/screens/phone-width-proof.png' });
+});

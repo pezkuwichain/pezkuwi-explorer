@@ -6,7 +6,7 @@ Turkish and English are written directly and are not listed.
 - source "pwap": kmr and ckb are taken verbatim from the pezkuwichain/pwap repo (web/src/i18n/locales/kmr.ts and ckb.ts). fa and ar are always drafts.
 - source "draft": written for this project, not reviewed by a native speaker. Some drafts reuse words found in pwap (pejirandeker, serlêdan, hemwelatî, pejirandî) in a new form; these still need review.
 - source "dks.news": taken verbatim from the dks.news site (site/news.js; its `ku` is our ckb). fa and ar there are drafts too, so those rows stay marked draft.
-- walletModal kmr: pwap verbatim except its "berîk" is written "cuzdan" (the owner's choice for this site, PR #8).
+- walletModal kmr: pwap verbatim except its "berîk" is written "cuzdan" (the owner's choice for this site, PR #8), masculine as in the Ferheng (Zeynelabidin): "Cuzdanê ku pere dixin navê" (Xelîtk), so "cuzdanê", never "cuzdana".
 - source "brand": the product name, identical in every locale.
 - Row account.failed: the kmr cell is verbatim from pwap (settingsScreen.biometricAlerts.failedTitle, "Bi ser neket"); ckb, fa and ar are drafts. The row is therefore marked "draft (kmr: pwap verbatim)".
 
@@ -28,7 +28,7 @@ Turkish and English are written directly and are not listed.
 | status.down | Tor bersiv nade | تۆڕ وەڵام نادات | شبکه پاسخ نمی‌دهد | الشبكة لا تستجيب | draft |
 | status.checking | Tor tê kontrol kirin… | تۆڕ دەپشکنرێت… | در حال بررسی شبکه… | جارٍ فحص الشبكة… | draft |
 | open.title | Hesabê xwe veke | هەژمارەکەت بکەرەوە | حساب خود را باز کنید | افتح حسابك | draft |
-| open.wallet | Bi cuzdana xwe veke | بە جزدانەکەم بیکەرەوە | با کیف پول من باز کن | افتح بمحفظتي | draft |
+| open.wallet | Bi cuzdanê xwe veke | بە جزدانەکەم بیکەرەوە | با کیف پول من باز کن | افتح بمحفظتي | draft |
 | open.scan | Koda QR Bişopîne | سکانی کۆدی QR بکە | اسکن QR | مسح رمز QR | pwap |
 | open.paste | Navnîşanê bixe vir | ناونیشان لێرە دابنێ | چسباندن آدرس | لصق العنوان | draft |
 | open.pastePlaceholder | Navnîşana xwe li vir bixe | ناونیشانەکەت لێرە دابنێ | آدرس خود را اینجا بچسبانید | الصق عنوانك هنا | draft |
@@ -151,7 +151,7 @@ Turkish and English are written directly and are not listed.
 | walletModal.extensionConnect | Bi Pêvekê Ve Girêbide | بە پێوەکە پەیوەندی بکە | اتصال با افزونه | اتصل بالإضافة | pwap (walletModal.extensionConnect; fa, ar draft) |
 | walletModal.extensionGet | Ji Chrome Web Store Daxîne | لە Chrome Web Store دابەزێنە | دریافت از فروشگاه Chrome | احصل عليه من متجر Chrome | pwap (walletModal.extensionGet; fa, ar draft) |
 | walletModal.connectingExtension | Di pêvekê de erê bikin... | لە پێوەکراوەکەدا پەسەندی بکە... | در افزونه تأیید کنید... | وافق في الإضافة... | pwap (walletModal.connectingExtension; fa, ar draft) |
-| walletModal.mobileTitle | Cuzdana Mobîl | جزدانی مۆبایل | کیف پول موبایل | محفظة الجوال | pwap (walletModal.mobileTitle; fa, ar draft) |
+| walletModal.mobileTitle | Cuzdanê Mobîl | جزدانی مۆبایل | کیف پول موبایل | محفظة الجوال | pwap (walletModal.mobileTitle; fa, ar draft) |
 | walletModal.mobileDesc | Ji bo mobîl — bi pezWallet QR kodê bişopîne | بۆ مۆبایل — بە pezWallet QR کۆد بخوێنەوە | برای موبایل — کد QR را با اپلیکیشن pezWallet اسکن کنید | للجوال — امسح رمز QR بتطبيق pezWallet | pwap (walletModal.mobileDesc; fa, ar draft) |
 | walletModal.mobileConnect | Bi pezWallet Ve Girêbide | بە pezWallet پەیوەندی بکە | اتصال با pezWallet | اتصل بـ pezWallet | pwap (walletModal.mobileConnect; fa, ar draft) |
 | walletModal.mobilePlayStore | Ji Play Store dakêşin | دابەزاندن لە Play Store | دانلود از Play Store | تنزيل من Play Store | pwap (walletModal.mobilePlayStore; fa, ar draft) |

@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import i18n from '../i18n';
 import { AccountProvider } from '../account/AccountContext';
 import { storage } from '../lib/storage';
+import { WalletModalHost } from '../account/WalletModal';
 import Home from './Home';
 
 const ALICE = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
@@ -13,11 +14,11 @@ const balances = vi.hoisted(() => ({ load: (): Promise<unknown> => Promise.resol
 vi.mock('../data/network', () => ({ loadLiveness: () => Promise.resolve(true), loadNetwork: () => full() }));
 const wc = vi.hoisted(() => ({ disconnect: vi.fn(() => Promise.resolve()) }));
 vi.mock('../account/connectors/walletconnect', () => ({
-  WC_DISCONNECTED: 'wc-off', WC_SESSION_KEY: 'wc-session', disconnectWalletConnect: wc.disconnect, restoreWalletConnect: () => Promise.resolve({ state: 'live', accounts: [] }),
+  WC_DISCONNECTED: 'wc-off', WC_CONNECTED: 'wc-on', WC_SESSION_KEY: 'wc-session', disconnectWalletConnect: wc.disconnect, restoreWalletConnect: () => Promise.resolve({ state: 'live', accounts: [] }),
 }));
 vi.mock('../data/balances', () => ({ loadBalances: () => { balances.calls++; return balances.load(); } }));
 
-const renderHome = () => render(<MemoryRouter><AccountProvider><Home /></AccountProvider></MemoryRouter>);
+const renderHome = () => render(<MemoryRouter><AccountProvider><Home /><WalletModalHost /></AccountProvider></MemoryRouter>);
 
 describe('Home', () => {
   beforeEach(async () => { await i18n.changeLanguage('en'); storage.remove('account'); storage.remove('account-source'); balances.calls = 0; wc.disconnect.mockClear(); });
@@ -34,7 +35,9 @@ describe('Home', () => {
   it('with no account the card offers the three ways in, and reads no balance', async () => {
     renderHome();
     expect(screen.getByRole('heading', { name: 'Open your account' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open with my wallet' })).toHaveAttribute('href', '/account/open?way=wallet');
+    // The wallet opens the wallet dialog right here; scan and paste go to the account screen.
+    fireEvent.click(screen.getByRole('button', { name: 'Open with my wallet' }));
+    expect(screen.getByRole('dialog', { name: 'Connect Wallet' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Scan QR' })).toHaveAttribute('href', '/account/open?way=scan');
     expect(screen.getByRole('link', { name: 'Paste address' })).toHaveAttribute('href', '/account/open?way=paste');
     await screen.findByText('The network is working');
@@ -49,6 +52,16 @@ describe('Home', () => {
     expect(await within(hero).findByTitle('4.9999 HEZ')).toHaveTextContent('4.9999 HEZ');
     expect(within(hero).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/account');
     expect(within(hero).getByTitle(ALICE)).toHaveTextContent('5Grwva…GKutQY');
+  });
+
+  it('tapping the address opens the wallet dialog on this account', async () => {
+    storage.set('account', ALICE);
+    renderHome();
+    const hero = screen.getByRole('heading', { name: 'My account · Total' }).closest('section')!;
+    fireEvent.click(within(hero).getByRole('button', { name: '5Grwva…GKutQY' }));
+    const d = screen.getByRole('dialog', { name: 'Wallet Connected' });
+    expect(within(d).getByTitle(ALICE)).toBeInTheDocument();
+    expect(within(d).getByRole('button', { name: 'Disconnect' })).toBeInTheDocument();
   });
 
   it('a failing balance read shows the error in the card, never a partial total', async () => {

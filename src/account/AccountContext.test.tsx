@@ -28,7 +28,7 @@ describe('sign-out', () => {
   const withWc = async (restore: () => Promise<unknown> = () => Promise.resolve({ state: 'live', accounts: [] })) => {
     vi.resetModules();
     const disconnect = vi.fn(() => Promise.resolve());
-    vi.doMock('./connectors/walletconnect', () => ({ WC_DISCONNECTED: 'wc-off', WC_SESSION_KEY: 'wc-session', disconnectWalletConnect: disconnect, restoreWalletConnect: restore }));
+    vi.doMock('./connectors/walletconnect', () => ({ WC_DISCONNECTED: 'wc-off', WC_CONNECTED: 'wc-on', WC_SESSION_KEY: 'wc-session', disconnectWalletConnect: disconnect, restoreWalletConnect: restore, sessionPeerName: () => null, startPairing: () => new Promise(() => {}) }));
     const m = await import('./AccountContext');
     const w = ({ children }: { children: ReactNode }) => <m.AccountProvider>{children}</m.AccountProvider>;
     return { disconnect, hook: () => renderHook(() => m.useAccount(), { wrapper: w }) };
@@ -103,5 +103,77 @@ describe('sign-out', () => {
     localStorage.setItem('pezkuwi-explorer:wc-session', 'new');
     act(() => { result.current.open(ALICE, 'walletconnect'); });
     expect(disconnect).not.toHaveBeenCalled();
+  });
+});
+
+describe('restore on load', () => {
+  // AccountContext with both connectors replaced: what the page finds when it loads.
+  const load = async (restore: () => Promise<unknown>, extension: () => Promise<unknown>) => {
+    vi.resetModules();
+    const calls = { restore: vi.fn(restore), extension: vi.fn(extension) };
+    vi.doMock('./connectors/walletconnect', () => ({
+      WC_DISCONNECTED: 'wc-off', WC_CONNECTED: 'wc-on', WC_SESSION_KEY: 'wc-session', disconnectWalletConnect: () => Promise.resolve(),
+      restoreWalletConnect: calls.restore, sessionPeerName: () => null, startPairing: () => new Promise(() => {}),
+    }));
+    vi.doMock('./connectors/extension', async (orig) => ({ ...(await orig<typeof import('./connectors/extension')>()), extensionAccounts: calls.extension }));
+    const m = await import('./AccountContext');
+    const w = ({ children }: { children: ReactNode }) => <m.AccountProvider>{children}</m.AccountProvider>;
+    return { calls, hook: () => renderHook(() => m.useAccount(), { wrapper: w }) };
+  };
+  afterEach(() => { vi.doUnmock('./connectors/walletconnect'); vi.doUnmock('./connectors/extension'); localStorage.clear(); });
+  const two = [{ address: ALICE, name: 'Alice', source: 'pezkuwi-js' }, { address: BOB, name: 'Bob', source: 'pezkuwi-js' }];
+
+  it('a kept WalletConnect session comes back with its accounts and the wallet name', async () => {
+    localStorage.setItem('pezkuwi-explorer:account', BOB);
+    localStorage.setItem('pezkuwi-explorer:account-source', 'walletconnect');
+    localStorage.setItem('pezkuwi-explorer:wc-session', 'kept');
+    const { calls, hook } = await load(() => Promise.resolve({ state: 'live', accounts: [ALICE, BOB], peerName: 'pezWallet' }), () => Promise.resolve(two));
+    const { result } = hook();
+    await waitFor(() => expect(result.current.accounts.map((a) => a.address)).toEqual([ALICE, BOB]));
+    expect(result.current.wcPeerName).toBe('pezWallet');
+    expect(result.current.accounts[0].name).toBe('pezWallet');
+    expect(result.current.address).toBe(BOB);
+    expect(result.current.source).toBe('walletconnect');
+    expect(calls.extension).not.toHaveBeenCalled();
+  });
+  it('a kept WalletConnect session that no longer holds the saved account opens its first one', async () => {
+    localStorage.setItem('pezkuwi-explorer:account', BOB);
+    localStorage.setItem('pezkuwi-explorer:account-source', 'walletconnect');
+    const { hook } = await load(() => Promise.resolve({ state: 'live', accounts: [ALICE], peerName: null }), () => Promise.resolve([]));
+    const { result } = hook();
+    await waitFor(() => expect(result.current.address).toBe(ALICE));
+    expect(result.current.accounts[0].name).toBe('WalletConnect');
+  });
+  it('else a saved extension account asks the extension again and brings back its accounts', async () => {
+    localStorage.setItem('pezkuwi-explorer:account', BOB);
+    localStorage.setItem('pezkuwi-explorer:account-source', 'extension');
+    const { calls, hook } = await load(() => Promise.resolve({ state: 'none' }), () => Promise.resolve(two));
+    const { result } = hook();
+    await waitFor(() => expect(result.current.accounts).toHaveLength(2));
+    expect(result.current.address).toBe(BOB);
+    expect(calls.extension).toHaveBeenCalledTimes(1);
+    expect(calls.restore).not.toHaveBeenCalled();
+  });
+  it('an extension that no longer has the saved account leaves it open as it was, with no list', async () => {
+    localStorage.setItem('pezkuwi-explorer:account', BOB);
+    localStorage.setItem('pezkuwi-explorer:account-source', 'extension');
+    const { calls, hook } = await load(() => Promise.resolve({ state: 'none' }), () => Promise.resolve([two[0]]));
+    const { result } = hook();
+    await waitFor(() => expect(calls.extension).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 10));
+    expect(result.current.accounts).toEqual([]);
+    expect(result.current.address).toBe(BOB);
+  });
+  it('nothing saved, or a pasted address: no wallet is asked anything', async () => {
+    for (const saved of [null, 'address'] as const) {
+      if (saved) { localStorage.setItem('pezkuwi-explorer:account', ALICE); localStorage.setItem('pezkuwi-explorer:account-source', saved); }
+      const { calls, hook } = await load(() => Promise.resolve({ state: 'none' }), () => Promise.resolve(two));
+      const { unmount } = hook();
+      await new Promise((r) => setTimeout(r, 10));
+      expect(calls.extension).not.toHaveBeenCalled();
+      expect(calls.restore).not.toHaveBeenCalled();
+      unmount();
+      localStorage.clear();
+    }
   });
 });

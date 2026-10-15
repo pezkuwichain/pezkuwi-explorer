@@ -24,7 +24,10 @@
 .hero-note { margin: 0; color: var(--hero-soft); }
 .hero-note .retry { color: var(--hero-cta-text); background: var(--hero-cta-bg); border: 0; }
 .hero-bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.hero-address { font-family: var(--font-mono); font-size: 13px; color: var(--hero-soft); background: var(--chip-bg); padding: 6px 10px; border-radius: 10px; }
+.hero-address {
+  min-block-size: var(--tap); border: 0; font-family: var(--font-mono); font-size: 13px; color: var(--hero-soft); background: var(--chip-bg);
+  padding: 6px 10px; border-radius: 10px;
+}
 /* The address and the way out sit together: signing out is visible, never behind a click. */
 .hero-who { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-inline-size: 0; }
 .hero-signout {
@@ -39,7 +42,7 @@
 .hero-ways { display: flex; flex-direction: column; gap: 8px; }
 .hero-way {
   display: flex; align-items: center; gap: 10px; min-block-size: 48px; padding-inline: 16px; border-radius: 14px;
-  background: var(--chip-bg); color: #FFFFFF; font-weight: 600; font-size: 15px; text-decoration: none;
+  background: var(--chip-bg); color: #FFFFFF; font-weight: 600; font-size: 15px; text-decoration: none; border: 0; text-align: start;
 }
 .hero-way:first-child { background: var(--hero-cta-bg); color: var(--hero-cta-text); font-weight: 700; }
 

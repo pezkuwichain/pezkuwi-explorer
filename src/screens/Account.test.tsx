@@ -5,6 +5,7 @@ import i18n from '../i18n';
 import { AccountProvider } from '../account/AccountContext';
 import { storage } from '../lib/storage';
 import type { Activity } from '../data/history';
+import { WalletModalHost } from '../account/WalletModal';
 import Account from './Account';
 import ActivityDetail from './ActivityDetail';
 
@@ -76,34 +77,21 @@ describe('Account', () => {
   it('the header holds only back, title, theme and language; the address chip sits in the total card', async () => {
     renderAccount();
     await screen.findByTitle('5 HEZ');
-    const chip = screen.getByRole('button', { name: /Copy address/ });
+    const chip = screen.getByRole('button', { name: '5Grwva…GKutQY' });
     expect(chip.closest('.total-card')).not.toBeNull();
     const header = screen.getByRole('banner');
     expect(within(header).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Back', 'Theme: Auto']);
     expect(within(header).getByRole('combobox', { name: 'Language' })).toBeInTheDocument();
   });
 
-  it('the address chip says Copied for two seconds after each copy, and says so when copying fails', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-    renderAccount();
+  it('tapping the address chip opens the wallet dialog on this account (copy, Disconnect)', async () => {
+    render(<MemoryRouter><AccountProvider><Account /><WalletModalHost /></AccountProvider></MemoryRouter>);
     await screen.findByTitle('5 HEZ');
-    const chip = screen.getByRole('button', { name: /Copy address/ });
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    try {
-      await flush(async () => { fireEvent.click(chip); });
-      expect(writeText).toHaveBeenCalledWith(ALICE);
-      expect(chip).toHaveTextContent('Copied');
-      expect(screen.getByRole('status')).toHaveTextContent('Copied');
-      await flush(async () => { vi.advanceTimersByTime(2000); });
-      expect(chip).not.toHaveTextContent('Copied');
-      writeText.mockRejectedValue(new Error('denied'));
-      await flush(async () => { fireEvent.click(chip); });
-      expect(chip).toHaveTextContent('Could not copy');
-    } finally {
-      vi.useRealTimers();
-      Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
-    }
+    fireEvent.click(within(document.querySelector('.total-card') as HTMLElement).getByRole('button', { name: '5Grwva…GKutQY' }));
+    const d = screen.getByRole('dialog', { name: 'Wallet Connected' });
+    expect(within(d).getByTitle(ALICE)).toBeInTheDocument();
+    expect(within(d).getByRole('button', { name: 'Copy address' })).toBeInTheDocument();
+    expect(within(d).getByRole('button', { name: 'Disconnect' })).toBeInTheDocument();
   });
 
   it('puts activity under Today and Yesterday headers', async () => {

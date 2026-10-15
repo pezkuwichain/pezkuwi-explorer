@@ -8,7 +8,7 @@ const wc = vi.hoisted(() => {
     proposal: null as unknown,
     handlers: {} as Record<string, (a: unknown) => void>,
     settle: null as null | { ok(s: unknown): void; no(e: unknown): void },
-    sessions: [] as { topic: string; expiry: number; namespaces: Record<string, { accounts: string[] }> }[],
+    sessions: [] as { topic: string; expiry: number; peer: { metadata: { name: string } }; namespaces: Record<string, { accounts: string[] }> }[],
     disconnected: [] as string[],
   };
   const client = {
@@ -27,9 +27,10 @@ vi.mock('@walletconnect/sign-client', () => ({ SignClient: { init: async () => {
 
 const ZAGROS = ['relay', 'assetHub', 'people'] as const;
 const ALICE = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
-const session = (topic: string, expiry = Math.floor(Date.now() / 1000) + 3600) => ({
-  topic, expiry,
-  namespaces: { polkadot: { accounts: [`polkadot:1aa94987791a5544e9667ec249d2cef1:${ALICE}`, `polkadot:e7c15092dcbe3f320260ddbbc685bfce:${ALICE}`] } },
+const CHAINS = ['1aa94987791a5544e9667ec249d2cef1', 'e7c15092dcbe3f320260ddbbc685bfce', '69a8d025ab7b63363935d7d9397e0f65'];
+const session = (topic: string, expiry = Math.floor(Date.now() / 1000) + 3600, chains = CHAINS) => ({
+  topic, expiry, peer: { metadata: { name: 'pezWallet' } },
+  namespaces: { polkadot: { accounts: chains.map((c) => `polkadot:${c}:${ALICE}`) } },
 });
 // A fresh module (and a fresh network config with a project id) for each load: the client is a singleton.
 const load = async (projectId = 'test-project') => {
@@ -131,11 +132,25 @@ describe('walletconnect session', () => {
   it('restore finds a live kept session, and reports one the wallet no longer has as gone', async () => {
     localStorage.setItem(KEY, 'kept');
     wc.state.sessions = [session('kept')];
-    expect(await (await load()).restoreWalletConnect()).toEqual({ state: 'live', accounts: [ALICE] });
+    expect(await (await load()).restoreWalletConnect()).toEqual({ state: 'live', accounts: [ALICE], peerName: 'pezWallet' });
     wc.state.sessions = [session('kept', 1)];
     expect(await (await load()).restoreWalletConnect()).toEqual({ state: 'gone' });
     expect(localStorage.getItem(KEY)).toBeNull();
     expect(await (await load()).restoreWalletConnect()).toEqual({ state: 'none' });
+  });
+  it('restore ends a kept session that lacks one of the three chains, as pwap does, and reports it gone', async () => {
+    localStorage.setItem(KEY, 'partial');
+    wc.state.sessions = [session('partial', undefined, CHAINS.slice(0, 2))];
+    expect(await (await load()).restoreWalletConnect()).toEqual({ state: 'gone' });
+    await vi.waitFor(() => expect(wc.state.disconnected).toEqual(['partial']));
+    expect(localStorage.getItem(KEY)).toBeNull();
+  });
+  it('names the wallet of the session (sessionPeerName)', async () => {
+    const m = await load();
+    const p = await m.startPairing();
+    wc.state.settle!.ok(session('t1'));
+    await p.approval();
+    expect(m.sessionPeerName()).toBe('pezWallet');
   });
   it('without a project id it behaves like no wallet', async () => {
     const m = await load('');

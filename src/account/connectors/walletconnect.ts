@@ -31,6 +31,13 @@ export const deepLinkFor = (uri: string) => `pezkuwiwallet://wc?uri=${encodeURIC
 export const WC_SESSION_KEY = 'wc-session';
 // Fired on window when the session ends: by the wallet (session_delete), by expiry, or by disconnect.
 export const WC_DISCONNECTED = 'pezkuwi-explorer:wc-disconnected';
+// Fired on window once a pairing is approved and its account is open (pwap's 'walletconnect_connected').
+export const WC_CONNECTED = 'pezkuwi-explorer:wc-connected';
+
+// Follows the deep link into the wallet app. Its own function so tests can see it without navigating.
+export function followDeepLink(href: string): void {
+  try { window.location.href = href; } catch { /* the Open button stays on screen */ }
+}
 
 type Client = Awaited<ReturnType<typeof import('@walletconnect/sign-client').SignClient.init>>;
 type Session = ReturnType<Client['session']['getAll']>[number];
@@ -83,6 +90,19 @@ export function sessionAccounts(s: Session | null = session): string[] {
   return [...new Set(accounts.map((a) => a.split(':').pop() ?? '').filter(Boolean))];
 }
 
+// The wallet's name as it introduced itself in the session (shown as "WalletConnect (name)").
+export function sessionPeerName(s: Session | null = session): string | null {
+  return s?.peer?.metadata?.name || null;
+}
+
+// A kept session must cover every chain the proposal requires, or signing on the missing chain would fail later.
+// pwap (restoreSession) discards such a session so the next pairing asks for all three again.
+function coversAllChains(s: Session): boolean {
+  const ns = s.namespaces.polkadot;
+  const chains = ns?.chains ?? ns?.accounts?.map((a) => a.split(':').slice(0, 2).join(':')) ?? [];
+  return PEZKUWI_CHAINS.every((c) => chains.includes(c));
+}
+
 export type Pairing = { uri: string; deepLink: string; approval(): Promise<string[]> };
 
 // Begins a pairing. The caller shows uri (as a QR) or follows deepLink, then awaits approval(), which resolves
@@ -130,13 +150,17 @@ export async function walletConnectAccounts(onPairing: (p: { uri: string; deepLi
 }
 
 // Picks up the session kept from an earlier visit, so the wallet ending it is heard again.
-// 'none': no session was kept. 'gone': one was kept but the wallet no longer has it (deleted or expired).
-export async function restoreWalletConnect(): Promise<{ state: 'none' } | { state: 'gone' } | { state: 'live'; accounts: string[] }> {
+// 'none': no session was kept. 'gone': one was kept but the wallet no longer has it (deleted or expired), or it
+// lacks one of the three chains (then it is ended here, as pwap does).
+export async function restoreWalletConnect(): Promise<{ state: 'none' } | { state: 'gone' } | { state: 'live'; accounts: string[]; peerName: string | null }> {
   const topic = storage.get(WC_SESSION_KEY);
   if (!topic) return { state: 'none' };
   const c = await init();
   const s = c.session.getAll().find((x) => x.topic === topic);
-  if (s && s.expiry > Math.floor(Date.now() / 1000)) { session = s; return { state: 'live', accounts: sessionAccounts(s) }; }
+  if (s && s.expiry > Math.floor(Date.now() / 1000)) {
+    if (coversAllChains(s)) { session = s; return { state: 'live', accounts: sessionAccounts(s), peerName: sessionPeerName(s) }; }
+    void c.disconnect({ topic: s.topic, reason: { code: 6000, message: 'Session missing required chains' } }).catch(() => {});
+  }
   session = null;
   storage.remove(WC_SESSION_KEY);
   return { state: 'gone' };

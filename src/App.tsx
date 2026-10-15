@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AccountProvider } from './account/AccountContext';
+import { WalletModalHost } from './account/WalletModal';
 import Layout from './ui/Layout';
 import Home from './screens/Home';
 import OpenAccount from './screens/OpenAccount';
@@ -25,6 +26,8 @@ export default function App() {
             <Route path="network" element={<Network />} />
           </Route>
         </Routes>
+        {/* The wallet dialog, opened from Home, /account/open and the address chips. */}
+        <WalletModalHost />
       </AccountProvider>
     </BrowserRouter>
   );

@@ -28,13 +28,10 @@ Turkish and English are written directly and are not listed.
 | status.checking | Tor tê kontrol kirin… | تۆڕ دەپشکنرێت… | در حال بررسی شبکه… | جارٍ فحص الشبكة… | draft |
 | open.title | Hesabê xwe veke | هەژمارەکەت بکەرەوە | حساب خود را باز کنید | افتح حسابك | draft |
 | open.wallet | Bi cuzdana xwe veke | بە جزدانەکەم بیکەرەوە | با کیف پول من باز کن | افتح بمحفظتي | draft |
-| open.wcHint | Heke cuzdana te venebe, vegere û li şûna wê navnîşana xwe bixe vir an jî koda QR bişopîne. | ئەگەر جزدانەکەت نەکرایەوە، بگەڕێوە و لەجیاتی ئەوە ناونیشانەکەت دابنێ یان سکانی بکە. | اگر کیف پول شما باز نشد، برگردید و به جای آن آدرس خود را بچسبانید یا اسکن کنید. | إذا لم تُفتح محفظتك، ارجع والصق عنوانك أو امسحه ضوئيًا بدلًا من ذلك. | draft (shown under the wallet link; some wallets, e.g. on iOS, do not open from it) |
 | open.scan | Koda QR Bişopîne | سکانی کۆدی QR بکە | اسکن QR | مسح رمز QR | pwap |
 | open.paste | Navnîşanê bixe vir | ناونیشان لێرە دابنێ | چسباندن آدرس | لصق العنوان | draft |
 | open.pastePlaceholder | Navnîşana xwe li vir bixe | ناونیشانەکەت لێرە دابنێ | آدرس خود را اینجا بچسبانید | الصق عنوانك هنا | draft |
 | open.invalid | Ev navnîşan ne derbasdar e. Kontrol bike û dîsa biceribîne. | ئەم ناونیشانە دروست نییە. بیپشکنە و دووبارە هەوڵبدەرەوە. | این آدرس معتبر نیست. آن را بررسی کنید و دوباره تلاش کنید. | هذا العنوان غير صالح. تحقق منه وحاول مجددًا. | draft |
-| open.noWallet | Li ser vê cîhazê cuzdaneke Pezkuwi nehat dîtin. | لەم ئامێرەدا جزدانی Pezkuwi نەدۆزرایەوە. | هیچ کیف پول Pezkuwi در این دستگاه پیدا نشد. | لم يتم العثور على محفظة Pezkuwi على هذا الجهاز. | draft |
-| open.rejected | Cuzdanê hesabek parve nekir. | جزدانەکە هەژمارێکی هاوبەش نەکرد. | کیف پول حسابی را به اشتراک نگذاشت. | لم تشارك المحفظة أي حساب. | draft |
 | open.noCamera | Kamera venebû. Tu dikarî li şûna wê navnîşanê bixî vir. | کامێرا نەکرایەوە. دەتوانیت لەجیاتی ئەوە ناونیشانەکە دابنێیت. | دوربین باز نشد. می‌توانید به جای آن آدرس را بچسبانید. | تعذر فتح الكاميرا. يمكنك لصق العنوان بدلًا من ذلك. | draft |
 | open.go | Veke | بیکەرەوە | باز کن | افتح | draft |
 | account.total | Giştî | کۆی گشتی | مجموع | المجموع | draft |
@@ -144,6 +141,48 @@ Turkish and English are written directly and are not listed.
 | mascot.alt4 | Pez li ber bajarekî kevn û çiyayan | پێز لەبەردەم شارێکی کۆن و چیاکان | پز جلوی یک شهر قدیمی و کوه‌ها | بيز أمام مدينة قديمة وجبال | draft (desktop mascot picture description) |
 | mascot.alt5 | Pez li ber bircên nû | پێز لەبەردەم تاوەرە نوێیەکان | پز جلوی برج‌های مدرن | بيز أمام أبراج حديثة | draft (desktop mascot picture description) |
 | mascot.alt6 | Pez li ser piyan, li meydanekê | پێز لەسەر پێ، لە گۆڕەپانێکدا | پز ایستاده در یک میدان | بيز واقفًا في ساحة | draft (desktop mascot picture description) |
+| walletModal.connect | Berîkê Girêbide | جزدان پەیوەست بکە | اتصال کیف پول | توصيل المحفظة | pwap (walletModal.connect; fa, ar draft) |
+| walletModal.connected | Berîk Girêdayî ye | جزدان پەیوەستە | کیف پول متصل شد | المحفظة متصلة | pwap (walletModal.connected; fa, ar draft) |
+| walletModal.connectDesc | Ji bo têkiliya bi PezkuwiChain re pêveka Pezkuwi.js girêbidin | پاشکۆی Pezkuwi.js پەیوەست بکە بۆ کارلێکردن لەگەڵ PezkuwiChain | افزونه Pezkuwi.js خود را متصل کنید تا با PezkuwiChain تعامل کنید | قم بتوصيل إضافة Pezkuwi.js للتفاعل مع PezkuwiChain | pwap (walletModal.connectDesc; fa, ar draft) |
+| walletModal.manageAccount | Hesabê xwe yê Pezkuwi birêvebirin | هەژماری Pezkuwi ت بەڕێوەببە | مدیریت حساب Pezkuwi شما | إدارة حساب Pezkuwi الخاص بك | pwap (walletModal.manageAccount; fa, ar draft) |
+| walletModal.extensionTitle | Pêveka Gerokê | پێوەکەی وێبگەڕ | افزونه مرورگر | إضافة المتصفح | pwap (walletModal.extensionTitle; fa, ar draft) |
+| walletModal.extensionDesc | Ji bo desktop û laptop — ji Chrome Web Store saz bikin | بۆ دێسکتۆپ و لاپتۆپ — لە Chrome Web Store دابەزێنە | برای دسکتاپ و لپ‌تاپ — از فروشگاه وب Chrome نصب کنید | لأجهزة الكمبيوتر — ثبّت من متجر Chrome الإلكتروني | pwap (walletModal.extensionDesc; fa, ar draft) |
+| walletModal.extensionConnect | Bi Pêvekê Ve Girêbide | بە پێوەکە پەیوەندی بکە | اتصال با افزونه | اتصل بالإضافة | pwap (walletModal.extensionConnect; fa, ar draft) |
+| walletModal.extensionGet | Ji Chrome Web Store Daxîne | لە Chrome Web Store دابەزێنە | دریافت از فروشگاه Chrome | احصل عليه من متجر Chrome | pwap (walletModal.extensionGet; fa, ar draft) |
+| walletModal.connectingExtension | Di pêvekê de erê bikin... | لە پێوەکراوەکەدا پەسەندی بکە... | در افزونه تأیید کنید... | وافق في الإضافة... | pwap (walletModal.connectingExtension; fa, ar draft) |
+| walletModal.mobileTitle | Berîka Mobîl | جزدانی مۆبایل | کیف پول موبایل | محفظة الجوال | pwap (walletModal.mobileTitle; fa, ar draft) |
+| walletModal.mobileDesc | Ji bo mobîl — bi pezWallet QR kodê bişopîne | بۆ مۆبایل — بە pezWallet QR کۆد بخوێنەوە | برای موبایل — کد QR را با اپلیکیشن pezWallet اسکن کنید | للجوال — امسح رمز QR بتطبيق pezWallet | pwap (walletModal.mobileDesc; fa, ar draft) |
+| walletModal.mobileConnect | Bi pezWallet Ve Girêbide | بە pezWallet پەیوەندی بکە | اتصال با pezWallet | اتصل بـ pezWallet | pwap (walletModal.mobileConnect; fa, ar draft) |
+| walletModal.mobilePlayStore | Ji Play Store dakêşin | دابەزاندن لە Play Store | دانلود از Play Store | تنزيل من Play Store | pwap (walletModal.mobilePlayStore; fa, ar draft) |
+| walletModal.tryAgain | Dîsa Biceribîne | دووبارە هەوڵبدەرەوە | دوباره تلاش کنید | حاول مرة أخرى | pwap (walletModal.tryAgain; fa, ar draft) |
+| walletModal.installChrome | Ji Chrome Web Store Saz Bikin | لە Chrome Web Store دابگرە | نصب از فروشگاه وب کروم | تثبيت من متجر Chrome الإلكتروني | pwap (walletModal.installChrome; fa, ar draft) |
+| walletModal.afterInstall | Piştî sazbûnê, rûpelê nûve bikin û dîsa biceribînin | دوای دابگرتن، لاپەڕەکە نوێ بکەرەوە و دووبارە هەوڵبدەرەوە | پس از نصب، صفحه را بازخوانی کنید و دوباره تلاش کنید | بعد التثبيت، أعد تحميل الصفحة وحاول مرة أخرى | pwap (walletModal.afterInstall; fa, ar draft) |
+| walletModal.accountName | Navê Hesabê | ناوی هەژمار | نام حساب | اسم الحساب | pwap (walletModal.accountName; fa, ar draft) |
+| walletModal.unnamed | Hesabê Bênav | هەژماری بێناو | حساب بدون نام | حساب بدون اسم | pwap (walletModal.unnamed; fa, ar draft) |
+| walletModal.address | Navnîşan | ناونیشان | آدرس | العنوان | pwap (walletModal.address; fa, ar draft) |
+| walletModal.source | Çavkanî | سەرچاوە | منبع | المصدر | pwap (walletModal.source; fa, ar draft) |
+| walletModal.disconnect | Veqetîne | پچڕاندن | قطع اتصال | قطع الاتصال | pwap (walletModal.disconnect; fa, ar draft) |
+| walletModal.switchAccount | Hesab Biguherîne | هەژمار بگۆڕە | تغییر حساب | تبديل الحساب | pwap (walletModal.switchAccount; fa, ar draft) |
+| walletModal.wcScanQR | Ji bo girêdanê bi pezWallet re bişopîne | بۆ پەیوەندیکردن بە pezWallet سکان بکە | برای اتصال با pezWallet اسکن کنید | امسح بـ pezWallet للاتصال | pwap (walletModal.wcScanQR; fa, ar draft) |
+| walletModal.wcOpenWallet | Bi pezWallet ve girêbide | بە pezWallet پەیوەندی بکە | اتصال با اپلیکیشن pezWallet | اتصل بتطبيق pezWallet | pwap (walletModal.wcOpenWallet; fa, ar draft) |
+| walletModal.wcGenerating | QR kod tê çêkirin... | QR کۆد دروستدەکرێت... | در حال ایجاد کد QR... | جاري إنشاء رمز QR... | pwap (walletModal.wcGenerating; fa, ar draft) |
+| walletModal.wcWaiting | Li benda girêdana berîkê... | چاوەڕوانی پەیوەندیکردنی جزدان... | در انتظار اتصال کیف پول... | في انتظار اتصال المحفظة... | pwap (walletModal.wcWaiting; fa, ar draft) |
+| walletModal.wcWaitingMobile | Di pezWallet de girêdanê bipejirîne | لە pezWallet پەیوەندییەکە پشتڕاست بکەوە | اتصال را در pezWallet تأیید کنید | وافق على الاتصال في pezWallet | pwap (walletModal.wcWaitingMobile; fa, ar draft) |
+| walletModal.wcOpenApp | pezWallet Veke | pezWallet بکەوە | باز کردن pezWallet | افتح pezWallet | pwap (walletModal.wcOpenApp; fa, ar draft) |
+| walletModal.wcInstallHint | pezWallet tune? Ji Play Store dakêşin. | pezWallet نییە؟ لە Play Store دابەزێنە. | pezWallet ندارید؟ از Play Store دانلود کنید. | ليس لديك pezWallet؟ حمّله من Play Store. | pwap (walletModal.wcInstallHint; fa, ar draft) |
+| walletModal.wcInstructions | Serlêdana pezWallet veke → Mîheng → WalletConnect → QR kodê bişopîne | ئەپی pezWallet بکەرەوە → ڕێکخستنەکان → WalletConnect → QR کۆد سکان بکە | برنامه pezWallet را باز کنید → تنظیمات → WalletConnect → کد QR را اسکن کنید | افتح تطبيق pezWallet → الإعدادات → WalletConnect → امسح رمز QR | pwap (walletModal.wcInstructions; fa, ar draft) |
+| walletModal.wcConnected | Girêdayî! | پەیوەندی کرا! | متصل شد! | تم الاتصال! | pwap (walletModal.wcConnected; fa, ar draft) |
+| walletModal.wcRetry | Dîsa biceribîne | دووبارە هەوڵبدەرەوە | تلاش مجدد | حاول مرة أخرى | pwap (walletModal.wcRetry; fa, ar draft) |
+| walletModal.wcTimeout | Girêdan qut bû. Ji kerema xwe dîsa biceribîne. | کاتی پەیوەندی تەواو بوو. تکایە دووبارە هەوڵبدەرەوە. | مهلت اتصال تمام شد. لطفا دوباره تلاش کنید. | انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى. | pwap (walletModal.wcTimeout; fa, ar draft) |
+| walletModal.errFailed | Girêdana wallet biserneket | پەیوەستکردنی جزدان سەرنەکەوت | اتصال کیف پول ناموفق بود | فشل توصيل المحفظة | pwap (existingAuth.walletConnectFailed; fa, ar draft) |
+| walletModal.errAuthorize | Please authorize the connection in your Pezkuwi Wallet extension | Please authorize the connection in your Pezkuwi Wallet extension | Please authorize the connection in your Pezkuwi Wallet extension | Please authorize the connection in your Pezkuwi Wallet extension | draft (pwap fallback only: hard-coded English in pwap PezkuwiContext/WalletConnectModal, no locale entry; every cell is the English text) |
+| walletModal.errNotFound | Pezkuwi Wallet extension not found. Please install from Chrome Web Store. | Pezkuwi Wallet extension not found. Please install from Chrome Web Store. | Pezkuwi Wallet extension not found. Please install from Chrome Web Store. | Pezkuwi Wallet extension not found. Please install from Chrome Web Store. | draft (pwap fallback only: hard-coded English in pwap PezkuwiContext/WalletConnectModal, no locale entry; every cell is the English text) |
+| walletModal.errNoAccounts | No accounts found. Please create an account in Pezkuwi.js extension | No accounts found. Please create an account in Pezkuwi.js extension | No accounts found. Please create an account in Pezkuwi.js extension | No accounts found. Please create an account in Pezkuwi.js extension | draft (pwap fallback only: hard-coded English in pwap PezkuwiContext/WalletConnectModal, no locale entry; every cell is the English text) |
+| walletModal.errExtensionTimeout | Extension connection timed out. Please check if the extension popup is blocked by your browser, then click Authorize and try again. | Extension connection timed out. Please check if the extension popup is blocked by your browser, then click Authorize and try again. | Extension connection timed out. Please check if the extension popup is blocked by your browser, then click Authorize and try again. | Extension connection timed out. Please check if the extension popup is blocked by your browser, then click Authorize and try again. | draft (pwap fallback only: hard-coded English in pwap PezkuwiContext/WalletConnectModal, no locale entry; every cell is the English text) |
+| walletModal.errWcRejected | WalletConnect connection was rejected | WalletConnect connection was rejected | WalletConnect connection was rejected | WalletConnect connection was rejected | draft (pwap fallback only: hard-coded English in pwap PezkuwiContext/WalletConnectModal, no locale entry; every cell is the English text) |
+| walletModal.errWcStart | Failed to start WalletConnect | Failed to start WalletConnect | Failed to start WalletConnect | Failed to start WalletConnect | draft (pwap fallback only: hard-coded English in pwap PezkuwiContext/WalletConnectModal, no locale entry; every cell is the English text) |
+| walletModal.errConnection | Connection failed | Connection failed | Connection failed | Connection failed | draft (pwap fallback only: hard-coded English in pwap PezkuwiContext/WalletConnectModal, no locale entry; every cell is the English text) |
+| dialog.close | Bigire | داخستن | بستن | إغلاق | pwap (txModal.close; fa, ar draft) |
 
 Notes on tiki.*: the English and Turkish role names are also unreviewed renderings of Kurmanci titles. Rewsenbir is rendered as "Creator" (not "Writer"; see project decision). Feqi ("Religious Student"), Axa ("Aga"), Hekem ("Arbiter"), Pêseng ("Pioneer"), Karguzar ("Administrator") are culturally loaded and need a native-speaker check in every language.
 
@@ -162,3 +201,8 @@ ckb, fa and ar cells are drafts (kmr "Rûyê pêşîn/paşîn", "Wêne li cîhaz
 Desktop mascots (2026-10-15): mascot.hello and mascot.say1–say6 are the speech bubbles of the desktop layout; the kmr
 cells are the approved mockup's sentences (without its brackets) and are drafts like every ckb, fa and ar cell.
 mascot.alt1–alt6 describe the pictures. The name "Pez" is a placeholder until the owner names the mascot.
+
+Wallet dialogs (2026-10-15): the walletModal.* rows are the texts of pwap's WalletModal and WalletConnectModal,
+copied verbatim from pwap web/src/i18n/locales/*.ts (tr and en too). The rows marked "draft (pwap fallback only)" are
+error messages pwap writes in English in its code with no locale entry; every locale carries that English until a
+translation is written. dialog.close is the close button of every dialog (pwap txModal.close).

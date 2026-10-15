@@ -24,9 +24,10 @@ test.beforeEach(({ page }) => useLanguage(page, 'en'));
 test('home shows the four tiles, the way in, the tabs and the experts link, and the network light resolves', async ({ page }) => {
   await page.goto('/');
   const main = page.getByRole('main');
-  for (const name of ['Did my payment arrive?', 'Citizenship', 'Network', 'Recent activity', 'Open with my wallet']) {
+  for (const name of ['Did my payment arrive?', 'Citizenship', 'Network', 'Recent activity']) {
     await expect(main.getByRole('link', { name })).toBeVisible();
   }
+  await expect(main.getByRole('button', { name: 'Open with my wallet' })).toBeVisible();
   for (const name of ['Home', 'Account', 'Citizenship', 'Network']) {
     await expect(page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name })).toBeVisible();
   }
@@ -36,6 +37,18 @@ test('home shows the four tiles, the way in, the tabs and the experts link, and 
   const light = page.getByRole('status');
   await expect(light).not.toHaveText(/Checking/, { timeout: 30_000 });
   await expect(light).toHaveText(/The network is working/);
+});
+
+test('the wallet way opens the wallet dialog; Escape closes it and gives focus back', async ({ page }) => {
+  await page.goto('/');
+  const opener = page.getByRole('main').getByRole('button', { name: 'Open with my wallet' });
+  await opener.click();
+  const dialog = page.getByRole('dialog', { name: 'Connect Wallet' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: 'Mobile Wallet' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(opener).toBeFocused();
 });
 
 test('a pasted Zagros address shows a HEZ balance', async ({ page }) => {

@@ -1,7 +1,18 @@
 // The only file that changes when the explorer moves from Zagros to mainnet.
 export type ChainKey = 'relay' | 'assetHub' | 'people';
 
-export const NETWORK = {
+export type NetworkConfig = {
+  name: string;
+  ss58: number;
+  native: { symbol: string; decimals: number };
+  chains: Record<ChainKey, { rpc: readonly string[]; genesis: `0x${string}` }>;
+  assets: readonly { id: number; symbol: string; decimals: number }[];
+  // null = no indexer for this chain yet; history screens show "being prepared".
+  history: { assetHub: string | null; relay: string | null };
+  walletConnectProjectId: string;
+};
+
+export const NETWORK: NetworkConfig = {
   name: 'Zagros',
   ss58: 42,
   native: { symbol: 'HEZ', decimals: 12 },
@@ -15,9 +26,8 @@ export const NETWORK = {
     { id: 1000, symbol: 'wUSDT', decimals: 6 },
     { id: 2, symbol: 'wHEZ', decimals: 12 },
   ],
-  // null = no indexer for this chain yet; history screens show "being prepared".
-  history: { assetHub: null as string | null, relay: null as string | null },
+  history: { assetHub: null, relay: null },
   walletConnectProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? '',
-} as const;
+};
 
 export const caip2 = (chain: ChainKey) => `polkadot:${NETWORK.chains[chain].genesis.slice(2, 34)}`;

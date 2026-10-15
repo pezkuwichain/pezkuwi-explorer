@@ -11,7 +11,8 @@
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit",
     "check-deps": "node scripts/check-deps.mjs",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "screens": "playwright test -c playwright.screens.config.ts"
   },
   "dependencies": {
     "@pezkuwi/api": "16.5.39",

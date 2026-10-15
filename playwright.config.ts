@@ -4,6 +4,8 @@ const BASE_URL = process.env.BASE_URL ?? 'http://localhost:4173';
 
 export default defineConfig({
   testDir: './e2e',
+  // The visual pass has its own config and build (playwright.screens.config.ts).
+  testIgnore: 'screens.spec.ts',
   timeout: 60_000,
   // One worker: every test opens its own RPC sockets, and a burst of parallel connects from one IP is what flakes.
   workers: 1,

@@ -75,7 +75,11 @@
   --font-body: 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, sans-serif;
   --font-display: 'Space Grotesk', 'Noto Sans Arabic', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --tap: 44px; --tabbar: 84px;
+  --tap: 44px;
+  /* Tab bar: 8px above, 54px of tabs, then the device's own bottom inset (home indicator, gesture bar) or 8px
+     where there is none. No fixed allowance on top of the inset: inside a wallet's DApp browser the page ends
+     above the wallet's own toolbar, the inset is 0, and a fixed 22px showed as a gap above that toolbar. */
+  --tabbar: calc(62px + max(8px, env(safe-area-inset-bottom, 0px)));
   color-scheme: light;
   font-family: var(--font-body); font-size: 16px; line-height: 1.45;
   color: var(--text); background: var(--bg);

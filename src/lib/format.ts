@@ -27,6 +27,10 @@ function relativeFormat(locale: string): Intl.RelativeTimeFormat {
   return rtf;
 }
 
+export function formatInteger(value: bigint, locale: string): string {
+  return numberFormat(locale).format(value);
+}
+
 export function formatAmount(value: bigint, decimals: number, symbol: string, locale: string): string {
   const neg = value < 0n;
   const abs = neg ? -value : value;

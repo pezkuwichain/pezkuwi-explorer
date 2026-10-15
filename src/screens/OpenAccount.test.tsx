@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import i18n from '../i18n';
 import { AccountProvider } from '../account/AccountContext';
@@ -82,7 +82,9 @@ describe('OpenAccount connectors (mocked)', () => {
   it('lets the user leave scan mode', async () => {
     const r = await setup(() => Promise.reject(new Error('x'))); r();
     fireEvent.click(screen.getByRole('button', { name: 'Scan QR' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Back' }));
+    // The header has its own Back (leave the screen); this is the one that leaves scan mode.
+    const content = document.querySelector('.screen') as HTMLElement;
+    fireEvent.click(await within(content).findByRole('button', { name: 'Back' }));
     for (const n of ['Open with my wallet', 'Scan QR', 'Paste address']) expect(screen.getByRole('button', { name: n })).toBeInTheDocument();
   });
   it('shows "rejected" when WalletConnect is refused', async () => {
@@ -106,10 +108,37 @@ describe('OpenAccount connectors (mocked)', () => {
     expect(await screen.findByRole('link', { name: 'Open with my wallet' })).toHaveAttribute('href', expect.stringMatching(/^wc:/));
     expect(screen.getByText('If your wallet does not open, go back and paste or scan your address instead.')).toBeInTheDocument();
   });
+  it('opens straight into a way chosen on the home card', async () => {
+    const r = await setup(() => new Promise(() => {}));
+    const view = r();
+    view.unmount();
+    const { default: O } = await import('./OpenAccount');
+    const { AccountProvider: P } = await import('../account/AccountContext');
+    for (const [way, check] of [
+      ['paste', () => expect(screen.getByPlaceholderText('Paste your address here')).toBeInTheDocument()],
+      ['scan', () => expect(document.querySelector('video.scanner')).not.toBeNull()],
+      ['bogus', () => expect(screen.getByRole('button', { name: 'Open with my wallet' })).toBeInTheDocument()],
+    ] as const) {
+      const v = render(<MemoryRouter initialEntries={[`/account/open?way=${way}`]}><P><Routes><Route path="/account/open" element={<O />} /></Routes></P></MemoryRouter>);
+      check();
+      v.unmount();
+    }
+  });
+  it('?way=wallet starts the wallet flow once on arrival', async () => {
+    let calls = 0;
+    await setup(() => { calls++; return new Promise(() => {}); });
+    const { default: O } = await import('./OpenAccount');
+    const { AccountProvider: P } = await import('../account/AccountContext');
+    const { StrictMode } = await import('react');
+    render(<StrictMode><MemoryRouter initialEntries={['/account/open?way=wallet']}><P><Routes><Route path="/account/open" element={<O />} /></Routes></P></MemoryRouter></StrictMode>);
+    await waitFor(() => expect(calls).toBe(1));
+    await new Promise((x) => setTimeout(x, 20));
+    expect(calls).toBe(1);
+  });
   it('does not render a non-wc link', async () => {
     const r = await setup((onUri: (u: string) => void) => { onUri('javascript:alert(1)'); return new Promise(() => {}); }); r();
     fireEvent.click(screen.getByRole('button', { name: 'Open with my wallet' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument());
+    await waitFor(() => expect(within(document.querySelector('.screen') as HTMLElement).getByRole('button', { name: 'Back' })).toBeInTheDocument());
     expect(document.querySelector('a[href^="javascript"]')).toBeNull();
   });
 });

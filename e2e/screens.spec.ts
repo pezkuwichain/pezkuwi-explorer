@@ -114,7 +114,7 @@ for (const scheme of ['dark', 'light'] as const) {
       expect(blocked).toEqual([]);
     });
 
-    test('home and account right to left (Sorani)', async ({ page }) => {
+    test('home, account and network right to left (Sorani)', async ({ page }) => {
       const blocked = await setUp(page, { account: true, lang: 'ckb' });
       await page.goto('/');
       await settled(page);
@@ -122,6 +122,11 @@ for (const scheme of ['dark', 'light'] as const) {
       await page.goto('/account');
       await settled(page);
       await shot(page, 'account-ckb', scheme);
+      await page.goto('/network');
+      await settled(page);
+      await shot(page, 'network-ckb', scheme);
+      // Figure and unit of each stat stay on one line.
+      for (const v of await page.locator('.stat-value').all()) expect((await v.boundingBox())!.height).toBeLessThan(40);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
       expect(blocked).toEqual([]);
     });

@@ -15,6 +15,7 @@ import { ChainIcon, TokenIcon } from '../ui/assetIcons';
 import { IconCheck, IconCopy } from '../ui/icons';
 import { dayKey, dayLabel, formatNumber, relativeTime } from '../lib/format';
 import { useNow } from '../hooks/useNow';
+import { shortAddress } from '../lib/address';
 import type { ChainKey } from '../config/network';
 import './Account.css';
 
@@ -47,7 +48,7 @@ function CopyAddress({ address }: { address: string }) {
     <>
       <button type="button" className={`copy-chip${note === 'copyFailed' ? ' copy-failed' : ''}`} onClick={() => void copy()}>
         <span className="sr-only">{t('account.copy')}: </span>
-        {note ? <span aria-hidden="true">{t(`account.${note}`)}</span> : <bdi dir="ltr" title={address}>{`${address.slice(0, 4)}…${address.slice(-5)}`}</bdi>}
+        {note ? <span aria-hidden="true">{t(`account.${note}`)}</span> : <bdi dir="ltr" title={address}>{shortAddress(address)}</bdi>}
         {note === 'copied' ? <IconCheck size={14} /> : <IconCopy size={14} />}
       </button>
       <span className="sr-only" role="status">{note ? t(`account.${note}`) + (count % 2 ? '\u200B' : '') : ''}</span>
@@ -145,11 +146,14 @@ export default function Account() {
   if (!address) return <Navigate to="/account/open" replace />;
   return (
     <>
-      <PageHeader title={t('home.account')} aside={<CopyAddress address={address} />} />
+      <PageHeader title={t('home.account')} />
       <div className="screen account">
         <Card className="total-card" title={t('account.total')} status={balances.status} onRetry={balances.retry}>
           {balances.data && <Totals holdings={balances.data} />}
+          <CopyAddress address={address} />
         </Card>
+        {/* The address stays copyable while the total is loading or failed. */}
+        {balances.status !== 'ok' && <CopyAddress address={address} />}
         {balances.status === 'ok' && balances.data && balances.data.length > 0 && <Tokens holdings={balances.data} />}
         <Card className="activity" title={t('account.activity')} status={hist.status} onRetry={() => setTick((n) => n + 1)}>
           {/* One or the other: the empty sentence, or a list with at least one row. */}

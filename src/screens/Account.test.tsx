@@ -71,13 +71,24 @@ describe('Account', () => {
     expect([...document.querySelectorAll('.chain-amount')].map((c) => c.textContent)).toEqual(['≈2.9999', '1', '1']);
   });
 
+  it('the header holds only back, title and language; the address chip sits in the total card', async () => {
+    renderAccount();
+    await screen.findByTitle('5 HEZ');
+    const chip = screen.getByRole('button', { name: /Copy address/ });
+    expect(chip.closest('.total-card')).not.toBeNull();
+    const header = screen.getByRole('banner');
+    expect(within(header).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Back']);
+    expect(within(header).getByRole('combobox', { name: 'Language' })).toBeInTheDocument();
+  });
+
   it('the address chip says Copied for two seconds after each copy, and says so when copying fails', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    renderAccount();
+    await screen.findByTitle('5 HEZ');
+    const chip = screen.getByRole('button', { name: /Copy address/ });
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     try {
-      const writeText = vi.fn().mockResolvedValue(undefined);
-      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-      renderAccount();
-      const chip = screen.getByRole('button', { name: /Copy address/ });
       await flush(async () => { fireEvent.click(chip); });
       expect(writeText).toHaveBeenCalledWith(ALICE);
       expect(chip).toHaveTextContent('Copied');

@@ -20,8 +20,10 @@
 .stat-icon { inline-size: 40px; block-size: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
 .stat-info { background: var(--info-soft); color: var(--info-icon); }
 .stat-zer { background: var(--zer-soft); color: var(--zer-icon); }
-.stat-value { margin: 0; font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--text-strong); line-height: 1.1; overflow-wrap: anywhere; }
-.stat-value .big-amount .num { font-size: 28px; letter-spacing: 0; }
+/* Figure and unit stay on one line at 390px, in every locale. */
+.stat-value { margin: 0; font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--text-strong); line-height: 1.1; white-space: nowrap; }
+.stat-value .big-amount { flex-wrap: nowrap; gap: 6px; }
+.stat-value .big-amount .num { font-size: 24px; letter-spacing: 0; }
 .stat-value .big-amount .sym { font-size: 15px; color: var(--muted); }
 
 .votes { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; }

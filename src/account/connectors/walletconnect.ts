@@ -111,6 +111,10 @@ export async function startPairing(signal?: AbortSignal): Promise<Pairing> {
         if (signal?.aborted) { cancelLate(); throw e instanceof DOMException ? e : aborted(); }
         throw new RejectedError();
       }
+      // A session kept for an earlier account must not outlive it: end it as this one takes its place. Quietly,
+      // without the disconnected event, because the account now opening is this new session's.
+      const earlier = session?.topic ?? storage.get(WC_SESSION_KEY);
+      if (earlier && earlier !== s.topic) void c.disconnect({ topic: earlier, reason: { code: 6000, message: 'replaced' } }).catch(() => {});
       session = s;
       storage.set(WC_SESSION_KEY, s.topic);
       return sessionAccounts(s);
@@ -142,11 +146,12 @@ export async function restoreWalletConnect(): Promise<{ state: 'none' } | { stat
 export async function disconnectWalletConnect(): Promise<void> {
   const topic = session?.topic ?? storage.get(WC_SESSION_KEY);
   if (!topic) return;
+  // Forgotten locally at once, so a pairing made while the relay answers is never the one cleared.
+  session = null;
+  storage.remove(WC_SESSION_KEY);
   try {
     const c = await init();
     await c.disconnect({ topic, reason: { code: 6000, message: 'User disconnected' } });
   } catch { /* already gone on the wallet side, or the relay is unreachable: the local sign-out stands */ }
-  session = null;
-  storage.remove(WC_SESSION_KEY);
   window.dispatchEvent(new Event(WC_DISCONNECTED));
 }

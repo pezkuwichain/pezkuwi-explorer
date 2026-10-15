@@ -13,7 +13,7 @@ const balances = vi.hoisted(() => ({ load: (): Promise<unknown> => Promise.resol
 vi.mock('../data/network', () => ({ loadLiveness: () => Promise.resolve(true), loadNetwork: () => full() }));
 const wc = vi.hoisted(() => ({ disconnect: vi.fn(() => Promise.resolve()) }));
 vi.mock('../account/connectors/walletconnect', () => ({
-  WC_DISCONNECTED: 'wc-off', disconnectWalletConnect: wc.disconnect, restoreWalletConnect: () => Promise.resolve({ state: 'live', accounts: [] }),
+  WC_DISCONNECTED: 'wc-off', WC_SESSION_KEY: 'wc-session', disconnectWalletConnect: wc.disconnect, restoreWalletConnect: () => Promise.resolve({ state: 'live', accounts: [] }),
 }));
 vi.mock('../data/balances', () => ({ loadBalances: () => { balances.calls++; return balances.load(); } }));
 

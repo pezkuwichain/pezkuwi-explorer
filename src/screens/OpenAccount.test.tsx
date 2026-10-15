@@ -70,7 +70,7 @@ describe('OpenAccount connectors (mocked)', () => {
       return { NoWalletError, RejectedError, extensionAccounts: opts.ext ?? (() => Promise.reject(new NoWalletError())) };
     });
     vi.doMock('../account/connectors/walletconnect', () => ({
-      walletConnectAccounts: wc, WC_DISCONNECTED: 'wc-off',
+      walletConnectAccounts: wc, WC_DISCONNECTED: 'wc-off', WC_SESSION_KEY: 'wc-session',
       disconnectWalletConnect: () => Promise.resolve(), restoreWalletConnect: () => Promise.resolve({ state: 'live', accounts: [] }),
     }));
     vi.doMock('../account/connectors/qr', () => ({ scanQr: opts.qr ?? (() => new Promise(() => {})) }));

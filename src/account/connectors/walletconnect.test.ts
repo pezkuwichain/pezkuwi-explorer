@@ -142,4 +142,27 @@ describe('walletconnect session', () => {
     const { NoWalletError } = await import('./extension');
     await expect(m.startPairing()).rejects.toBeInstanceOf(NoWalletError);
   });
+  it('a new pairing ends the session kept for an earlier account, quietly', async () => {
+    localStorage.setItem(KEY, 'old');
+    const m = await load();
+    const heard = vi.fn();
+    window.addEventListener(m.WC_DISCONNECTED, heard);
+    const p = await m.startPairing();
+    wc.state.settle!.ok(session('t2'));
+    await p.approval();
+    await vi.waitFor(() => expect(wc.state.disconnected).toEqual(['old']));
+    window.removeEventListener(m.WC_DISCONNECTED, heard);
+    expect(heard).not.toHaveBeenCalled();
+    expect(localStorage.getItem(KEY)).toBe('t2');
+  });
+  it('disconnect forgets the session at once, so a pairing kept meanwhile survives it', async () => {
+    localStorage.setItem(KEY, 'old');
+    const m = await load();
+    const ending = m.disconnectWalletConnect();
+    expect(localStorage.getItem(KEY)).toBeNull();
+    localStorage.setItem(KEY, 'newer');
+    await ending;
+    expect(wc.state.disconnected).toEqual(['old']);
+    expect(localStorage.getItem(KEY)).toBe('newer');
+  });
 });

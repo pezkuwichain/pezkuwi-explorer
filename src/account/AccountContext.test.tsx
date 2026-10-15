@@ -4,6 +4,7 @@ import { AccountProvider, useAccount } from './AccountContext';
 import type { ReactNode } from 'react';
 
 const ALICE = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
+const BOB = '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty';
 const wrapper = ({ children }: { children: ReactNode }) => <AccountProvider>{children}</AccountProvider>;
 
 describe('account context', () => {
@@ -27,7 +28,7 @@ describe('sign-out', () => {
   const withWc = async (restore: () => Promise<unknown> = () => Promise.resolve({ state: 'live', accounts: [] })) => {
     vi.resetModules();
     const disconnect = vi.fn(() => Promise.resolve());
-    vi.doMock('./connectors/walletconnect', () => ({ WC_DISCONNECTED: 'wc-off', disconnectWalletConnect: disconnect, restoreWalletConnect: restore }));
+    vi.doMock('./connectors/walletconnect', () => ({ WC_DISCONNECTED: 'wc-off', WC_SESSION_KEY: 'wc-session', disconnectWalletConnect: disconnect, restoreWalletConnect: restore }));
     const m = await import('./AccountContext');
     const w = ({ children }: { children: ReactNode }) => <m.AccountProvider>{children}</m.AccountProvider>;
     return { disconnect, hook: () => renderHook(() => m.useAccount(), { wrapper: w }) };
@@ -78,5 +79,29 @@ describe('sign-out', () => {
     const { result } = hook();
     await new Promise((r) => setTimeout(r, 10));
     expect(result.current.address).toBe(ALICE);
+  });
+
+  it('opening an account any other way (paste, scan, extension) ends the session kept for the earlier account', async () => {
+    for (const how of ['address', 'extension'] as const) {
+      const { hook, disconnect } = await withWc();
+      const { result, unmount } = hook();
+      act(() => { result.current.open(ALICE, 'walletconnect'); });
+      localStorage.setItem('pezkuwi-explorer:wc-session', 'old');
+      act(() => { result.current.open(BOB, how); });
+      expect(disconnect).toHaveBeenCalledTimes(1);
+      // The ended session's disconnected event does not sign the new account out.
+      act(() => { window.dispatchEvent(new Event('wc-off')); });
+      expect(result.current.address).toBe(BOB);
+      expect(result.current.source).toBe(how);
+      unmount();
+      localStorage.clear();
+    }
+  });
+  it('a new WalletConnect account does not end its own session', async () => {
+    const { hook, disconnect } = await withWc();
+    const { result } = hook();
+    localStorage.setItem('pezkuwi-explorer:wc-session', 'new');
+    act(() => { result.current.open(ALICE, 'walletconnect'); });
+    expect(disconnect).not.toHaveBeenCalled();
   });
 });

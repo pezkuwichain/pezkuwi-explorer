@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { normaliseAddress } from '../lib/address';
 import { storage } from '../lib/storage';
-import { WC_DISCONNECTED, disconnectWalletConnect, restoreWalletConnect } from './connectors/walletconnect';
+import { WC_DISCONNECTED, WC_SESSION_KEY, disconnectWalletConnect, restoreWalletConnect } from './connectors/walletconnect';
 
 // How the account was opened. A WalletConnect account has a live session with the wallet that sign-out ends.
 export type Source = 'walletconnect' | 'extension' | 'address';
@@ -18,6 +18,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const open = useCallback((input: string, how: Source = 'address') => {
     const a = normaliseAddress(input);
     if (!a) return false;
+    // A WalletConnect session kept for an earlier account must not outlive it. A new WalletConnect pairing
+    // has already replaced it (the connector ends the earlier one on approval); any other way ends it here,
+    // in the background.
+    if (how !== 'walletconnect' && storage.get(WC_SESSION_KEY)) void disconnectWalletConnect().catch(() => {});
     storage.set('account', a);
     storage.set('account-source', how);
     setAddress(a);
@@ -40,6 +44,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   // A WalletConnect account signs out when the wallet ends the session (session_delete or expiry).
   useEffect(() => {
     if (source !== 'walletconnect') return;
+    // Heard only while this account is open: once another opens, this listener is gone, so ending the
+    // earlier session (its event arrives after the relay answers) never signs the new account out.
     const onEnd = () => clear();
     window.addEventListener(WC_DISCONNECTED, onEnd);
     // After a reload the client is not running; restore it so the wallet ending the session is heard, and

@@ -43,6 +43,7 @@ export function formatAmount(value: bigint, decimals: number, symbol: string, lo
 }
 
 export function relativeTime(unixSeconds: number, now: number, locale: string, t?: Translate): string {
+  if (!Number.isFinite(unixSeconds) || !Number.isFinite(now)) return '';
   const d = unixSeconds - now;
   const abs = Math.abs(d);
   if (locale === 'ckb' && t && d <= 0) {

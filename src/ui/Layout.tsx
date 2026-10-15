@@ -4,6 +4,7 @@ import { shortAddress } from '../lib/address';
 import { formatAmount } from '../lib/format';
 import LanguagePicker from './LanguagePicker';
 import { IconBack } from './icons';
+import { ErrorBoundary } from './ErrorBoundary';
 
 export const Addr = ({ value }: { value: string }) => <bdi dir="ltr" title={value}>{shortAddress(value)}</bdi>;
 
@@ -17,7 +18,8 @@ export default function Layout() {
   const nav = useNavigate();
   // Deep links open with no in-app history; going back must still land somewhere useful.
   const goBack = () => (((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0 ? nav(-1) : nav('/'));
-  const home = useLocation().pathname === '/';
+  const { pathname } = useLocation();
+  const home = pathname === '/';
   return (
     <div className="page">
       <header className="top">
@@ -25,7 +27,7 @@ export default function Layout() {
           <button className="back" onClick={goBack}><IconBack /> {t('app.back')}</button>}
         <LanguagePicker />
       </header>
-      <main><Outlet /></main>
+      <main><ErrorBoundary key={pathname}><Outlet /></ErrorBoundary></main>
       <footer><a href="https://apps.pezkuwichain.io" rel="noopener">{t('app.experts')}</a></footer>
     </div>
   );

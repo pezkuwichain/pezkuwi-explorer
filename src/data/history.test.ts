@@ -24,6 +24,18 @@ describe('history', () => {
     expect(a[0]).toMatchObject({ direction: 'sent', counterparty: BOB, symbol: 'HEZ', amount: 5_000_000_000_000n, fee: 1000n, ok: true });
     expect(a[1]).toMatchObject({ direction: 'received', counterparty: BOB, symbol: 'wUSDT', decimals: 6, amount: 1_500_000n });
   });
+  it('skips nodes with malformed remote fields and keeps the rest', async () => {
+    (NETWORK.history as { assetHub: string | null }).assetHub = 'https://example.invalid/graphql';
+    const good = node({ id: 'good', transfer: { from: ME, to: BOB, amount: '7', fee: '1', success: true } });
+    const f = reply([
+      node({ id: 'nan', timestamp: 'abc', transfer: { from: ME, to: BOB, amount: '1', fee: '1', success: true } }),
+      node({ id: 'exp', transfer: { from: ME, to: BOB, amount: '1e5', fee: '1', success: true } }),
+      node({ id: 'nullfrom', transfer: { from: null, to: BOB, amount: '1', fee: '1', success: true } }),
+      good,
+    ]);
+    const a = await loadActivity(ME, f);
+    expect(a.map((x) => x.id)).toEqual(['good']);
+  });
   it('reports a failed payment as failed, not as missing', async () => {
     const f = reply([node({ transfer: { from: ME, to: BOB, amount: '1', fee: '1', success: false } })]);
     expect((await findPayment('0x' + 'ab'.repeat(32), f)).status).toBe('failed');

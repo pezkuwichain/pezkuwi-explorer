@@ -18,6 +18,30 @@ type Node = {
 // transfer/assetTransfer/extrinsic are JSON scalars on this schema (no sub-selection).
 const FIELDS = 'id extrinsicHash timestamp address transfer assetTransfer extrinsic';
 
+// Remote input is untrusted: a node with any malformed field is dropped here so it can never throw (or yield NaN) downstream.
+const isStr = (v: unknown): v is string => typeof v === 'string';
+const isUint = (v: unknown) => isStr(v) && /^\d+$/.test(v);
+function validTransfer(t: unknown, asset: boolean): boolean {
+  if (typeof t !== 'object' || t === null) return false;
+  const o = t as Record<string, unknown>;
+  return isStr(o.from) && isStr(o.to) && isUint(o.amount) && isUint(o.fee) && typeof o.success === 'boolean' &&
+    (!asset || isStr(o.assetId) || typeof o.assetId === 'number');
+}
+function validNode(n: unknown): n is Node {
+  if (typeof n !== 'object' || n === null) return false;
+  const o = n as Record<string, unknown>;
+  const ts = typeof o.timestamp === 'number' ? o.timestamp : isUint(o.timestamp) ? Number(o.timestamp) : NaN;
+  if (!isStr(o.id) || !isStr(o.address) || !Number.isSafeInteger(ts) || ts < 0) return false;
+  if (o.extrinsicHash !== null && o.extrinsicHash !== undefined && !isStr(o.extrinsicHash)) return false;
+  if (o.transfer != null && !validTransfer(o.transfer, false)) return false;
+  if (o.assetTransfer != null && !validTransfer(o.assetTransfer, true)) return false;
+  if (o.extrinsic != null) {
+    const e = o.extrinsic as Record<string, unknown>;
+    if (typeof e !== 'object' || !isUint(e.fee) || typeof e.success !== 'boolean') return false;
+  }
+  return true;
+}
+
 async function query(filter: string, fetcher: typeof fetch): Promise<Node[]> {
   const url = NETWORK.history.assetHub;
   if (!url) throw new NotIndexedError();
@@ -26,7 +50,7 @@ async function query(filter: string, fetcher: typeof fetch): Promise<Node[]> {
   if (!res.ok) throw new Error(`history ${res.status}`);
   const nodes = (await res.json())?.data?.historyElements?.nodes;
   if (!Array.isArray(nodes)) throw new Error('history: malformed indexer response');
-  return nodes as Node[];
+  return nodes.filter(validNode);
 }
 
 function toActivity(n: Node, me: string): Activity {

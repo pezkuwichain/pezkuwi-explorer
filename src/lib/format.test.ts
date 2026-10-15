@@ -57,6 +57,10 @@ describe('localised digits', () => {
 });
 
 describe('relativeTime with a translator', () => {
+  it('returns an empty string for non-finite times instead of throwing', () => {
+    expect(relativeTime(NaN, 1_800_000_000, 'en')).toBe('');
+    expect(relativeTime(1_800_000_000, Infinity, 'en')).toBe('');
+  });
   it('uses the translator for ckb past times', () => {
     const now = 1_800_000_000;
     const t = (key: string, opts: { count: number }) => `${key}:${opts.count}`;

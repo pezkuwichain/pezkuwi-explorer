@@ -52,10 +52,21 @@ function FoundAnswer({ p, now }: { p: Found; now: number }) {
   switch (p.status) {
     case 'notAPayment': return <p>{t('payment.notAPayment')}</p>;
     case 'failedNotAPayment': return <p>{t('payment.failedNotAPayment')}</p>;
-    // The list may be missing transfers: no verdict, only what was found and that there is more.
-    case 'incomplete': return <><p>{t('payment.more')}</p><p>{t('payment.notYou')}</p>{list('code', p.transfers, true)}</>;
-    // Several transfers: who got what is in the list; one global "Arrived" would claim it for everyone.
-    case 'several': return <><h2>{t('payment.several')}</h2><p>{t('payment.notYou')}</p>{list('code', p.transfers, true)}</>;
+    // The list may be missing transfers: no verdict, and no claim about an address that is not in it.
+    case 'incomplete': return <><p>{t('payment.more')}</p>{p.transfers.length > 0 && list('code', p.transfers, true)}</>;
+    // Several transfers, at least one went through: who got what is in the list, and no "went through"
+    // heading sits above a failed row. (None went through: the "did not arrive" verdict below is true for all.)
+    case 'several': {
+      const ok = p.transfers.filter((a) => a.ok), failed = p.transfers.filter((a) => !a.ok);
+      return (
+        <>
+          <h2>{t('payment.several')}</h2>
+          <p>{t('payment.notYou')}</p>
+          {list('code', ok, true)}
+          {failed.length > 0 && <><p className="group">{t('payment.failedGroup')}</p>{list('code', failed, true)}</>}
+        </>
+      );
+    }
   }
   const only = p.transfers.length === 1 ? p.transfers[0] : null;
   return (

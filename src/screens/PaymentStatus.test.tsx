@@ -83,32 +83,62 @@ describe('PaymentStatus', () => {
     expect(row).toHaveTextContent('❌');
     expect(row.querySelector(`bdi[title="${THEM}"]`)).not.toBeNull();
   });
+  // No "went through" heading may sit above a failed row.
+  const noFailedUnderWentThrough = () => {
+    for (const h of screen.queryAllByRole('heading', { name: 'These payments went through' })) {
+      const list = h.parentElement!.querySelector('h2 + p + ul, h2 + ul');
+      expect(list).not.toBeNull();
+      for (const li of list!.querySelectorAll('li')) {
+        expect(li).not.toHaveTextContent('❌');
+        expect(li).not.toHaveTextContent('Failed');
+      }
+    }
+  };
   it('a code covering several transfers lists every one, with no single "Arrived"', async () => {
-    find.mockResolvedValue(code('several', [tr({ id: '9-1-from' }), tr({ id: '9-2-from', amount: 2_000_000_000_000n, counterparty: ME }),
-      tr({ id: '9-3-from', ok: false })])); await ask();
+    find.mockResolvedValue(code('several', [tr({ id: '9-1-from' }), tr({ id: '9-2-from', amount: 2_000_000_000_000n, counterparty: ME })])); await ask();
     expect(await screen.findByRole('heading', { name: 'These payments went through' })).toBeInTheDocument();
     expect(screen.queryByText('Arrived')).toBeNull();
     expect(document.querySelector('.big-mark')).toBeNull();
     expect(screen.getByText('If your address is not in this list, this code did not pay you.')).toBeInTheDocument();
     const rows = screen.getAllByRole('listitem');
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent('1 HEZ to');
     expect(rows[0]).toHaveTextContent('✅');
     expect(rows[1]).toHaveTextContent('2 HEZ to');
     expect(rows[1].querySelector(`bdi[title="${ME}"]`)).not.toBeNull();
-    // A failed row reads as failed, not as a payment to someone.
-    expect(rows[2]).toHaveTextContent('Failed');
-    expect(rows[2]).not.toHaveTextContent('1 HEZ to');
-    expect(rows[2]).toHaveTextContent('❌');
-    expect(rows[2].querySelector(`bdi[title="${THEM}"]`)).not.toBeNull();
+    expect(screen.queryByText('These did not go through')).toBeNull();
+    noFailedUnderWentThrough();
   });
-  it('a code whose page was full shows the list, says there are more, and gives no verdict', async () => {
-    find.mockResolvedValue(code('incomplete', [tr({ id: '9-1-from' }), tr({ id: '9-2-from' })])); await ask();
-    expect(await screen.findByText(/more transfers than shown/)).toBeInTheDocument();
+  it('a mixed batch shows the ones that went through and, separately, the ones that did not', async () => {
+    find.mockResolvedValue(code('several', [tr({ id: '9-1-from' }), tr({ id: '9-2-from', ok: false }), tr({ id: '9-3-from', amount: 3_000_000_000_000n })])); await ask();
+    const ok = await screen.findByRole('heading', { name: 'These payments went through' });
+    const bad = screen.getByText('These did not go through');
+    const okRows = [...ok.parentElement!.querySelectorAll('ul')[0].querySelectorAll('li')];
+    expect(okRows.map((r) => r.textContent)).toEqual([expect.stringContaining('1 HEZ to'), expect.stringContaining('3 HEZ to')]);
+    const badList = bad.nextElementSibling!;
+    expect(badList.tagName).toBe('UL');
+    const badRows = [...badList.querySelectorAll('li')];
+    expect(badRows).toHaveLength(1);
+    expect(badRows[0]).toHaveTextContent('Failed');
+    expect(badRows[0]).toHaveTextContent('❌');
+    expect(badRows[0]).not.toHaveTextContent('1 HEZ to');
+    expect(badRows[0].querySelector(`bdi[title="${THEM}"]`)).not.toBeNull();
+    noFailedUnderWentThrough();
+  });
+  it('a code whose page was full shows the list, says it cannot tell, and gives no verdict', async () => {
+    find.mockResolvedValue(code('incomplete', [tr({ id: '9-1-from' }), tr({ id: '9-2-from', ok: false })])); await ask();
+    expect(await screen.findByText('This code may have more transfers than shown here. If your address is not in this list, we cannot tell from here whether this code paid you.')).toBeInTheDocument();
+    expect(screen.queryByText(/did not pay you/)).toBeNull();
     expect(within(screen.getByRole('status')).queryByRole('heading')).toBeNull();
     expect(document.querySelector('.big-mark')).toBeNull();
-    expect(screen.getByText('If your address is not in this list, this code did not pay you.')).toBeInTheDocument();
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+  it('a full page with no transfer rows shows only that sentence, no empty list', async () => {
+    find.mockResolvedValue(code('incomplete', [])); await ask();
+    expect(await screen.findByText(/we cannot tell from here whether this code paid you/)).toBeInTheDocument();
+    expect(screen.queryByText(/did not pay you/)).toBeNull();
+    expect(within(screen.getByRole('status')).queryByRole('list')).toBeNull();
+    expect(document.querySelector('.answer ul')).toBeNull();
   });
   it('an address lookup lists recent transfers relative to that address, with no verdict', async () => {
     find.mockResolvedValue({ kind: 'address', status: 'recent', address: ME, transfers: [

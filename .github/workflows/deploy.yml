@@ -31,9 +31,14 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
-      - run: npm run build
+      - name: build
         env:
           VITE_WALLETCONNECT_PROJECT_ID: ${{ secrets.VITE_WALLETCONNECT_PROJECT_ID }}
+        # Without the project id the wallet button cannot pair; never ship that build.
+        run: |
+          set -euo pipefail
+          : "${VITE_WALLETCONNECT_PROJECT_ID:?VITE_WALLETCONNECT_PROJECT_ID missing}"
+          npm run build
       - name: bundle size
         run: test "$(du -sk dist | cut -f1)" -lt 4096
       - name: upload

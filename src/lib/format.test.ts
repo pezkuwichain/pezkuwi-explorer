@@ -1,6 +1,6 @@
 // @vitest-environment node
-import { describe, expect, it } from 'vitest';
-import { formatAmount, relativeTime } from './format';
+import { describe, expect, it, vi } from 'vitest';
+import { dayKey, dayLabel, formatAmount, formatCompact, formatNumber, formatPercent, relativeTime } from './format';
 
 describe('formatAmount', () => {
   it('formats whole and fractional HEZ', () => {
@@ -67,5 +67,72 @@ describe('relativeTime with a translator', () => {
     expect(relativeTime(now - 120, now, 'ckb', t)).toBe('time.minutesAgo:2');
     expect(relativeTime(now - 7200, now, 'ckb', t)).toBe('time.hoursAgo:2');
     expect(relativeTime(now - 2 * 86400, now, 'ckb', t)).toBe('time.daysAgo:2');
+  });
+  it('uses the translator when the runtime has no relative-time data for the language (Chrome and Kurmanji)', () => {
+    const now = 1_800_000_000;
+    const t = (key: string, opts: { count: number }) => `${key}:${opts.count}`;
+    const spy = vi.spyOn(Intl.RelativeTimeFormat, 'supportedLocalesOf').mockImplementation((l) => ([] as string[]).concat(l as string).filter((x) => x !== 'ku'));
+    try {
+      expect(relativeTime(now - 7200, now, 'kmr', t)).toBe('time.hoursAgo:2');
+      expect(relativeTime(now - 7200, now, 'en', t)).toBe('2 hours ago');
+    } finally { spy.mockRestore(); }
+  });
+});
+
+describe('formatCompact', () => {
+  const HEZ = (whole: bigint, frac = 0n) => whole * 10n ** 12n + frac;
+  it('shortens large amounts to one fractional digit with a scale word', () => {
+    expect(formatCompact(HEZ(40_258_000n), 12, 'en')).toBe('40.2M');
+    expect(formatCompact(HEZ(1_234n), 12, 'en')).toBe('1.2K');
+    expect(formatCompact(HEZ(3_500_000_000_000n), 12, 'en')).toBe('3.5T');
+  });
+  it('truncates instead of rounding up, so a figure never reads higher than it is', () => {
+    expect(formatCompact(HEZ(1_999_999n), 12, 'en')).toBe('1.9M');
+    expect(formatCompact(HEZ(999n, 999_999_999_999n), 12, 'en')).toBe('999.9999');
+  });
+  it('below a thousand it is the exact amount, as formatAmount shows it', () => {
+    expect(formatCompact(HEZ(7n), 12, 'en')).toBe('7');
+    expect(formatCompact(1n, 12, 'en')).toBe('0.000000000001');
+    expect(formatCompact(1_500_000n, 6, 'en')).toBe('1.5');
+  });
+  it('uses the locale digits', () => {
+    const out = formatCompact(HEZ(40_258_000n), 12, 'fa');
+    expect(out).not.toMatch(/[0-9]/);
+    expect(out).toContain(new Intl.NumberFormat('fa').format(40));
+  });
+  it('handles huge values without scientific notation', () => {
+    expect(formatCompact(10n ** 30n, 12, 'en')).not.toMatch(/e/i);
+  });
+});
+
+describe('formatNumber', () => {
+  it('is the number part of formatAmount', () => {
+    expect(formatNumber(1_250_000_000_000n, 12, 'en')).toBe('1.25');
+    expect(formatAmount(1_250_000_000_000n, 12, 'HEZ', 'en')).toBe(`${formatNumber(1_250_000_000_000n, 12, 'en')} HEZ`);
+  });
+});
+
+describe('formatPercent', () => {
+  it('formats a share as a whole percentage in the locale', () => {
+    expect(formatPercent(68, 'en')).toBe('68%');
+    expect(formatPercent(68, 'fa')).not.toMatch(/[0-9]/);
+  });
+});
+
+describe('day headers', () => {
+  const t = (k: 'day.today' | 'day.yesterday') => k;
+  // Local noon, so the test holds in any time zone.
+  const noon = new Date(2027, 2, 21, 12, 0, 0).getTime() / 1000;
+  it('groups by local calendar day', () => {
+    expect(dayKey(noon)).toBe(dayKey(noon + 3600));
+    expect(dayKey(noon)).not.toBe(dayKey(noon - 86400));
+  });
+  it('says today, yesterday, then the date', () => {
+    expect(dayLabel(noon - 3600, noon, 'en', t)).toBe('day.today');
+    expect(dayLabel(noon - 86400, noon, 'en', t)).toBe('day.yesterday');
+    expect(dayLabel(noon - 3 * 86400, noon, 'en', t)).toBe('March 18');
+  });
+  it('names the year when it is not this year', () => {
+    expect(dayLabel(noon - 400 * 86400, noon, 'en', t)).toMatch(/2026/);
   });
 });

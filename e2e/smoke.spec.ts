@@ -30,7 +30,9 @@ test('home shows the four tiles, the way in, the tabs and the experts link, and 
   for (const name of ['Home', 'Account', 'Citizenship', 'Network']) {
     await expect(page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name })).toBeVisible();
   }
-  await expect(page.getByRole('link', { name: /For experts/ })).toBeVisible();
+  // At the default 1280 px viewport the desktop shell adds its own experts link in the header.
+  await expect(page.locator('footer.experts').getByRole('link', { name: /For experts/ })).toBeVisible();
+  await expect(page.locator('.desk-experts')).toBeVisible();
   const light = page.getByRole('status');
   await expect(light).not.toHaveText(/Checking/, { timeout: 30_000 });
   await expect(light).toHaveText(/The network is working/);

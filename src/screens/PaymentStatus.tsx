@@ -12,50 +12,59 @@ type Simple = 'onTheWay' | 'notFound' | 'preparing' | 'error' | 'invalid' | 'noC
 type Found = Exclude<PaymentLookup, { status: 'notFound' }>;
 type Answer = { r: Simple } | { r: 'found'; p: Found };
 
-const MARK = { arrived: '✅', failed: '❌', partial: '⚠️' } as const;
-const HEADING = { arrived: 'payment.arrived', failed: 'payment.notArrived', partial: 'payment.partial' } as const;
-
 // One transfer: what moved, between whom, when, and whether it went through.
+// A failed transfer moved nothing, so it never reads as "sent X to Y": amount, Failed, the counterparty, time, always ❌.
 function TransferRow({ a, view, now, mark }: { a: Activity; view: 'code' | 'address'; now: number; mark: boolean }) {
   const { t, i18n } = useTranslation();
   const amount = <ActivityAmount a={a} />;
-  // A code is always read from the sender's side ("X to Y"); an address row is relative to the queried address.
-  const key = !a.counterparty || a.direction === 'other' ? null
-    : view === 'code' ? 'payment.to' : a.direction === 'sent' ? 'payment.sent' : 'payment.received';
+  const known = !!a.counterparty && a.direction !== 'other';
+  let body;
+  if (!a.ok) {
+    body = <>{amount} · {t('account.failed')}{known && <> · {t(a.direction === 'received' ? 'account.from' : 'account.to')}: <Addr value={a.counterparty!} /></>}</>;
+  } else if (known) {
+    // A code is always read from the sender's side ("X to Y"); an address row is relative to the queried address.
+    const key = view === 'code' ? 'payment.to' : a.direction === 'sent' ? 'payment.sent' : 'payment.received';
+    body = <Trans i18nKey={key} components={{ amount, who: <Addr value={a.counterparty!} /> }} />;
+  } else body = amount;
   return (
     <li>
-      {key ? <Trans i18nKey={key} components={{ amount, who: <Addr value={a.counterparty!} /> }} /> : amount}
+      {body}
       {' · '}{relativeTime(a.when, now, i18n.language, t)}
-      {mark && <> <span role="img" aria-label={t(a.ok ? 'account.ok' : 'account.failed')}>{a.ok ? '✅' : '❌'}</span></>}
+      {(mark || !a.ok) && <> <span role="img" aria-label={t(a.ok ? 'account.ok' : 'account.failed')}>{a.ok ? '✅' : '❌'}</span></>}
     </li>
   );
 }
 
 function FoundAnswer({ p, now }: { p: Found; now: number }) {
   const { t } = useTranslation();
+  const list = (view: 'code' | 'address', rows: Activity[], mark: boolean) => (
+    <ul className="payments">{rows.map((a) => <TransferRow key={a.id} a={a} view={view} now={now} mark={mark} />)}</ul>
+  );
   if (p.kind === 'address') {
     // No verdict: the newest transfer touching an address need not be the payment the person means.
     return (
       <>
         <p><Trans i18nKey="payment.recent" components={{ who: <Addr value={p.address} /> }} /></p>
-        <ul className="payments">
-          {p.transfers.slice(0, RECENT_LIMIT).map((a) => <TransferRow key={a.id} a={a} view="address" now={now} mark />)}
-        </ul>
+        {list('address', p.transfers.slice(0, RECENT_LIMIT), true)}
       </>
     );
   }
-  if (p.status === 'notAPayment') return <p>{t('payment.notAPayment')}</p>;
+  switch (p.status) {
+    case 'notAPayment': return <p>{t('payment.notAPayment')}</p>;
+    case 'failedNotAPayment': return <p>{t('payment.failedNotAPayment')}</p>;
+    // The list may be missing transfers: no verdict, only what was found and that there is more.
+    case 'incomplete': return <><p>{t('payment.more')}</p><p>{t('payment.notYou')}</p>{list('code', p.transfers, true)}</>;
+    // Several transfers: who got what is in the list; one global "Arrived" would claim it for everyone.
+    case 'several': return <><h2>{t('payment.several')}</h2><p>{t('payment.notYou')}</p>{list('code', p.transfers, true)}</>;
+  }
   const only = p.transfers.length === 1 ? p.transfers[0] : null;
   return (
     <>
-      <p className="big-mark">{MARK[p.status]}</p>
-      <h2>{t(HEADING[p.status])}</h2>
-      {p.status === 'arrived' && only?.counterparty && <p><Trans i18nKey="payment.arrivedText" components={{ who: <Addr value={only.counterparty} /> }} /></p>}
+      <p className="big-mark">{p.status === 'arrived' ? '✅' : '❌'}</p>
+      <h2>{t(p.status === 'arrived' ? 'payment.arrived' : 'payment.notArrived')}</h2>
+      {p.status === 'arrived' && only?.counterparty && only.direction !== 'other' && <p><Trans i18nKey="payment.arrivedText" components={{ who: <Addr value={only.counterparty} /> }} /></p>}
       {p.status === 'failed' && <p>{t('payment.notArrivedText')}</p>}
-      {p.status === 'partial' && <p>{t('payment.partialText')}</p>}
-      {p.transfers.length > 0 && <ul className="payments">
-        {p.transfers.map((a) => <TransferRow key={a.id} a={a} view="code" now={now} mark={p.transfers.length > 1} />)}
-      </ul>}
+      {p.transfers.length > 0 && list('code', p.transfers, p.transfers.length > 1)}
     </>
   );
 }

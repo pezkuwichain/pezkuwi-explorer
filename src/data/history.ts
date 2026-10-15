@@ -44,15 +44,16 @@ function validNode(n: unknown): n is Node {
   return true;
 }
 
-async function query(filter: string, fetcher: typeof fetch): Promise<Node[]> {
+// `returned` is how many nodes the indexer sent, before malformed ones were dropped: equal to `first` means the page was full.
+async function query(filter: string, fetcher: typeof fetch, first = 25): Promise<{ nodes: Node[]; returned: number }> {
   const url = NETWORK.history.assetHub;
   if (!url) throw new NotIndexedError();
-  const body = JSON.stringify({ query: `{historyElements(first:25,orderBy:TIMESTAMP_DESC,filter:${filter}){nodes{${FIELDS}}}}` });
+  const body = JSON.stringify({ query: `{historyElements(first:${first},orderBy:TIMESTAMP_DESC,filter:${filter}){nodes{${FIELDS}}}}` });
   const res = await withTimeout(fetcher(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body }), REQUEST_TIMEOUT_MS);
   if (!res.ok) throw new Error(`history ${res.status}`);
   const nodes = (await res.json())?.data?.historyElements?.nodes;
   if (!Array.isArray(nodes)) throw new Error('history: malformed indexer response');
-  return nodes.filter(validNode);
+  return { nodes: nodes.filter(validNode), returned: nodes.length };
 }
 
 // The indexer's extrinsicHash is shown to people as the transaction code: only 0x + 64 hex digits is one.
@@ -83,7 +84,7 @@ function toActivity(n: Node, me: string): Activity {
 }
 
 export async function loadActivity(address: string, fetcher: typeof fetch = fetch): Promise<Activity[]> {
-  return (await query(`{address:{equalTo:${JSON.stringify(address)}}}`, fetcher)).map((n) => toActivity(n, address));
+  return (await query(`{address:{equalTo:${JSON.stringify(address)}}}`, fetcher)).nodes.map((n) => toActivity(n, address));
 }
 
 // Event index inside the block, parsed from ids like `<blk>-<idx>-from` / `-to`; null when it is not a plain number.
@@ -114,10 +115,17 @@ function firstOfEachEvent(sorted: Node[]): Node[] {
 // How many recent transfers an address lookup shows.
 export const RECENT_LIMIT = 5;
 
+// How many indexer nodes a code lookup reads. A full page means there may be more: the answer is then incomplete.
+export const CODE_PAGE = 200;
+
 export type PaymentLookup =
   | { status: 'notFound' }
   // A transaction code: one entry per transfer it made (a batch makes several), each from the sender's side.
-  | { kind: 'code'; status: 'arrived' | 'failed' | 'partial' | 'notAPayment'; transfers: Activity[] }
+  //   arrived / failed: exactly one transfer, or (failed) several and none went through: a verdict is true.
+  //   several: more than one transfer and at least one went through: no single verdict, the list says who got what.
+  //   incomplete: the page was full, so the list may be missing transfers: no verdict at all.
+  //   notAPayment / failedNotAPayment: the code made no transfer (and, for the latter, did not go through).
+  | { kind: 'code'; status: 'arrived' | 'failed' | 'several' | 'incomplete' | 'notAPayment' | 'failedNotAPayment'; transfers: Activity[] }
   // An address: its most recent transfers, each relative to that address. No single verdict: the newest
   // transfer touching an address need not be the payment the person is asking about.
   | { kind: 'address'; status: 'recent'; address: string; transfers: Activity[] };
@@ -125,24 +133,27 @@ export type PaymentLookup =
 export async function findPayment(input: string, fetcher: typeof fetch = fetch): Promise<PaymentLookup> {
   const text = input.trim();
   if (CODE_RE.test(text)) {
-    const nodes = await query(`{extrinsicHash:{equalTo:${JSON.stringify(text.toLowerCase())}}}`, fetcher);
-    if (nodes.length === 0) return { status: 'notFound' };
+    const { nodes, returned } = await query(`{extrinsicHash:{equalTo:${JSON.stringify(text.toLowerCase())}}}`, fetcher, CODE_PAGE);
     const transfers = firstOfEachEvent(nodes.filter((n) => n.transfer || n.assetTransfer).sort(byEvent))
       // Always the sender's perspective, so the answer does not depend on which node of a pair came first.
       .map((n) => toActivity(n, (n.transfer ?? n.assetTransfer)!.from));
+    // A full page (counted before malformed nodes were dropped): the indexer may hold more than these, so no verdict.
+    if (returned >= CODE_PAGE) return { kind: 'code', status: 'incomplete', transfers };
+    if (nodes.length === 0) return { status: 'notFound' };
     if (transfers.length === 0) {
       const ex = nodes.find((n) => n.extrinsic) ?? nodes[0];
       const ok = ex.extrinsic?.success ?? true;
-      return { kind: 'code', status: ok ? 'notAPayment' : 'failed', transfers: [] };
+      return { kind: 'code', status: ok ? 'notAPayment' : 'failedNotAPayment', transfers: [] };
     }
-    const okCount = transfers.filter((a) => a.ok).length;
-    const status = okCount === transfers.length ? 'arrived' : okCount === 0 ? 'failed' : 'partial';
+    const anyOk = transfers.some((a) => a.ok);
+    const status = transfers.length === 1 ? (anyOk ? 'arrived' : 'failed') : anyOk ? 'several' : 'failed';
     return { kind: 'code', status, transfers };
   }
   const a = normaliseAddress(text);
   if (!a) throw new InvalidLookupError('not a code or address');
-  const transfers = (await query(`{address:{equalTo:${JSON.stringify(a)}}}`, fetcher))
-    .filter((x) => x.transfer || x.assetTransfer)
+  // Newest first, as the indexer orders them; a self-transfer has both its nodes here and is shown once.
+  const transfers = firstOfEachEvent((await query(`{address:{equalTo:${JSON.stringify(a)}}}`, fetcher)).nodes
+    .filter((x) => x.transfer || x.assetTransfer))
     .slice(0, RECENT_LIMIT)
     .map((n) => toActivity(n, a));
   if (transfers.length === 0) return { status: 'notFound' };

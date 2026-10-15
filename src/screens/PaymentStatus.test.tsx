@@ -46,7 +46,16 @@ describe('PaymentStatus', () => {
     expect(find).not.toHaveBeenCalled();
   });
   it('arrived', async () => { find.mockResolvedValue(arrived()); await ask(); expect(await screen.findByText('Arrived')).toBeInTheDocument(); });
-  it('failed explains the money stayed', async () => { find.mockResolvedValue(code('failed', [])); await ask(); expect(await screen.findByText(/Your money is still in your account/)).toBeInTheDocument(); });
+  it('a failed transfer is explained neutrally: the asker need not be the sender', async () => {
+    find.mockResolvedValue(code('failed', [tr({ ok: false })])); await ask();
+    expect(await screen.findByText("It did not go through. The money did not leave the sender's account; only the fee was taken.")).toBeInTheDocument();
+    expect(screen.queryByText(/Your money/)).toBeNull();
+  });
+  it('a failed code that made no transfer has its own message', async () => {
+    find.mockResolvedValue(code('failedNotAPayment', [])); await ask();
+    expect(await screen.findByText('This code is not a payment, and it did not go through.')).toBeInTheDocument();
+    expect(within(screen.getByRole('status')).queryByRole('heading')).toBeNull();
+  });
   it('not found while the indexer lags means on its way', async () => { find.mockResolvedValue({ status: 'notFound' }); lag.mockResolvedValue(50); await ask(); expect(await screen.findByText('On its way')).toBeInTheDocument(); });
   it('not found with a current indexer says so plainly', async () => { find.mockResolvedValue({ status: 'notFound' }); lag.mockResolvedValue(0); await ask(); expect(await screen.findByText(/We could not find this payment yet/)).toBeInTheDocument(); });
   it('not found with an unreadable lag says so plainly, not "on its way"', async () => {
@@ -63,38 +72,53 @@ describe('PaymentStatus', () => {
     expect(row).toHaveTextContent('2 hours ago');
     expect(row.querySelector(`bdi[title="${THEM}"]`)).not.toBeNull();
   });
-  it('a failed code shows what did not go, to whom and when', async () => {
+  it('a failed code shows what did not go, to whom and when, without a "to" sentence', async () => {
     find.mockResolvedValue(code('failed', [tr({ ok: false })])); await ask();
     expect(await screen.findByRole('heading', { name: 'Did not arrive' })).toBeInTheDocument();
     const row = screen.getByRole('listitem');
     expect(row).toHaveTextContent('1 HEZ');
+    expect(row).toHaveTextContent('Failed');
+    expect(row).not.toHaveTextContent('1 HEZ to');
     expect(row).toHaveTextContent('2 hours ago');
+    expect(row).toHaveTextContent('❌');
     expect(row.querySelector(`bdi[title="${THEM}"]`)).not.toBeNull();
   });
-  it('a code covering several transfers lists every one of them', async () => {
-    find.mockResolvedValue(code('arrived', [tr({ id: '9-1-from' }), tr({ id: '9-2-from', amount: 2_000_000_000_000n, counterparty: ME })])); await ask();
-    expect(await screen.findByRole('heading', { name: 'Arrived' })).toBeInTheDocument();
+  it('a code covering several transfers lists every one, with no single "Arrived"', async () => {
+    find.mockResolvedValue(code('several', [tr({ id: '9-1-from' }), tr({ id: '9-2-from', amount: 2_000_000_000_000n, counterparty: ME }),
+      tr({ id: '9-3-from', ok: false })])); await ask();
+    expect(await screen.findByRole('heading', { name: 'These payments went through' })).toBeInTheDocument();
+    expect(screen.queryByText('Arrived')).toBeNull();
+    expect(document.querySelector('.big-mark')).toBeNull();
+    expect(screen.getByText('If your address is not in this list, this code did not pay you.')).toBeInTheDocument();
     const rows = screen.getAllByRole('listitem');
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent('1 HEZ');
-    expect(rows[1]).toHaveTextContent('2 HEZ');
-    expect(rows[1].querySelector(`bdi[title="${ME}"]`)).not.toBeNull();
-  });
-  it('a batch that only partly went through says so and marks each transfer', async () => {
-    find.mockResolvedValue(code('partial', [tr({ id: '9-1-from' }), tr({ id: '9-2-from', ok: false })])); await ask();
-    expect(await screen.findByRole('heading', { name: 'Only part of it arrived' })).toBeInTheDocument();
-    const rows = screen.getAllByRole('listitem');
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toHaveTextContent('1 HEZ to');
     expect(rows[0]).toHaveTextContent('✅');
-    expect(rows[1]).toHaveTextContent('❌');
+    expect(rows[1]).toHaveTextContent('2 HEZ to');
+    expect(rows[1].querySelector(`bdi[title="${ME}"]`)).not.toBeNull();
+    // A failed row reads as failed, not as a payment to someone.
+    expect(rows[2]).toHaveTextContent('Failed');
+    expect(rows[2]).not.toHaveTextContent('1 HEZ to');
+    expect(rows[2]).toHaveTextContent('❌');
+    expect(rows[2].querySelector(`bdi[title="${THEM}"]`)).not.toBeNull();
+  });
+  it('a code whose page was full shows the list, says there are more, and gives no verdict', async () => {
+    find.mockResolvedValue(code('incomplete', [tr({ id: '9-1-from' }), tr({ id: '9-2-from' })])); await ask();
+    expect(await screen.findByText(/more transfers than shown/)).toBeInTheDocument();
+    expect(within(screen.getByRole('status')).queryByRole('heading')).toBeNull();
+    expect(document.querySelector('.big-mark')).toBeNull();
+    expect(screen.getByText('If your address is not in this list, this code did not pay you.')).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
   });
   it('an address lookup lists recent transfers relative to that address, with no verdict', async () => {
     find.mockResolvedValue({ kind: 'address', status: 'recent', address: ME, transfers: [
       tr({ id: 'a', direction: 'received', counterparty: THEM }),
       tr({ id: 'b', direction: 'sent', counterparty: THEM, symbol: '#777', decimals: null, amount: 123456789n, ok: false }),
+      tr({ id: 'c', direction: 'received', counterparty: THEM, ok: false }),
     ] });
     await ask(ME);
     const rows = await screen.findAllByRole('listitem');
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3);
     // A stranger's payment to this address must not read as "your payment arrived".
     expect(within(screen.getByRole('status')).queryByRole('heading')).toBeNull();
     expect(screen.queryByText('Arrived')).toBeNull();
@@ -105,9 +129,17 @@ describe('PaymentStatus', () => {
     expect(rows[0]).toHaveTextContent('2 hours ago');
     expect(rows[0]).toHaveTextContent('✅');
     expect(rows[0].querySelector(`bdi[title="${THEM}"]`)).not.toBeNull();
-    expect(rows[1]).toHaveTextContent(/Sent #777 to/);
+    // A failed row uses no sent/received verb: amount, Failed, counterparty, time, ❌.
+    expect(rows[1]).not.toHaveTextContent(/Sent|Received/);
+    expect(rows[1]).toHaveTextContent('#777');
+    expect(rows[1]).toHaveTextContent('Failed');
+    expect(rows[1]).toHaveTextContent('2 hours ago');
+    expect(rows[1].querySelector(`bdi[title="${THEM}"]`)).not.toBeNull();
     expect(rows[1]).not.toHaveTextContent('123');
     expect(rows[1]).toHaveTextContent('❌');
+    expect(rows[2]).not.toHaveTextContent(/Sent|Received/);
+    expect(rows[2]).toHaveTextContent('Failed');
+    expect(rows[2]).toHaveTextContent('From:');
   });
   it('an address lookup shows at most five transfers', async () => {
     const many = Array.from({ length: 8 }, (_, i) => tr({ id: `r${i}`, direction: 'received' }));
@@ -123,10 +155,10 @@ describe('PaymentStatus', () => {
   });
   it('any other failure shows the generic error', async () => { find.mockRejectedValue(new Error('boom')); await ask(); expect(await screen.findByText(/could not be loaded/)).toBeInTheDocument(); });
   it('a scanned code fills the box and submits', async () => {
-    scan.mockResolvedValue(CODE); find.mockResolvedValue(code('failed', []));
+    scan.mockResolvedValue(CODE); find.mockResolvedValue(code('failed', [tr({ ok: false })]));
     await mount();
     fireEvent.click(screen.getByRole('button', { name: 'Scan QR' }));
-    expect(await screen.findByText(/Your money is still in your account/)).toBeInTheDocument();
+    expect(await screen.findByText(/It did not go through/)).toBeInTheDocument();
     expect(find).toHaveBeenCalledWith(CODE);
     expect(screen.getByPlaceholderText('Paste the transaction code or an address')).toHaveValue(CODE);
   });

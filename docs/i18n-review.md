@@ -51,15 +51,17 @@ Turkish and English are written directly and are not listed.
 | payment.onTheWay | Di rê de ye | لە ڕێگایە | در راه است | في الطريق | draft |
 | payment.notArrived | Negihîşt | نەگەیشت | نرسید | لم تصل | draft |
 | payment.arrivedText | Pere gihîşt <who/>. | پارەکە گەیشتە <who/>. | پول به <who/> رسید. | وصل المال إلى <who/>. | draft |
-| payment.notArrivedText | Nehat şandin. Pereyên te hê jî di hesabê te de ne. | نەنێردراوە. پارەکەت هێشتا لە هەژمارەکەتدایە. | ارسال نشده است. پول شما هنوز در حساب شماست. | لم يتم إرسالها. أموالك ما زالت في حسابك. | draft |
+| payment.notArrivedText | Pêk nehat. Pere ji hesabê şandkar derneket; tenê xerc hat birîn. | ئەنجام نەدرا. پارەکە لە هەژماری نێرەر دەرنەچوو؛ تەنها تێچووەکە بڕدرا. | انجام نشد. پول از حساب فرستنده خارج نشد؛ فقط کارمزد کسر شد. | لم تتم العملية. لم يخرج المال من حساب المرسل؛ أُخذت الرسوم فقط. | draft (neutral: the reader may be the sender or the recipient) |
 | payment.notFound | Me hîna ev dayîn nedît. Heke te nû şandiye, deqeyekê bisekine û dîsa biceribîne. | هێشتا ئەم پارەدانەمان نەدۆزییەوە. ئەگەر تازە ناردوتە، خولەکێک چاوەڕێ بکە و دووبارە هەوڵبدەرەوە. | هنوز این پرداخت را پیدا نکردیم. اگر همین حالا فرستاده‌اید، یک دقیقه صبر کنید و دوباره تلاش کنید. | لم نعثر على هذه الدفعة بعد. إذا أرسلتها للتو، انتظر دقيقة وحاول مجددًا. | draft |
 | payment.notAPayment | Ev kod ne dayînek e. | ئەم کۆدە پارەدان نییە. | این کد یک پرداخت نیست. | هذا الرمز ليس دفعة. | draft |
+| payment.failedNotAPayment | Ev kod ne dayînek e, û pêk jî nehat. | ئەم کۆدە پارەدان نییە، و ئەنجامیش نەدرا. | این کد یک پرداخت نیست و انجام هم نشد. | هذا الرمز ليس دفعة، ولم تتم العملية أيضًا. | draft |
 | payment.recent | Dayînên dawî yên <who/> | دوایین پارەدانەکانی <who/> | آخرین پرداخت‌های <who/> | آخر دفعات <who/> | draft (address lookup: heads the list of recent transfers; <who/> is the address looked up) |
 | payment.sent | <amount/> ji <who/> re hat şandin | <amount/> نێردرا بۆ <who/> | <amount/> به <who/> فرستاده شد | أُرسل <amount/> إلى <who/> | draft |
 | payment.received | <amount/> ji <who/> hat wergirtin | <amount/> وەرگیرا لە <who/> | <amount/> از <who/> دریافت شد | استُلم <amount/> من <who/> | draft |
 | payment.to | <amount/> bo <who/> | <amount/> بۆ <who/> | <amount/> به <who/> | <amount/> إلى <who/> | draft |
-| payment.partial | Tenê beşek jê gihîşt | تەنها بەشێکی گەیشت | فقط بخشی از آن رسید | وصل جزء منها فقط | draft |
-| payment.partialText | Hin ji van dayînan pêk hatin û hin jî pêk nehatin. Her yek li jêr hatiye nîşankirin. | هەندێک لەم پارەدانانە ئەنجام دران و هەندێکیان نا. هەر یەکێکیان لە خوارەوە دیاری کراوە. | برخی از این پرداخت‌ها انجام شد و برخی نه. هر کدام در زیر مشخص شده است. | تمّ بعض هذه الدفعات ولم يتمّ بعضها. كل واحدة موضّحة أدناه. | draft |
+| payment.several | Ev dayîn pêk hatin | ئەم پارەدانانە ئەنجام دران | این پرداخت‌ها انجام شدند | تمت هذه الدفعات | draft (heading over a code with more than one transfer) |
+| payment.notYou | Heke navnîşana te di vê lîsteyê de tune be, vê kodê tu dayîn ji te re nekiriye. | ئەگەر ناونیشانەکەت لەم لیستەدا نییە، ئەم کۆدە پارەی بۆ تۆ نەداوە. | اگر آدرس شما در این فهرست نیست، این کد به شما پرداختی نکرده است. | إذا لم يكن عنوانك في هذه القائمة، فهذا الرمز لم يدفع لك. | draft |
+| payment.more | Ji bilî yên li vir têne nîşandan, vê kodê veguhastinên din jî hene. | ئەم کۆدە گواستنەوەی زیاتری هەیە لەوەی لێرە پیشان دراوە. | این کد انتقال‌های بیشتری از آنچه اینجا نشان داده شده دارد. | لهذا الرمز تحويلات أكثر مما يظهر هنا. | draft (shown when the list of a code may be incomplete) |
 | citizenship.title | Hemwelatî | هاوڵاتیبوون | شهروندی | المواطنة | draft |
 | citizenship.applied | Serlêdan hat kirin | داواکاری نێردرا | درخواست داده شد | تم تقديم الطلب | draft |
 | citizenship.approved | Pejirandî | پەسەندکرا | تأیید شد | تمت الموافقة | draft |

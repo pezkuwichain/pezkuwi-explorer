@@ -34,8 +34,8 @@ export const NETWORK: NetworkConfig = {
   ],
   // history.* stays null until the owner switches it on (assetHub -> ZAGROS_HISTORY_URL, after the indexer has
   // caught up). Every gate in docs/superpowers/specs/2026-10-15-explorer-design.md §9 is closed and tested:
-  //   1. Address-lookup verdict: an address lookup lists up to five recent transfers (direction, amount, counterparty, time, ✅/❌), no single verdict; a code lookup shows amount, time and counterparty.
-  //   2. Batch extrinsics: a code that covers several transfers (a batch) reports every transfer.
+  //   1. Address-lookup verdict: an address lookup lists up to five recent transfers (direction, amount, counterparty, time, ✅/❌; a failed row reads "Failed", never "sent"/"received"), no single verdict; a single-transfer code shows amount, time and counterparty.
+  //   2. Batch extrinsics: a code lists every transfer (up to 200 nodes); more than one transfer gets no single "Arrived", and a full page says there are more and gives no verdict.
   //   3. null === null is 'sent': toActivity compares addresses only when both are valid.
   //   4. NaN event index: a non-numeric event index sorts last, deterministically.
   //   5. Activity.code validation: kept only when it is 0x followed by 64 hex digits, otherwise null.

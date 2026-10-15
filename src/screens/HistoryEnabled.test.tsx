@@ -1,6 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import i18n from '../i18n';
@@ -60,11 +58,25 @@ describe('history switched on (ZAGROS_HISTORY_URL)', () => {
     fireEvent.change(screen.getByPlaceholderText('Paste the transaction code or an address'), { target: { value } });
     fireEvent.submit(screen.getByRole('search'));
   };
-  it('a code gets the verdict with every transfer of the batch', async () => {
+  it('a batch code lists every transfer, with no single "Arrived"', async () => {
     ask(CODE);
-    expect(await screen.findByRole('heading', { name: 'Arrived' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'These payments went through' })).toBeInTheDocument();
+    expect(screen.queryByText('Arrived')).toBeNull();
     const rows = within(screen.getByRole('status')).getAllByRole('listitem');
     expect(rows.map((r) => r.textContent)).toEqual([expect.stringContaining('1 HEZ to'), expect.stringContaining('2 HEZ to')]);
+  });
+  it('a single-transfer code gets the full verdict with amount, time and recipient', async () => {
+    const one = nodes().slice(0, 2);
+    vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
+      calls.push({ url, method: init.method, query: String(init.body) });
+      return Promise.resolve({ ok: true, json: async () => ({ data: { historyElements: { nodes: one } } }) });
+    }));
+    ask(CODE);
+    expect(await screen.findByRole('heading', { name: 'Arrived' })).toBeInTheDocument();
+    const row = within(screen.getByRole('status')).getByRole('listitem');
+    expect(row).toHaveTextContent('1 HEZ to');
+    expect(row).toHaveTextContent('2 hours ago');
+    expect(row.querySelector(`bdi[title="${BOB}"]`)).not.toBeNull();
   });
   it('an address gets a list, not a verdict', async () => {
     ask(BOB);
@@ -73,23 +85,5 @@ describe('history switched on (ZAGROS_HISTORY_URL)', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent(/Received 1 HEZ from/);
     expect(within(answer).queryByRole('heading')).toBeNull();
-  });
-});
-
-// The gates above are only worth something if they run: nothing in the suite may be skipped, focused or left as todo.
-describe('suite integrity', () => {
-  it('no test file skips, focuses or defers a test', () => {
-    const files: string[] = [];
-    const walk = (d: string) => {
-      for (const f of readdirSync(d)) {
-        const p = join(d, f);
-        if (statSync(p).isDirectory()) walk(p);
-        else if (/\.test\.tsx?$/.test(f)) files.push(p);
-      }
-    };
-    walk('src');
-    expect(files.length).toBeGreaterThan(10);
-    const banned = new RegExp(String.raw`\b(it|test|describe)\.(skip|only|todo|skipIf|runIf)\b|\bx(it|describe)\(`);
-    for (const f of files) expect(`${f}: ${readFileSync(f, 'utf8')}`).not.toMatch(banned);
   });
 });

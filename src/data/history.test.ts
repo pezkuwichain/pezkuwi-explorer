@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decodeAddress, encodeAddress } from '@pezkuwi/util-crypto';
 import { NETWORK } from '../config/network';
-import { loadActivity, findPayment, indexerLag, InvalidLookupError, NotIndexedError } from './history';
+import { loadActivity, findPayment, indexerLag, CODE_PAGE, InvalidLookupError, NotIndexedError } from './history';
 
 const ME = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const BOB = '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty';
@@ -62,24 +62,54 @@ describe('history', () => {
     const ok = reply([node({ id: '5-1-extrinsic', extrinsic: { fee: '1', success: true } })]);
     expect(await findPayment(CODE, ok)).toEqual({ kind: 'code', status: 'notAPayment', transfers: [] });
     const bad = reply([node({ id: '5-1-extrinsic', extrinsic: { fee: '1', success: false } })]);
-    expect(await findPayment(CODE, bad)).toEqual({ kind: 'code', status: 'failed', transfers: [] });
+    expect(await findPayment(CODE, bad)).toEqual({ kind: 'code', status: 'failedNotAPayment', transfers: [] });
   });
   it('a code covering several transfers (a batch) reports every one, once, in event order, from the sender', async () => {
     const mk = (id: string, address: string, amount: string) => node({ id, address, transfer: { from: ME, to: BOB, amount, fee: '1', success: true } });
     const nodes = [mk('9-4-to', BOB, '4'), mk('9-4-from', ME, '4'), mk('9-2-to', BOB, '2')];
     for (const order of [nodes, [...nodes].reverse()]) {
       const r = await findPayment(CODE, reply(order));
-      expect(r).toMatchObject({ kind: 'code', status: 'arrived' });
+      // More than one transfer: no single "arrived" verdict for the whole code.
+      expect(r).toMatchObject({ kind: 'code', status: 'several' });
       if (r.status === 'notFound') throw new Error('unreachable');
       expect(r.transfers.map((a) => a.id)).toEqual(['9-2-to', '9-4-from']);
       expect(r.transfers.map((a) => a.amount)).toEqual([2n, 4n]);
       for (const a of r.transfers) expect(a).toMatchObject({ direction: 'sent', counterparty: BOB });
     }
   });
-  it('a batch where only some transfers went through is partial', async () => {
+  it('a batch where only some transfers went through is "several", never one global verdict', async () => {
     const t = (success: boolean) => ({ from: ME, to: BOB, amount: '1', fee: '1', success });
     const r = await findPayment(CODE, reply([node({ id: '9-1-from', transfer: t(true) }), node({ id: '9-2-from', transfer: t(false) })]));
-    expect(r).toMatchObject({ kind: 'code', status: 'partial' });
+    expect(r).toMatchObject({ kind: 'code', status: 'several' });
+  });
+  it('a batch where no transfer went through is failed', async () => {
+    const t = { from: ME, to: BOB, amount: '1', fee: '1', success: false };
+    const r = await findPayment(CODE, reply([node({ id: '9-1-from', transfer: t }), node({ id: '9-2-from', transfer: t })]));
+    expect(r).toMatchObject({ kind: 'code', status: 'failed' });
+  });
+  it('a single transfer keeps its verdict', async () => {
+    const r = await findPayment(CODE, reply([node({ id: '9-1-from', transfer: { from: ME, to: BOB, amount: '1', fee: '1', success: true } })]));
+    expect(r).toMatchObject({ kind: 'code', status: 'arrived' });
+  });
+  it('a code lookup asks for up to CODE_PAGE nodes; a full page is incomplete and gets no verdict', async () => {
+    const one = reply([node({ id: '9-1-from', transfer: { from: ME, to: BOB, amount: '1', fee: '1', success: true } })]);
+    await findPayment(CODE, one);
+    expect(JSON.parse(one.mock.calls[0][1].body).query).toContain(`first:${CODE_PAGE}`);
+    expect(CODE_PAGE).toBe(200);
+    const full = Array.from({ length: CODE_PAGE }, (_, i) => node({ id: `9-${i}-from`, transfer: { from: ME, to: BOB, amount: '1', fee: '1', success: true } }));
+    const r = await findPayment(CODE, reply(full));
+    expect(r).toMatchObject({ kind: 'code', status: 'incomplete' });
+    if (r.status === 'notFound') throw new Error('unreachable');
+    expect(r.transfers).toHaveLength(CODE_PAGE);
+  });
+  it('an address lookup shows a self-transfer once, before taking the five most recent', async () => {
+    const mk = (id: string, from: string, to: string, ts: number) =>
+      node({ id, timestamp: String(ts), transfer: { from, to, amount: '1', fee: '0', success: true } });
+    const nodes = [mk('9-1-from', ME, ME, 9), mk('9-1-to', ME, ME, 9),
+      mk('8-1-to', BOB, ME, 8), mk('7-1-from', ME, BOB, 7), mk('6-1-to', BOB, ME, 6), mk('5-1-from', ME, BOB, 5), mk('4-1-to', BOB, ME, 4)];
+    const r = await findPayment(ME, reply(nodes));
+    if (r.status === 'notFound') throw new Error('unreachable');
+    expect(r.transfers.map((a) => a.id)).toEqual(['9-1-from', '8-1-to', '7-1-from', '6-1-to', '5-1-from']);
   });
   it('a non-numeric event index sorts last, deterministically, whatever the node order', async () => {
     const mk = (id: string) => node({ id, transfer: { from: ME, to: BOB, amount: '1', fee: '1', success: true } });

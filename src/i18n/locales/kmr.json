@@ -8,4 +8,6 @@
   "citizenship": { "title": "Hemwelatî", "applied": "Serlêdan hat kirin", "approved": "Pejirandî", "citizen": "Hemwelatî", "notStarted": "Hîna serlêdan nehatiye kirin", "revoked": "Hemwelatî hat rakirin", "roles": "Rol", "trust": "Xala Ewlehiyê", "noRoles": "Hîna rol tune." },
   "network": { "title": "Tor", "votes": "Deng", "noVotes": "Niha dengdaneke çalak tune.", "voteHint": "Ji bo dengdanê apps.pezkuwichain.io bikar bîne", "treasury": "Xezîne", "validators": "Pejirandeker", "validatorsActive": "{{count}} aktîf" },
   "state": { "loading": "Tê barkirin...", "error": "Ev nehat barkirin. Paşê dîsa biceribîne.", "preparing": "Ev beş tê amadekirin.", "retry": "Dîsa biceribîne" }
+,
+  "time": { "minutesAgo": "Berî {{count}} deqîqe", "hoursAgo": "Berî {{count}} saet", "daysAgo": "Berî {{count}} roj" }
 }

@@ -8,4 +8,6 @@
   "citizenship": { "title": "شهروندی", "applied": "درخواست داده شد", "approved": "تأیید شد", "citizen": "شهروند", "notStarted": "هنوز درخواستی نیست", "revoked": "شهروندی لغو شد", "roles": "نقش‌ها", "trust": "امتیاز اعتماد", "noRoles": "هنوز نقشی نیست." },
   "network": { "title": "شبکه", "votes": "رأی‌ها", "noVotes": "اکنون رأی‌گیری فعالی نیست.", "voteHint": "برای رأی دادن از apps.pezkuwichain.io استفاده کنید", "treasury": "خزانه", "validators": "تأییدکنندگان", "validatorsActive": "{{count}} فعال" },
   "state": { "loading": "در حال بارگذاری…", "error": "بارگذاری نشد. بعداً دوباره تلاش کنید.", "preparing": "این بخش در حال آماده‌سازی است.", "retry": "تلاش دوباره" }
+,
+  "time": { "minutesAgo": "{{count}} دقیقه پیش", "hoursAgo": "{{count}} ساعت پیش", "daysAgo": "{{count}} روز پیش" }
 }

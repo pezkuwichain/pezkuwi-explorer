@@ -8,4 +8,6 @@
   "citizenship": { "title": "المواطنة", "applied": "تم تقديم الطلب", "approved": "تمت الموافقة", "citizen": "مواطن", "notStarted": "لا يوجد طلب بعد", "revoked": "تم إلغاء المواطنة", "roles": "الأدوار", "trust": "درجة الثقة", "noRoles": "لا توجد أدوار بعد." },
   "network": { "title": "الشبكة", "votes": "الأصوات", "noVotes": "لا توجد تصويتات نشطة الآن.", "voteHint": "للتصويت، استخدم apps.pezkuwichain.io", "treasury": "الخزينة", "validators": "المدققون", "validatorsActive": "{{count}} نشط" },
   "state": { "loading": "جارٍ التحميل…", "error": "تعذّر التحميل. حاول لاحقًا.", "preparing": "هذا القسم قيد الإعداد.", "retry": "حاول مجددًا" }
+,
+  "time": { "minutesAgo": "منذ {{count}} دقيقة", "hoursAgo": "منذ {{count}} ساعة", "daysAgo": "منذ {{count}} يوم" }
 }

@@ -8,4 +8,6 @@
   "citizenship": { "title": "Vatandaşlık", "applied": "Başvuruldu", "approved": "Onaylandı", "citizen": "Vatandaş", "notStarted": "Henüz başvuru yok", "revoked": "Vatandaşlık iptal edildi", "roles": "Roller", "trust": "Güven puanı", "noRoles": "Henüz rol yok." },
   "network": { "title": "Ağ", "votes": "Oylamalar", "noVotes": "Şu anda etkin oylama yok.", "voteHint": "Oy vermek için apps.pezkuwichain.io kullan", "treasury": "Hazine", "validators": "Doğrulayıcılar", "validatorsActive": "{{count}} etkin" },
   "state": { "loading": "Yükleniyor…", "error": "Bu yüklenemedi. Daha sonra tekrar dene.", "preparing": "Bu bölüm hazırlanıyor.", "retry": "Tekrar dene" }
+,
+  "time": { "minutesAgo": "{{count}} dakika önce", "hoursAgo": "{{count}} saat önce", "daysAgo": "{{count}} gün önce" }
 }

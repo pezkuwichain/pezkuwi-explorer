@@ -28,3 +28,40 @@ describe('relativeTime', () => {
     expect(relativeTime(now - 7200, now, 'en')).toBe('2 hours ago');
   });
 });
+
+describe('localised digits', () => {
+  const numberPart = (s: string) => s.slice(0, s.lastIndexOf(' '));
+
+  it('uses the locale digits and decimal separator for ckb', () => {
+    const out = formatAmount(1_250_000_000_000n, 12, 'HEZ', 'ckb');
+    expect(numberPart(out)).not.toMatch(/[0-9]/);
+    const sep = new Intl.NumberFormat('ckb').formatToParts(1.5).find((p) => p.type === 'decimal')?.value ?? '.';
+    expect(numberPart(out)).toContain(sep);
+  });
+
+  it('uses the locale digits and decimal separator for fa', () => {
+    const out = formatAmount(1_250_000_000_000n, 12, 'HEZ', 'fa');
+    expect(numberPart(out)).not.toMatch(/[0-9]/);
+    const sep = new Intl.NumberFormat('fa').formatToParts(1.5).find((p) => p.type === 'decimal')?.value ?? '.';
+    expect(numberPart(out)).toContain(sep);
+  });
+
+  it('keeps exact truncation with localised fraction digits', () => {
+    expect(formatAmount(1_234_567_890_000n, 12, 'HEZ', 'fa')).toBe(
+      new Intl.NumberFormat('fa').format(1n) +
+        new Intl.NumberFormat('fa').formatToParts(1.5).find((p) => p.type === 'decimal')!.value +
+        [...'2345'].map((d) => new Intl.NumberFormat('fa').format(BigInt(d))).join('') +
+        ' HEZ',
+    );
+  });
+});
+
+describe('relativeTime with a translator', () => {
+  it('uses the translator for ckb past times', () => {
+    const now = 1_800_000_000;
+    const t = (key: string, opts: { count: number }) => `${key}:${opts.count}`;
+    expect(relativeTime(now - 120, now, 'ckb', t)).toBe('time.minutesAgo:2');
+    expect(relativeTime(now - 7200, now, 'ckb', t)).toBe('time.hoursAgo:2');
+    expect(relativeTime(now - 2 * 86400, now, 'ckb', t)).toBe('time.daysAgo:2');
+  });
+});

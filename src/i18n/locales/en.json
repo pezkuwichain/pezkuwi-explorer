@@ -8,4 +8,6 @@
   "citizenship": { "title": "Citizenship", "applied": "Applied", "approved": "Approved", "citizen": "Citizen", "notStarted": "No application yet", "revoked": "Citizenship was revoked", "roles": "Roles", "trust": "Trust score", "noRoles": "No roles yet." },
   "network": { "title": "Network", "votes": "Votes", "noVotes": "No active votes right now.", "voteHint": "To vote, use apps.pezkuwichain.io", "treasury": "Treasury", "validators": "Validators", "validatorsActive": "{{count}} active" },
   "state": { "loading": "Loading…", "error": "This could not be loaded. Try again later.", "preparing": "This section is being prepared.", "retry": "Try again" }
+,
+  "time": { "minutesAgo": "{{count}} minutes ago", "hoursAgo": "{{count}} hours ago", "daysAgo": "{{count}} days ago" }
 }

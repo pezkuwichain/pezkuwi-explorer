@@ -70,3 +70,4 @@ Turkish and English are written directly and are not listed.
 | state.error | Ev nehat barkirin. Paşê dîsa biceribîne. | ئەمە بار نەکرا. دواتر دووبارە هەوڵبدەرەوە. | بارگذاری نشد. بعداً دوباره تلاش کنید. | تعذّر التحميل. حاول لاحقًا. | draft |
 | state.preparing | Ev beş tê amadekirin. | ئەم بەشە ئامادە دەکرێت. | این بخش در حال آماده‌سازی است. | هذا القسم قيد الإعداد. | draft |
 | state.retry | Dîsa biceribîne | دووبارە هەوڵبدەرەوە | تلاش دوباره | حاول مجددًا | pwap |
+| time.minutesAgo / hoursAgo / daysAgo | kmr: Berî {{count}} deqîqe / saet / roj | ckb: پێش {{count}} خولەک / کاتژمێر / ڕۆژ | fa: {{count}} دقیقه / ساعت / روز پیش | ar: منذ {{count}} دقيقة / ساعة / يوم | draft |

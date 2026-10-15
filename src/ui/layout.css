@@ -2,7 +2,7 @@
 .page {
   max-inline-size: 480px; margin-inline: auto; min-block-size: 100dvh; box-sizing: border-box;
   display: flex; flex-direction: column;
-  padding-block-end: calc(var(--tabbar) + env(safe-area-inset-bottom, 0px));
+  padding-block-end: var(--tabbar);
 }
 .page-home { background: var(--bg-home); }
 .page main { flex: 1; display: flex; flex-direction: column; }
@@ -38,8 +38,8 @@
 
 .tabbar {
   position: fixed; inset-block-end: 0; inset-inline: 0; margin-inline: auto; max-inline-size: 480px; z-index: 10;
-  block-size: calc(var(--tabbar) + env(safe-area-inset-bottom, 0px)); box-sizing: border-box;
-  padding: 8px 12px calc(22px + env(safe-area-inset-bottom, 0px));
+  block-size: var(--tabbar); box-sizing: border-box;
+  padding: 8px 12px max(8px, env(safe-area-inset-bottom, 0px));
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
   background: var(--tab-bg); border-block-start: 1px solid var(--tab-border);
   backdrop-filter: blur(12px);

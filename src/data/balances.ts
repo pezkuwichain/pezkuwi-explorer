@@ -3,7 +3,7 @@ import { NETWORK, type ChainKey } from '../config/network';
 import { withTimeout } from '../lib/timeout';
 
 // perChain is set on the native holding only: where its total sits (the three always add up to amount).
-export type Holding = { symbol: string; decimals: number; amount: bigint; perChain?: Record<ChainKey, bigint> };
+export type Holding = { symbol: string; decimals: number; amount: bigint; perChain?: Record<ChainKey, bigint>; standard?: string };
 
 // Fail-closed by design: if any chain fails or times out this rejects, and the
 // card shows "could not load". Never return a partial HEZ total; a too-low money
@@ -26,7 +26,7 @@ export async function loadBalances(address: string, deps = { getApi: realGetApi 
     return opt.isSome ? opt.unwrap().balance.toBigInt() : 0n;
   }));
   NETWORK.assets.forEach((asset, i) => {
-    if (amounts[i] > 0n) out.push({ symbol: asset.symbol, decimals: asset.decimals, amount: amounts[i] });
+    if (amounts[i] > 0n) out.push({ symbol: asset.symbol, decimals: asset.decimals, amount: amounts[i], ...(asset.standard ? { standard: asset.standard } : {}) });
   });
   return out;
 }

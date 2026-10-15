@@ -28,7 +28,7 @@ describe('history', () => {
     ]);
     const a = await loadActivity(ME, f);
     expect(a[0]).toMatchObject({ direction: 'sent', counterparty: BOB, symbol: 'HEZ', amount: 5_000_000_000_000n, fee: 1000n, ok: true });
-    expect(a[1]).toMatchObject({ direction: 'received', counterparty: BOB, symbol: 'wUSDT', decimals: 6, amount: 1_500_000n });
+    expect(a[1]).toMatchObject({ direction: 'received', counterparty: BOB, symbol: 'USDT', decimals: 6, amount: 1_500_000n });
   });
   it('skips nodes with malformed remote fields and keeps the rest', async () => {
     const good = node({ id: 'good', transfer: { from: ME, to: BOB, amount: '7', fee: '1', success: true } });
@@ -179,7 +179,7 @@ describe('history', () => {
     ]);
     const a = await loadActivity(ME, f);
     expect(a[0]).toMatchObject({ symbol: '#777', decimals: null });
-    expect(a[1]).toMatchObject({ symbol: 'wUSDT', decimals: 6 });
+    expect(a[1]).toMatchObject({ symbol: 'USDT', decimals: 6 });
   });
   it('rejects malformed indexer answers', async () => {
     const bad = (body: object, ok = true) => vi.fn().mockResolvedValue({ ok, status: 500, json: async () => body });

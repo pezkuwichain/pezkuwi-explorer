@@ -14,7 +14,7 @@ describe('formatAmount', () => {
     expect(formatAmount(10n ** 30n, 12, 'HEZ', 'en')).toBe('1,000,000,000,000,000,000 HEZ');
   });
   it('respects 6-decimal assets', () => {
-    expect(formatAmount(1_500_000n, 6, 'wUSDT', 'en')).toBe('1.5 wUSDT');
+    expect(formatAmount(1_500_000n, 6, 'USDT', 'en')).toBe('1.5 USDT');
   });
   it('shows at most 4 fractional digits once the whole part is non-zero, marked ≈ when digits were cut', () => {
     expect(formatAmount(1_234_567_890_000n, 12, 'HEZ', 'en')).toBe('≈1.2345 HEZ');

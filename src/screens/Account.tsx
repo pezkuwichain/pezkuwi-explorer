@@ -80,7 +80,7 @@ function Tokens({ holdings }: { holdings: Holding[] }) {
       <ul>{holdings.map((h, i) => (
         <li key={h.symbol} className="token-row">
           <TokenIcon symbol={h.symbol} />
-          <span className="token-name"><span className="token-symbol">{h.symbol}</span><span className="token-chain">{i === 0 ? 'PezkuwiChain' : t('chain.assetHub')}</span></span>
+          <span className="token-name"><span className="token-symbol">{h.symbol}</span><span className="token-chain">{i === 0 ? 'PezkuwiChain' : h.standard ? `${t('chain.assetHub')} (${h.standard})` : t('chain.assetHub')}</span></span>
           <bdi className="token-amount">{formatNumber(h.amount, h.decimals, i18n.language)}</bdi>
         </li>))}</ul>
     </section>

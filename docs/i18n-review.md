@@ -87,5 +87,28 @@ Turkish and English are written directly and are not listed.
 | state.retry | Dîsa biceribîne | دووبارە هەوڵبدەرەوە | تلاش دوباره | حاول مجددًا | pwap |
 | time.minutesAgo / hoursAgo / daysAgo | kmr: Berî {{count}} deqîqe / saet / roj | ckb: پێش {{count}} خولەک / کاتژمێر / ڕۆژ | fa: {{count}} دقیقه / ساعت / روز پیش | ar: منذ {{count}} دقيقة / ساعة / يوم | draft |
 | tiki.* (58 role names, all on-chain Tiki variants) | kmr = on-chain variant names verbatim (no translation) | ckb drafts: هاوڵاتی / ئەندامی پەرلەمان / سەرۆکی پەرلەمان / سەرۆک / وەزیر / ئەندامی دیوان / دادوەر / داواکار / یاساناس / نۆتەر / گەنجینەدار / باجگر / بەڕێوەبەری سەرچاوەکان / کارپێکەری تۆڕ / شارەزای ئاسایشی سایبەری / بەڕێوەبەری داتا / قسەکەر / تۆمارکەر / باڵیۆز / ناوبژیوان / پارێزەری کولتووری / پشکنەر / کۆنترۆڵکەری کوالیتی / مەلا / فەقێ / پەروەردەکار / بەرهەمهێنەر / بەڕێوەبەری پڕۆژە / سەرۆکی کۆمەڵە / بەڕێوەبەری کۆمەڵگە / ئاغا / پێشەنگ / ڕاوێژکار / حەکەم / مامۆستا / بازرگان / سەرۆک وەزیران / وەزیری دارایی / وەزیری بەرگری / وەزیری دادگا / وەزیری بڵاوکراوەکان / وەزیری تەندروستی / وەزیری ئاو / وەزیری کولتوور / بەرنامەنووس / وەرگێڕ / ئابووریناس / ژمێریار / ڕۆژنامەوان / شارەزای بازاڕکردن / ئاماریناس / پشتڕاستکەرەوە / هەڵبژێر / جێبەجێکار / کارگوزار / پلانساز | fa drafts: شهروند / نماینده پارلمان / رئیس مجلس / رئیس‌جمهور / وزیر / عضو دیوان / قاضی / دادستان / حقوقدان / سردفتر / خزانه‌دار / مأمور مالیات / مدیر منابع / اپراتور شبکه / متخصص امنیت سایبری / مدیر داده / سخنگو / ثبت‌کننده / سفیر / میانجی / نگهبان فرهنگی / بازرس / کنترل‌کننده کیفیت / ملا / طلبه علوم دینی / آموزگار / تولیدکننده محتوا / مدیر پروژه / رئیس انجمن / مدیر انجمن / آغا / پیشگام / مشاور / داور / معلم / بازرگان / نخست‌وزیر / وزیر دارایی / وزیر دفاع / وزیر دادگستری / وزیر نشریات / وزیر بهداشت / وزیر آب / وزیر فرهنگ / برنامه‌نویس / مترجم / اقتصاددان / حسابدار / روزنامه‌نگار / متخصص بازاریابی / آمارشناس / تأییدکننده / رأی‌دهنده / مجری / کارگزار / برنامه‌ریز | ar drafts: مواطن / نائب في البرلمان / رئيس البرلمان / الرئيس / وزير / عضو الديوان / قاضٍ / مدعٍ عام / حقوقي / كاتب عدل / أمين الخزينة / جابي الضرائب / مدير الموارد / مشغّل الشبكة / خبير الأمن السيبراني / مدير البيانات / متحدث رسمي / مسجّل / سفير / وسيط / حارس الثقافة / مفتش / مراقب الجودة / ملا / طالب علم شرعي / مربٍّ / صانع محتوى / مدير المشروع / رئيس الجمعية / مشرف المجتمع / آغا / رائد / مستشار / حكم / معلم / تاجر / رئيس الوزراء / وزير المالية / وزير الدفاع / وزير العدل / وزير النشر / وزير الصحة / وزير المياه / وزير الثقافة / مبرمج / مترجم / اقتصادي / محاسب / صحفي / أخصائي التسويق / إحصائي / مدقّق / ناخب / منفّذ / مسؤول إداري / مخطط | draft |
+| tab.label | Beş | بەشەکان | بخش‌ها | الأقسام | draft (kmr "Beş" from the approved mockup; aria-label of the bottom tab bar) |
+| tab.home | Mal | ماڵەوە | خانه | الرئيسية | draft (kmr "Mal" introduced by the mockup) |
+| tab.account | Hesab | هەژمار | حساب | الحساب | draft (kmr "Hesab" introduced by the mockup) |
+| day.today | Îro | ئەمڕۆ | امروز | اليوم | draft (kmr "Îro" introduced by the mockup; activity day header) |
+| day.yesterday | Duh | دوێنێ | دیروز | أمس | draft (kmr "Duh", the mockup's "duh"; activity day header) |
+| account.receivedShort | Te wergirt | وەرتگرت | دریافت کردید | استلمت | draft (kmr "Te wergirt" introduced by the mockup; activity row title) |
+| account.sentShort | Te şand | ناردت | فرستادید | أرسلت | draft (kmr "Te şand" introduced by the mockup; activity row title) |
+| account.amount | Mîqdar | بڕ | مبلغ | المبلغ | draft (kmr "Mîqdar" introduced by the mockup) |
+| account.copy | Kopî bike | کۆپی بکە | کپی آدرس | نسخ العنوان | draft (kmr "Kopî bike" introduced by the mockup; screen-reader label of the address chip) |
+| account.copied | Hat kopîkirin | کۆپی کرا | کپی شد | تم النسخ | draft (spoken after the address is copied) |
+| account.tokens | Token | تۆکنەکان | توکن‌ها | العملات | draft (kmr "Token" from the mockup; label of the token list) |
+| citizenship.card | Karta hemwelatiyê | کارتی هاوڵاتیبوون | کارت شهروندی | بطاقة المواطنة | draft (kmr "Karta hemwelatiyê" from the mockup; label of the citizen card) |
+| citizenship.steps | Gav | هەنگاوەکان | مراحل | الخطوات | draft (kmr "Gav" from the mockup; label of the step bar) |
+| app.expertsShort | Ji bo pisporan | بۆ شارەزایان | برای متخصصان | للخبراء | draft (same words as app.experts without the domain; the button on Citizenship) |
+| network.aye | Erê | بەڵێ | موافق | نعم | draft (kmr "Erê" introduced by the mockup; Aye share of a vote) |
+| network.nay | Na | نەخێر | مخالف | لا | draft (kmr "Na" introduced by the mockup; Nay share of a vote) |
+| chain.relay / chain.assetHub / chain.people | Relay / Asset Hub / People | Relay / Asset Hub / People | Relay / Asset Hub / People | Relay / Asset Hub / People | brand (chain names, identical in every locale) |
 
 Notes on tiki.*: the English and Turkish role names are also unreviewed renderings of Kurmanci titles. Rewsenbir is rendered as "Creator" (not "Writer"; see project decision). Feqi ("Religious Student"), Axa ("Aga"), Hekem ("Arbiter"), Pêseng ("Pioneer"), Karguzar ("Administrator") are culturally loaded and need a native-speaker check in every language.
+
+Redesign (2026-10-15): the rows from tab.label to network.nay and the chain.* row were added with the approved
+mockup. Every kmr word the mockup introduced (Mal, Hesab, Îro, Duh, Te wergirt, Te şand, Mîqdar, Kopî bike, Erê, Na,
+Beş, Gav, Karta hemwelatiyê) is a draft until a native speaker confirms it, as are all ckb, fa and ar cells. The
+mockup's "2 saet berê" is not a new string: relative times come from time.* ("Berî 2 saet") where the browser has no
+Kurmanji relative-time data. The role name Perwerdekar shown on the citizen screen is the on-chain variant (tiki.*).

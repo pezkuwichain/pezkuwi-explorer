@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { setLanguage } from '../i18n';
 import '../i18n';
 import Layout, { Addr } from './Layout';
+import PageHeader from './PageHeader';
 
 describe('Layout', () => {
   it('flips the document to RTL for Sorani and keeps addresses LTR', () => {
@@ -23,7 +24,7 @@ describe('Layout', () => {
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<p>HOME</p>} />
-            <Route path="x" element={<p>DEEP</p>} />
+            <Route path="x" element={<><PageHeader title="Deep" /><p>DEEP</p></>} />
           </Route>
         </Routes>
       </MemoryRouter>,
@@ -31,6 +32,33 @@ describe('Layout', () => {
     expect(screen.getByText('DEEP')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Back/ }));
     expect(screen.getByText('HOME')).toBeInTheDocument();
+    setLanguage('kmr');
+  });
+
+  it('shows the four tabs on every screen and marks the current one', () => {
+    setLanguage('en');
+    for (const [path, current] of [['/', 'Home'], ['/account', 'Account'], ['/account/open', 'Account'], ['/citizenship', 'Citizenship'], ['/network', 'Network'], ['/payment', null]] as const) {
+      const { unmount } = render(
+        <MemoryRouter initialEntries={[path]}><Routes><Route element={<Layout />}><Route path="*" element={<p>SCREEN</p>} /></Route></Routes></MemoryRouter>,
+      );
+      const tabs = screen.getByRole('navigation', { name: 'Sections' });
+      const links = within(tabs).getAllByRole('link');
+      expect(links.map((l) => l.getAttribute('href'))).toEqual(['/', '/account', '/citizenship', '/network']);
+      const active = links.filter((l) => l.getAttribute('aria-current') === 'page');
+      expect(active.map((l) => l.textContent)).toEqual(current ? [current] : []);
+      unmount();
+    }
+    setLanguage('kmr');
+  });
+
+  it('the language pill shows the code and keeps the native picker', () => {
+    setLanguage('kmr');
+    render(<MemoryRouter initialEntries={['/']}><Routes><Route element={<Layout />}><Route index element={<p>HOME</p>} /></Route></Routes></MemoryRouter>);
+    expect(screen.getByText('KMR')).toBeInTheDocument();
+    const select = screen.getByRole('combobox', { name: 'Ziman' });
+    fireEvent.change(select, { target: { value: 'en' } });
+    expect(document.documentElement.lang).toBe('en');
+    expect(screen.getByText('EN')).toBeInTheDocument();
     setLanguage('kmr');
   });
 

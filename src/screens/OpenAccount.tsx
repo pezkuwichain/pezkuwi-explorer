@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAccount } from '../account/AccountContext';
+import { useAccount, type Source } from '../account/AccountContext';
 import { extensionAccounts, NoWalletError, RejectedError } from '../account/connectors/extension';
 import { walletConnectAccounts } from '../account/connectors/walletconnect';
 import { scanQr } from '../account/connectors/qr';
+import { followDeepLink, onPhone, PLAY_STORE, routes, type Route } from '../account/platform';
+import { qrModules } from '../citizen/qr';
 import PageHeader from '../ui/PageHeader';
 import { IconPaste, IconScan, IconWallet } from '../ui/icons';
 import './OpenAccount.css';
@@ -13,6 +15,23 @@ type Mode = 'menu' | 'paste' | 'scan' | 'pick' | 'wc';
 const NEXT_PAGES = ['/account', '/citizenship', '/payment', '/network'] as const;
 // The home card links straight into one way in (?way=paste|scan|wallet); anything else opens the menu.
 const WAYS = ['paste', 'scan', 'wallet'] as const;
+type Pairing = { uri: string; deepLink: string };
+
+// The pairing as a QR for a wallet on another device: drawn on the device as an SVG path (the CSP allows no
+// remote images), dark modules on a white quiet zone so any wallet camera reads it in either theme.
+function PairingQr({ uri }: { uri: string }) {
+  const qr = useMemo(() => qrModules(uri), [uri]);
+  const pad = 4;
+  const side = qr.size + pad * 2;
+  return (
+    <div className="wc-qr">
+      <svg viewBox={`${-pad} ${-pad} ${side} ${side}`} width={232} height={232} role="img" aria-label="WalletConnect QR" shapeRendering="crispEdges">
+        <rect x={-pad} y={-pad} width={side} height={side} fill="#FFFFFF" />
+        <path fill="#04060E" d={qr.path} />
+      </svg>
+    </div>
+  );
+}
 
 export default function OpenAccount() {
   const { t } = useTranslation();
@@ -27,41 +46,57 @@ export default function OpenAccount() {
   const walletAsked = useRef(false);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [choices, setChoices] = useState<string[]>([]);
-  const [wcUri, setWcUri] = useState<string | null>(null);
+  const [choices, setChoices] = useState<{ list: string[]; source: Source }>({ list: [], source: 'address' });
+  const [pairing, setPairing] = useState<Pairing | null>(null);
+  // The wallet ways this device has (see account/platform.ts); fixed for the life of the screen.
+  const [ways] = useState<Route[]>(() => routes());
+  const phone = useMemo(() => onPhone(), []);
   const wcCtl = useRef<AbortController | null>(null);
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
 
-  const finish = (a: string) => {
-    if (open(a.trim())) nav(next, { replace: true });
+  const finish = (a: string, source: Source = 'address') => {
+    if (open(a.trim(), source)) nav(next, { replace: true });
     else setError(t('open.invalid'));
   };
-  const pickFrom = (list: string[]) => {
+  const pickFrom = (list: string[], source: Source) => {
     if (list.length === 0) setError(t('open.rejected'));
-    else if (list.length === 1) finish(list[0]);
-    else { setChoices(list); setMode('pick'); }
+    else if (list.length === 1) finish(list[0], source);
+    else { setChoices({ list, source }); setMode('pick'); }
   };
 
-  const wallet = async () => {
+  // Whatever the page has injected: the Pezkuwi extension on a desktop, the wallet itself in its own browser.
+  const extension = async () => {
     setError(null);
-    try { pickFrom(await extensionAccounts()); return; }
-    catch (e) { if (!(e instanceof NoWalletError)) { setError(t('open.rejected')); return; } }
+    try { pickFrom(await extensionAccounts(), 'extension'); }
+    catch (e) { setError(t(e instanceof NoWalletError ? 'open.noWallet' : 'open.rejected')); }
+  };
+
+  // WalletConnect: a QR on a desktop, the deep link into Pezkuwi Wallet on a phone.
+  const walletConnect = async () => {
+    setError(null);
     wcCtl.current?.abort();
     const ctl = new AbortController();
     wcCtl.current = ctl;
     try {
       setMode('wc');
-      const list = await walletConnectAccounts(setWcUri, ctl.signal);
+      const list = await walletConnectAccounts((p) => {
+        // Only a WalletConnect pairing URI is ever shown or followed.
+        if (ctl.signal.aborted || !p.uri.startsWith('wc:')) return;
+        setPairing(p);
+        if (phone) followDeepLink(p.deepLink);
+      }, ctl.signal);
       if (ctl.signal.aborted) return;
-      if (list.length === 0) { setMode('menu'); setWcUri(null); }
-      pickFrom(list);
+      if (list.length === 0) { setMode('menu'); setPairing(null); }
+      pickFrom(list, 'walletconnect');
     } catch (e) {
       if (ctl.signal.aborted) return;
-      setMode('menu'); setWcUri(null);
+      setMode('menu'); setPairing(null);
       setError(t(e instanceof RejectedError ? 'open.rejected' : 'open.noWallet'));
     }
   };
-  const back = () => { wcCtl.current?.abort(); setWcUri(null); setError(null); setMode('menu'); };
+  const go = (r: Route) => (r === 'extension' ? extension() : walletConnect());
+  const wallet = () => go(ways[0]);
+  const back = () => { wcCtl.current?.abort(); setPairing(null); setError(null); setMode('menu'); };
 
   useEffect(() => () => wcCtl.current?.abort(), []);
 
@@ -95,7 +130,11 @@ export default function OpenAccount() {
       <PageHeader title={t('open.title')} />
       <div className="screen open">
         {mode === 'menu' && <div className="ways">
-          <button type="button" className="way way-main" onClick={wallet}><span className="way-icon"><IconWallet /></span>{t('open.wallet')}</button>
+          {ways.map((r, i) => (
+            <button type="button" key={r} className={`way${i === 0 ? ' way-main' : ''}`} onClick={() => void go(r)}>
+              <span className="way-icon">{r === 'wc-qr' ? <IconScan /> : <IconWallet />}</span>{t(r === 'wc-qr' ? 'open.otherDevice' : 'open.wallet')}
+            </button>
+          ))}
           <button type="button" className="way" onClick={() => { setError(null); setMode('scan'); }}><span className="way-icon"><IconScan /></span>{t('open.scan')}</button>
           <button type="button" className="way" onClick={() => { setError(null); setMode('paste'); }}><span className="way-icon"><IconPaste /></span>{t('open.paste')}</button>
         </div>}
@@ -104,14 +143,17 @@ export default function OpenAccount() {
           <button type="button" className="btn btn-primary" onClick={() => finish(text)}>{t('open.go')}</button>
         </>}
         {mode === 'scan' && <video ref={setVideo} playsInline muted className="scanner" />}
-        {mode === 'wc' && wcUri?.startsWith('wc:') && <>
-          {/* The raw wc: URI is the scheme both wallet apps register for pairing. */}
-          <a className="btn btn-primary" href={wcUri}>{t('open.wallet')}</a>
-          {/* Some wallets (iOS) do not register the wc: scheme, so the link can do nothing. */}
-          <p className="hint">{t('open.wcHint')}</p>
-          <bdi dir="ltr" className="wc-uri">{wcUri}</bdi>
-        </>}
-        {mode === 'pick' && <div className="ways">{choices.map((a) => <button type="button" key={a} className="way way-address" onClick={() => finish(a)}><bdi dir="ltr">{a}</bdi></button>)}</div>}
+        {mode === 'wc' && pairing && (phone ? <>
+          {/* The page has already followed this link; the button is for when the browser did not. */}
+          <a className="btn btn-primary" href={pairing.deepLink}>{t('open.openApp')}</a>
+          <p className="hint" role="status">{t('open.waiting')}</p>
+          <p className="hint">{t('open.getApp')} <a className="store-link" href={PLAY_STORE} target="_blank" rel="noopener noreferrer">{t('open.onPlay')}</a></p>
+        </> : <>
+          <PairingQr uri={pairing.uri} />
+          <p className="hint wc-note">{t('open.qrHow')}</p>
+          <p className="hint wc-note" role="status">{t('open.waiting')}</p>
+        </>)}
+        {mode === 'pick' && <div className="ways">{choices.list.map((a) => <button type="button" key={a} className="way way-address" onClick={() => finish(a, choices.source)}><bdi dir="ltr">{a}</bdi></button>)}</div>}
         {(mode === 'scan' || mode === 'wc') && <button type="button" className="btn btn-quiet" onClick={back}>{t('app.back')}</button>}
         {error && <p role="alert" className="alert">{error}</p>}
       </div>

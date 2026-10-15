@@ -193,6 +193,18 @@ describe('Account', () => {
     expect(await screen.findByText(/Failed/)).toBeInTheDocument();
     expect(screen.queryByText(/You sent/)).toBeNull();
   });
+
+  it('has a clear Sign out button; it clears the account and goes home', async () => {
+    render(<MemoryRouter initialEntries={['/account']}><AccountProvider><Routes>
+      <Route path="/account" element={<Account />} /><Route path="/" element={<p>HOME</p>} /><Route path="/account/open" element={<p>OPEN</p>} />
+    </Routes></AccountProvider></MemoryRouter>);
+    await screen.findByTitle('5 HEZ');
+    const out = screen.getByRole('button', { name: 'Sign out' });
+    expect(out).toHaveClass('btn', 'btn-quiet');
+    fireEvent.click(out);
+    expect(await screen.findByText('HOME')).toBeInTheDocument();
+    expect(storage.get('account')).toBeNull();
+  });
 });
 
 describe('ActivityDetail', () => {

@@ -106,5 +106,4 @@
 .field::placeholder { color: var(--muted); font-family: var(--font-body); }
 .scanner { inline-size: 100%; border-radius: 20px; background: #000; }
 .hint { margin: 0; color: var(--muted-strong); }
-.wc-uri { overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
 .alert { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--bad-soft); color: var(--bad-text); font-weight: 600; }

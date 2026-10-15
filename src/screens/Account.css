@@ -28,4 +28,4 @@
 .activity.card-error { border: 1px dashed var(--border-strong); padding: 16px; border-radius: 20px; }
 .activity .card-title { margin-block-start: 4px; }
 .activity-day { display: flex; flex-direction: column; gap: 8px; }
-.account .btn-text { align-self: center; }
+.account .signout { align-self: stretch; }

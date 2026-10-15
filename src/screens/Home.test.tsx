@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import i18n from '../i18n';
 import { AccountProvider } from '../account/AccountContext';
@@ -11,12 +11,16 @@ const full = vi.fn();
 const balances = vi.hoisted(() => ({ load: (): Promise<unknown> => Promise.resolve([]), calls: 0 }));
 // The home light reads only the relay; the full overview (three chains) must not gate it.
 vi.mock('../data/network', () => ({ loadLiveness: () => Promise.resolve(true), loadNetwork: () => full() }));
+const wc = vi.hoisted(() => ({ disconnect: vi.fn(() => Promise.resolve()) }));
+vi.mock('../account/connectors/walletconnect', () => ({
+  WC_DISCONNECTED: 'wc-off', WC_SESSION_KEY: 'wc-session', disconnectWalletConnect: wc.disconnect, restoreWalletConnect: () => Promise.resolve({ state: 'live', accounts: [] }),
+}));
 vi.mock('../data/balances', () => ({ loadBalances: () => { balances.calls++; return balances.load(); } }));
 
 const renderHome = () => render(<MemoryRouter><AccountProvider><Home /></AccountProvider></MemoryRouter>);
 
 describe('Home', () => {
-  beforeEach(async () => { await i18n.changeLanguage('en'); storage.remove('account'); balances.calls = 0; });
+  beforeEach(async () => { await i18n.changeLanguage('en'); storage.remove('account'); storage.remove('account-source'); balances.calls = 0; wc.disconnect.mockClear(); });
 
   it('shows the four tiles with links and the network light', async () => {
     renderHome();
@@ -54,5 +58,35 @@ describe('Home', () => {
     expect(await screen.findByText(/This could not be loaded/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     expect(screen.queryByText(/HEZ/)).toBeNull();
+  });
+
+  it('with an account the card shows Sign out next to the address; it clears the account', async () => {
+    storage.set('account', ALICE);
+    renderHome();
+    const hero = screen.getByRole('heading', { name: 'My account · Total' }).closest('section')!;
+    const out = within(hero).getByRole('button', { name: 'Sign out' });
+    expect(out.closest('.hero-who')).toContainElement(within(hero).getByTitle(ALICE));
+    fireEvent.click(out);
+    expect(screen.getByRole('heading', { name: 'Open your account' })).toBeInTheDocument();
+    expect(storage.get('account')).toBeNull();
+    expect(wc.disconnect).not.toHaveBeenCalled();
+  });
+
+  it('signing out of a WalletConnect account ends the wallet session', async () => {
+    storage.set('account', ALICE);
+    storage.set('account-source', 'walletconnect');
+    renderHome();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(storage.get('account')).toBeNull();
+    expect(wc.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('the wallet ending the session (session_delete) signs out', async () => {
+    storage.set('account', ALICE);
+    storage.set('account-source', 'walletconnect');
+    renderHome();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    await act(async () => { window.dispatchEvent(new Event('wc-off')); });
+    expect(screen.getByRole('heading', { name: 'Open your account' })).toBeInTheDocument();
   });
 });

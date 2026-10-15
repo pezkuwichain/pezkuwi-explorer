@@ -128,6 +128,9 @@ function byDay(list: Activity[]): Activity[][] {
 export default function Account() {
   const { t, i18n } = useTranslation();
   const { address, forget } = useAccount();
+  // Signing out leaves for home, not for the open-account screen a missing account otherwise redirects to.
+  const [signedOut, setSignedOut] = useState(false);
+  const signOut = () => { setSignedOut(true); forget(); };
   // No account: the redirect below renders; nothing is fetched for a null address.
   const balances = useAsync(() => (address ? loadBalances(address) : Promise.resolve([])), [address]);
   const [hist, setHist] = useState<Hist>({ status: 'loading' });
@@ -143,7 +146,7 @@ export default function Account() {
     );
     return () => { live = false; };
   }, [address, tick, refreshNow]);
-  if (!address) return <Navigate to="/account/open" replace />;
+  if (!address) return <Navigate to={signedOut ? '/' : '/account/open'} replace />;
   return (
     <>
       <PageHeader title={t('home.account')} />
@@ -164,7 +167,7 @@ export default function Account() {
             </div>
           ))}
         </Card>
-        <button type="button" className="btn btn-text" onClick={forget}>{t('account.forget')}</button>
+        <button type="button" className="btn btn-quiet signout" onClick={signOut}>{t('app.signOut')}</button>
       </div>
     </>
   );

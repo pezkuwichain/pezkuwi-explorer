@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { decodeAddress, encodeAddress } from '@pezkuwi/util-crypto';
 import { NETWORK } from '../config/network';
-import { loadActivity, findPayment, indexerLag, NotIndexedError } from './history';
+import { loadActivity, findPayment, indexerLag, InvalidLookupError, NotIndexedError } from './history';
 
 const ME = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const BOB = '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty';
@@ -44,7 +44,8 @@ describe('history', () => {
     expect((await findPayment('0x' + 'cd'.repeat(32), reply([]))).status).toBe('notFound');
   });
   it('rejects input that is neither a code nor an address', async () => {
-    await expect(findPayment('hello', reply([]))).rejects.toThrow();
+    await expect(findPayment('hello', reply([]))).rejects.toBeInstanceOf(InvalidLookupError);
+    await expect(findPayment('0x' + 'ab'.repeat(20), reply([]))).rejects.toBeInstanceOf(InvalidLookupError);
   });
   it('computes indexer lag from metadata', async () => {
     const f = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: { _metadata: { lastProcessedHeight: 90, targetHeight: 120 } } }) });

@@ -4,6 +4,8 @@ import { withTimeout } from '../lib/timeout';
 import { REQUEST_TIMEOUT_MS } from '../chain/connections';
 
 export class NotIndexedError extends Error {}
+// The input is neither a transaction code nor a valid address.
+export class InvalidLookupError extends Error {}
 export type Activity = {
   id: string; when: number; direction: 'sent' | 'received' | 'other'; counterparty: string | null;
   // null = asset not in NETWORK.assets: consumers must NOT format an amount when decimals is null.
@@ -93,7 +95,7 @@ export async function findPayment(input: string, fetcher: typeof fetch = fetch) 
     act = toActivity(first, (first.transfer ?? first.assetTransfer)!.from);
   } else {
     const a = normaliseAddress(text);
-    if (!a) throw new Error('not a code or address');
+    if (!a) throw new InvalidLookupError('not a code or address');
     const n = (await query(`{address:{equalTo:${JSON.stringify(a)}}}`, fetcher)).find((x) => x.transfer || x.assetTransfer);
     if (!n) return { status: 'notFound' as const };
     act = toActivity(n, a);

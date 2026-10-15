@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { findPayment, indexerLag, NotIndexedError } from '../data/history';
+import { findPayment, indexerLag, InvalidLookupError, NotIndexedError } from '../data/history';
 import { scanQr } from '../account/connectors/qr';
 import { normaliseAddress } from '../lib/address';
 import { Addr } from '../ui/Layout';
+import { NETWORK } from '../config/network';
 
 type Result = 'arrived' | 'failed' | 'onTheWay' | 'notFound' | 'notAPayment' | 'preparing' | 'error' | 'invalid' | 'noCamera';
 
@@ -36,7 +37,7 @@ export default function PaymentStatus() {
       } else setRes({ r: p.status });
     } catch (err) {
       if (!live()) return;
-      setRes({ r: err instanceof NotIndexedError ? 'preparing' : err instanceof Error && err.message === 'not a code or address' ? 'invalid' : 'error' });
+      setRes({ r: err instanceof NotIndexedError ? 'preparing' : err instanceof InvalidLookupError ? 'invalid' : 'error' });
     } finally { if (live()) setBusy(false); }
   };
 
@@ -53,6 +54,16 @@ export default function PaymentStatus() {
     // run only closes over refs and stable setters; restarting on its identity would reopen the camera.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanning, video]);
+
+  // Without an indexer no lookup can succeed: say so up front instead of offering a form that can only fail.
+  if (!NETWORK.history.assetHub) {
+    return (
+      <div className="stack">
+        <h1>{t('payment.title')}</h1>
+        <div className="answer answer-preparing" role="status"><p>{t('state.preparing')}</p></div>
+      </div>
+    );
+  }
 
   return (
     <div className="stack">

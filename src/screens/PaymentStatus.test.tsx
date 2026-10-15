@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import i18n from '../i18n';
-import { NotIndexedError } from '../data/history';
+import { InvalidLookupError, NotIndexedError } from '../data/history';
+import { NETWORK } from '../config/network';
 
 const find = vi.fn(); const lag = vi.fn(); const scan = vi.fn();
 vi.mock('../data/history', async (o) => ({ ...(await o<typeof import('../data/history')>()), findPayment: (q: string) => find(q), indexerLag: () => lag() }));
@@ -22,9 +23,20 @@ async function ask(value = CODE) {
   fireEvent.submit(screen.getByRole('search'));
 }
 
-beforeEach(() => { find.mockReset(); lag.mockReset(); scan.mockReset(); });
+// The lookup form exists only once an indexer is configured; the screens below assume one.
+beforeEach(() => { find.mockReset(); lag.mockReset(); scan.mockReset(); NETWORK.history.assetHub = 'https://history.example/graphql'; });
+afterEach(() => { NETWORK.history.assetHub = null; });
 
 describe('PaymentStatus', () => {
+  it('with no indexer configured shows the preparing message at once and no input, scan or submit', async () => {
+    NETWORK.history.assetHub = null;
+    await mount();
+    expect(screen.getByText('This section is being prepared.')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Paste the transaction code or an address')).toBeNull();
+    expect(screen.queryByRole('search')).toBeNull();
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(find).not.toHaveBeenCalled();
+  });
   it('arrived', async () => { find.mockResolvedValue({ status: 'arrived', activity: { counterparty: null } }); await ask(); expect(await screen.findByText('Arrived')).toBeInTheDocument(); });
   it('failed explains the money stayed', async () => { find.mockResolvedValue({ status: 'failed' }); await ask(); expect(await screen.findByText(/Your money is still in your account/)).toBeInTheDocument(); });
   it('not found while the indexer lags means on its way', async () => { find.mockResolvedValue({ status: 'notFound' }); lag.mockResolvedValue(50); await ask(); expect(await screen.findByText('On its way')).toBeInTheDocument(); });
@@ -47,7 +59,11 @@ describe('PaymentStatus', () => {
   });
   it('a code that is not a payment says so', async () => { find.mockResolvedValue({ status: 'notAPayment' }); await ask(); expect(await screen.findByText('This code is not a payment.')).toBeInTheDocument(); });
   it('no indexer shows the preparing message', async () => { find.mockRejectedValue(new NotIndexedError()); await ask(); expect(await screen.findByText('This section is being prepared.')).toBeInTheDocument(); });
-  it('invalid input shows the invalid message', async () => { find.mockRejectedValue(new Error('not a code or address')); await ask('nonsense'); expect(await screen.findByRole('alert')).toHaveTextContent('not a valid address'); });
+  it('invalid input shows the invalid message', async () => { find.mockRejectedValue(new InvalidLookupError()); await ask('nonsense'); expect(await screen.findByRole('alert')).toHaveTextContent('not a valid address'); });
+  it('a plain error that happens to carry the old message is a generic error, not "invalid"', async () => {
+    find.mockRejectedValue(new Error('not a code or address')); await ask('nonsense');
+    expect(await screen.findByText(/could not be loaded/)).toBeInTheDocument();
+  });
   it('any other failure shows the generic error', async () => { find.mockRejectedValue(new Error('boom')); await ask(); expect(await screen.findByText(/could not be loaded/)).toBeInTheDocument(); });
   it('a scanned code fills the box and submits', async () => {
     scan.mockResolvedValue(CODE); find.mockResolvedValue({ status: 'failed' });

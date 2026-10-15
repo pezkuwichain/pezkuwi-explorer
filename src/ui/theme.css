@@ -76,10 +76,14 @@
   --font-display: 'Space Grotesk', 'Noto Sans Arabic', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --tap: 44px;
-  /* Tab bar: 8px above, 54px of tabs, then the device's own bottom inset (home indicator, gesture bar) or 8px
-     where there is none. No fixed allowance on top of the inset: inside a wallet's DApp browser the page ends
-     above the wallet's own toolbar, the inset is 0, and a fixed 22px showed as a gap above that toolbar. */
-  --tabbar: calc(62px + max(8px, env(safe-area-inset-bottom, 0px)));
+  /* The bottom safe-area inset goes through this one variable, as on pex.network (web/src/index.css), so there
+     is one place to turn it off. In a browser it is the real home-bar inset and the tab bar needs it. Inside the
+     Pezkuwi Wallet's DApp browser the wallet has already placed the webview above its own toolbar, yet the
+     webview still reports the system bar's inset; applying it again stacks our padding on top of the wallet's.
+     html.in-wallet (src/ui/walletBrowser.ts) zeroes it. No other rule reads the inset itself. */
+  --sa-bottom: env(safe-area-inset-bottom, 0px);
+  /* Tab bar: 8px above, 54px of tabs, then the bottom inset, or 8px where there is none. */
+  --tabbar: calc(62px + max(8px, var(--sa-bottom)));
   color-scheme: light;
   font-family: var(--font-body); font-size: 16px; line-height: 1.45;
   color: var(--text); background: var(--bg);
@@ -117,6 +121,7 @@
   --bg-citizen: radial-gradient(90% 40% at 50% 22%, rgba(1, 122, 47, 0.25) 0%, #08090E 70%);
   --shadow-live: 0 0 0 10px rgba(47, 200, 100, 0.06);
 }
+:root.in-wallet { --sa-bottom: 0px; }
 :root[dir='rtl'] {
   --font-body: 'Noto Sans Arabic', 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-display: 'Noto Sans Arabic', 'Space Grotesk', system-ui, sans-serif;

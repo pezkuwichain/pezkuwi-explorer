@@ -29,5 +29,5 @@ export default defineConfig({
       },
     }),
   ],
-  test: { environment: 'happy-dom', setupFiles: ['./src/test-setup.ts'] },
+  test: { exclude: ['e2e/**', 'node_modules/**'], environment: 'happy-dom', setupFiles: ['./src/test-setup.ts'] },
 });

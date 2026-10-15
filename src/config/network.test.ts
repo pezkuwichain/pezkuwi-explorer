@@ -70,9 +70,18 @@ describe('network config', () => {
     expect(body).toMatch(/proxy_pass http:\/\/127\.0\.0\.1:3100\/;/);
     expect(body).toMatch(/proxy_set_header Host 127\.0\.0\.1;/);
     expect(body).toMatch(/proxy_read_timeout 15s;/);
+    // The indexer's query service advertises itself and allows every origin; both are stripped.
+    expect(body).toMatch(/proxy_hide_header X-Powered-By;/);
+    expect(body).toMatch(/proxy_hide_header Access-Control-Allow-Origin;/);
     // The zone lives in the http context on the host; the reference copy must say where.
     expect(conf()).toMatch(/limit_req_zone \$binary_remote_addr zone=explorer_history:1m rate=5r\/s;/);
     expect(conf()).toMatch(/\/etc\/nginx\/conf\.d\/explorer-history\.conf/);
+  });
+
+  it('lets the WalletConnect Verify iframe load, so the wallet can attest the domain', () => {
+    const line = conf().split('\n').find((l) => /^\s*add_header\s+Content-Security-Policy\b/.test(l))!;
+    const frame = line.split(';').map((d) => d.trim()).find((d) => d.startsWith('frame-src '));
+    expect(frame?.split(/\s+/).slice(1).sort()).toEqual(['https://verify.walletconnect.com', 'https://verify.walletconnect.org']);
   });
 
   it('no location block sets add_header (it would drop the server-level security headers)', () => {

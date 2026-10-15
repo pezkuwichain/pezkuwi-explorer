@@ -25,6 +25,9 @@ describe('loadCitizenship', () => {
     const r = await loadCitizenship('5Grw', { getApi: people(status, nft as boolean, [], 0n) });
     expect(r.stage).toBe(stage);
   });
+  it('an unknown status is an error, never "applied"', async () => {
+    await expect(loadCitizenship('5Grw', { getApi: people('SomethingNew', false, [], 0n) })).rejects.toThrow(/SomethingNew/);
+  });
   it('returns roles and trust', async () => {
     const r = await loadCitizenship('5Grw', { getApi: people('Approved', true, ['Welati', 'Noter'], 42n) });
     expect(r).toEqual({ stage: 'citizen', roles: ['Welati', 'Noter'], trust: 42n });

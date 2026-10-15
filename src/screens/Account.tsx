@@ -15,7 +15,8 @@ type Hist = { status: 'loading' | 'ok' | 'error' | 'preparing'; data?: Activity[
 export default function Account() {
   const { t, i18n } = useTranslation();
   const { address, forget } = useAccount();
-  const balances = useAsync(() => loadBalances(address!), [address]);
+  // No account: the redirect below renders; nothing is fetched for a null address.
+  const balances = useAsync(() => (address ? loadBalances(address) : Promise.resolve([])), [address]);
   const [hist, setHist] = useState<Hist>({ status: 'loading' });
   const [now] = useState(() => Date.now() / 1000);
   const [tick, setTick] = useState(0);

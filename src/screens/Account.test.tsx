@@ -18,11 +18,12 @@ const BOB = '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty';
 const impl = vi.hoisted(() => ({
   balances: (): Promise<unknown> => Promise.resolve([]),
   activity: (): Promise<unknown> => Promise.resolve([]),
+  calls: [] as [string, unknown][],
 }));
-vi.mock('../data/balances', () => ({ loadBalances: () => impl.balances() }));
+vi.mock('../data/balances', () => ({ loadBalances: (a: unknown) => { impl.calls.push(['balances', a]); return impl.balances(); } }));
 vi.mock('../data/history', async (orig) => {
   const m = await orig<typeof import('../data/history')>();
-  return { ...m, loadActivity: () => impl.activity() };
+  return { ...m, loadActivity: (a: unknown) => { impl.calls.push(['activity', a]); return impl.activity(); } };
 });
 
 const act = (over: Partial<Activity>): Activity => ({
@@ -36,6 +37,7 @@ describe('Account', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en');
     storage.set('account', ALICE);
+    impl.calls = [];
     impl.balances = () => Promise.resolve([{ symbol: 'HEZ', decimals: 12, amount: 5_000_000_000_000n }]);
     impl.activity = async () => { const { NotIndexedError } = await import('../data/history'); throw new NotIndexedError(); };
   });
@@ -78,6 +80,15 @@ describe('Account', () => {
     expect(time).not.toMatch(/[0-9]/);
   });
 
+  it('with no open account it loads nothing and goes to the open screen', async () => {
+    storage.remove('account');
+    render(<MemoryRouter initialEntries={['/account']}><AccountProvider><Routes>
+      <Route path="/account" element={<Account />} /><Route path="/account/open" element={<p>OPEN</p>} />
+    </Routes></AccountProvider></MemoryRouter>);
+    expect(await screen.findByText('OPEN')).toBeInTheDocument();
+    await new Promise((x) => setTimeout(x, 10));
+    expect(impl.calls).toEqual([]);
+  });
   it('a failed row shows Failed and not the sent sentence', async () => {
     impl.activity = () => Promise.resolve([act({ ok: false })]);
     renderAccount();

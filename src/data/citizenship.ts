@@ -15,9 +15,13 @@ export async function loadCitizenship(address: string, deps = { getApi: realGetA
   const [status, nft, tikis, trust] = await withTimeout(Promise.all([
     q.identityKyc.kycStatuses(address), q.tiki.citizenNft(address), q.tiki.userTikis(address), q.trust.trustScores(address),
   ]), REQUEST_TIMEOUT_MS);
+  // Only known variants map to a stage. A variant added by a runtime upgrade must not be shown as
+  // "applied": it surfaces as a load error until this mapping is updated.
   const stage: Stage =
     status.type === 'Revoked' ? 'revoked'
     : status.type === 'Approved' ? (nft.isSome ? 'citizen' : 'approved')
-    : status.type === 'NotStarted' ? 'notStarted' : 'applied';
+    : status.type === 'NotStarted' ? 'notStarted'
+    : status.type === 'PendingReferral' || status.type === 'ReferrerApproved' ? 'applied'
+    : (() => { throw new Error(`unknown citizenship status: ${status.type}`); })();
   return { stage, roles: tikis.map((t) => t.type), trust: trust.toBigInt() };
 }

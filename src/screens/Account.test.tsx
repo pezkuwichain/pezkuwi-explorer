@@ -11,6 +11,10 @@ import ActivityDetail from './ActivityDetail';
 const ALICE = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const BOB = '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty';
 
+// react-router's memory history JSON-stringifies location state in a warning message; real browsers
+// structured-clone it (BigInt is fine there), so teach JSON about BigInt for the test only.
+(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function (this: bigint) { return this.toString(); };
+
 const impl = vi.hoisted(() => ({
   balances: (): Promise<unknown> => Promise.resolve([]),
   activity: (): Promise<unknown> => Promise.resolve([]),
@@ -66,15 +70,63 @@ describe('Account', () => {
     await i18n.changeLanguage('ckb');
     impl.activity = () => Promise.resolve([act({})]);
     renderAccount();
-    expect(await screen.findByText(/پێش 2 کاتژمێر/)).toBeInTheDocument();
-    expect(screen.queryByText(/hours ago/)).toBeNull();
+    const el = await screen.findByText(/کاتژمێر/);
+    expect(el.textContent).toContain('پێش ٢ کاتژمێر');
+    expect(el.textContent).not.toMatch(/hours ago/);
+    const time = /پێش\s\S+\sکاتژمێر/.exec(el.textContent ?? '')?.[0] ?? '';
+    expect(time).toBe('پێش ٢ کاتژمێر');
+    expect(time).not.toMatch(/[0-9]/);
   });
 
-  it('detail without router state redirects to /account', async () => {
+  it('a failed row shows Failed and not the sent sentence', async () => {
+    impl.activity = () => Promise.resolve([act({ ok: false })]);
+    renderAccount();
+    expect(await screen.findByText(/Failed/)).toBeInTheDocument();
+    expect(screen.queryByText(/You sent/)).toBeNull();
+  });
+});
+
+describe('ActivityDetail', () => {
+  beforeEach(async () => { await i18n.changeLanguage('en'); storage.set('account', ALICE); });
+  const detail = (state: unknown, path = '/account/activity/1-0-from') =>
     render(
-      <MemoryRouter initialEntries={['/account/activity/x']}><AccountProvider>
-        <Routes><Route path="account" element={<p>ACCT</p>} /><Route path="account/activity/:id" element={<ActivityDetail />} /></Routes>
+      <MemoryRouter initialEntries={[{ pathname: path, state }]}><AccountProvider>
+        <Routes>
+          <Route path="account" element={<p>ACCT</p>} />
+          <Route path="account/open" element={<p>OPEN</p>} />
+          <Route path="account/activity/:id" element={<ActivityDetail />} />
+        </Routes>
       </AccountProvider></MemoryRouter>);
+
+  it('no state redirects to /account', async () => {
+    detail(null);
     expect(await screen.findByText('ACCT')).toBeInTheDocument();
+  });
+  it('valid state renders amount and counterparty', async () => {
+    detail(act({}));
+    expect(await screen.findByText('1 HEZ')).toBeInTheDocument();
+    expect(screen.getByText(/To:/)).toBeInTheDocument();
+  });
+  it('unknown asset renders the symbol with no amount', async () => {
+    detail(act({ symbol: '#777', decimals: null, amount: 123456789n }));
+    expect(await screen.findByText('#777')).toBeInTheDocument();
+    expect(screen.queryByText(/123/)).toBeNull();
+  });
+  it('a failed transaction heading says Failed', async () => {
+    detail(act({ ok: false }));
+    expect(await screen.findByRole('heading', { name: /Failed/ })).toBeInTheDocument();
+  });
+  it('mismatched id redirects', async () => {
+    detail(act({ id: 'other' }));
+    expect(await screen.findByText('ACCT')).toBeInTheDocument();
+  });
+  it('malformed state (string amount) redirects', async () => {
+    detail({ ...act({}), amount: '5' });
+    expect(await screen.findByText('ACCT')).toBeInTheDocument();
+  });
+  it('no open account redirects to open', async () => {
+    storage.remove('account');
+    detail(act({}));
+    expect(await screen.findByText('OPEN')).toBeInTheDocument();
   });
 });

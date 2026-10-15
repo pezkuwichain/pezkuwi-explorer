@@ -44,7 +44,9 @@ export default function Account() {
           {hist.data?.map((a) => (
             <li key={a.id}>
               <Link to={`/account/activity/${encodeURIComponent(a.id)}`} state={a}>
-                {a.direction === 'other' || !a.counterparty ? <ActivityAmount a={a} /> : (
+                {a.direction === 'other' || !a.counterparty || !a.ok ? (
+                  <><ActivityAmount a={a} />{!a.ok && <> · {t('account.failed')}</>}</>
+                ) : (
                   <Trans i18nKey={a.direction === 'sent' ? 'account.sent' : 'account.received'}
                     components={{ amount: <ActivityAmount a={a} />, who: <Addr value={a.counterparty} /> }} />
                 )}

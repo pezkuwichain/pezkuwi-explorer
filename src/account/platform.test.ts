@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { platform, routes } from './platform';
+import { platform, routes, settledRoutes } from './platform';
 
 const UA = {
   desktop: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36',
@@ -50,5 +50,49 @@ describe('wallet ways per device', () => {
     as(UA.ios);
     expect(platform()).toBe('ios');
     expect(routes()).toEqual(['wc-app']);
+  });
+  // The names each wallet app injects, read from its own injection script (see ui/walletBrowser.ts).
+  it('inside Pezkuwi Wallet for Android (no PEZKUWI_MOBILE): the injected wallet', () => {
+    as(UA.android, { injectedWeb3: { 'polkadot-js': {}, 'pezkuwi-wallet': {}, 'pezkuwi-js': {} } });
+    expect(platform()).toBe('inapp');
+    expect(routes()).toEqual(['extension']);
+  });
+  it('inside Pezkuwi Wallet for iOS: the injected wallet', () => {
+    as(UA.ios, { injectedWeb3: { 'polkadot-js': {}, 'nova-wallet': {} } });
+    expect(platform()).toBe('inapp');
+    expect(routes()).toEqual(['extension']);
+  });
+  it('the desktop extension (injected as "pezkuwi") is not the wallet: extension first, QR second', () => {
+    as(UA.desktop, { injectedWeb3: { pezkuwi: {} } });
+    expect(platform()).toBe('desktop');
+    expect(routes()).toEqual(['extension', 'wc-qr']);
+  });
+});
+
+describe('a tap right after the wallet opens the page', () => {
+  afterEach(() => vi.useRealTimers());
+  it('waits for the late injection instead of falling back to WalletConnect', async () => {
+    vi.useFakeTimers();
+    as(UA.android);
+    vi.spyOn(performance, 'now').mockReturnValue(200);
+    const r = settledRoutes();
+    setTimeout(() => { w.injectedWeb3 = { 'pezkuwi-wallet': {} }; }, 300);
+    await vi.advanceTimersByTimeAsync(450);
+    expect(await r).toEqual(['extension']);
+  });
+  it('does not delay a tap in a plain phone browser once the page has been open a while', async () => {
+    as(UA.android);
+    vi.spyOn(performance, 'now').mockReturnValue(5000);
+    expect(await settledRoutes()).toEqual(['wc-app']);
+  });
+  it('gives up at the end of the settle window', async () => {
+    vi.useFakeTimers();
+    as(UA.android);
+    let t = 200;
+    vi.spyOn(performance, 'now').mockImplementation(() => t);
+    const r = settledRoutes();
+    t = 1600;
+    await vi.advanceTimersByTimeAsync(150);
+    expect(await r).toEqual(['wc-app']);
   });
 });

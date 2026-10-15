@@ -49,6 +49,13 @@ describe('wallet browser detection', () => {
     expect(document.documentElement.classList.contains(WALLET_CLASS)).toBe(true);
   });
 
+  it('knows the iOS wallet too, and not the desktop extension', () => {
+    (window as { injectedWeb3?: unknown }).injectedWeb3 = { 'polkadot-js': {}, 'nova-wallet': {} };
+    expect(isWalletBrowser()).toBe(true);
+    (window as { injectedWeb3?: unknown }).injectedWeb3 = { pezkuwi: {}, 'polkadot-js': {} };
+    expect(isWalletBrowser()).toBe(false);
+  });
+
   it('gives up after ten checks', () => {
     vi.useFakeTimers();
     markWalletBrowser();

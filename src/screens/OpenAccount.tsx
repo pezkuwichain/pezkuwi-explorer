@@ -5,7 +5,7 @@ import { useAccount, type Source } from '../account/AccountContext';
 import { extensionAccounts, NoWalletError, RejectedError } from '../account/connectors/extension';
 import { walletConnectAccounts } from '../account/connectors/walletconnect';
 import { scanQr } from '../account/connectors/qr';
-import { followDeepLink, onPhone, PLAY_STORE, routes, type Route } from '../account/platform';
+import { followDeepLink, onPhone, PLAY_STORE, routes, settledRoutes, type Route } from '../account/platform';
 import { qrModules } from '../citizen/qr';
 import PageHeader from '../ui/PageHeader';
 import { IconPaste, IconScan, IconWallet } from '../ui/icons';
@@ -48,9 +48,15 @@ export default function OpenAccount() {
   const [error, setError] = useState<string | null>(null);
   const [choices, setChoices] = useState<{ list: string[]; source: Source }>({ list: [], source: 'address' });
   const [pairing, setPairing] = useState<Pairing | null>(null);
-  // The wallet ways this device has (see account/platform.ts); fixed for the life of the screen.
-  const [ways] = useState<Route[]>(() => routes());
-  const phone = useMemo(() => onPhone(), []);
+  // The wallet ways this device has (see account/platform.ts), settled once the wallet's injection has had
+  // its chance to land; the main way is read again when taken.
+  const [ways, setWays] = useState<Route[]>(() => routes());
+  const [phone, setPhone] = useState(() => onPhone());
+  useEffect(() => {
+    let live = true;
+    void settledRoutes().then((r) => { if (live) { setWays(r); setPhone(onPhone()); } });
+    return () => { live = false; };
+  }, []);
   const wcCtl = useRef<AbortController | null>(null);
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
 
@@ -95,7 +101,7 @@ export default function OpenAccount() {
     }
   };
   const go = (r: Route) => (r === 'extension' ? extension() : walletConnect());
-  const wallet = () => go(ways[0]);
+  const wallet = async () => go((await settledRoutes())[0]);
   const back = () => { wcCtl.current?.abort(); setPairing(null); setError(null); setMode('menu'); };
 
   useEffect(() => () => wcCtl.current?.abort(), []);

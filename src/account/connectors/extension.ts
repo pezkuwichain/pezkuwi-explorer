@@ -9,5 +9,7 @@ export async function extensionAccounts(): Promise<string[]> {
   if (ext.length === 0) throw new NoWalletError();
   const accounts = await web3Accounts();
   if (accounts.length === 0) throw new RejectedError();
-  return accounts.map((a) => a.address);
+  // The wallet's browser injects one provider under several names (Android: 'polkadot-js', 'pezkuwi-wallet',
+  // 'pezkuwi-js' are the same object), so web3Accounts lists each account once per name.
+  return [...new Set(accounts.map((a) => a.address))];
 }

@@ -76,7 +76,7 @@ describe('OpenAccount connectors (mocked)', () => {
     vi.doMock('../account/connectors/qr', () => ({ scanQr: opts.qr ?? (() => new Promise(() => {})) }));
     vi.doMock('../account/platform', async (orig) => ({
       ...(await orig<typeof import('../account/platform')>()),
-      routes: () => device.routes, onPhone: () => device.phone, followDeepLink: (h: string) => { followed.push(h); },
+      routes: () => device.routes, settledRoutes: () => Promise.resolve(device.routes), onPhone: () => device.phone, followDeepLink: (h: string) => { followed.push(h); },
     }));
     const { default: I18n } = await import('../i18n'); await I18n.changeLanguage('en');
     const { AccountProvider: P } = await import('../account/AccountContext');
@@ -187,6 +187,19 @@ describe('OpenAccount connectors (mocked)', () => {
     await waitFor(() => expect(calls).toBe(1));
     await new Promise((x) => setTimeout(x, 20));
     expect(calls).toBe(1);
+  });
+  it('inside the wallet: ?way=wallet signs in through the injected wallet, never WalletConnect', async () => {
+    let wcCalls = 0;
+    const r = await setup(() => { wcCalls++; return new Promise(() => {}); },
+      { device: { routes: ['extension'], phone: true }, ext: () => Promise.resolve([addr]) });
+    void r;
+    const { default: O } = await import('./OpenAccount');
+    const { AccountProvider: P } = await import('../account/AccountContext');
+    render(<MemoryRouter initialEntries={['/account/open?way=wallet']}><P><Routes>
+      <Route path="/account/open" element={<O />} /><Route path="/account" element={<p>ACCOUNT PAGE</p>} /></Routes></P></MemoryRouter>);
+    expect(await screen.findByText('ACCOUNT PAGE')).toBeInTheDocument();
+    expect(localStorage.getItem('pezkuwi-explorer:account-source')).toBe('extension');
+    expect(wcCalls).toBe(0);
   });
   it('does not render or follow a non-wc pairing', async () => {
     for (const device of [DESKTOP, PHONE]) {

@@ -15,6 +15,11 @@ describe('normaliseAddress', () => {
     expect(normaliseAddress('hello')).toBeNull();
     expect(normaliseAddress('')).toBeNull();
   });
+  it('rejects raw hex public keys: only SS58 with a checksum is an address', () => {
+    expect(normaliseAddress('0x' + 'ab'.repeat(32))).toBeNull();
+    expect(normaliseAddress('0x' + 'AB'.repeat(32))).toBeNull();
+    expect(normaliseAddress(ALICE_42)).toBe(ALICE_42);
+  });
 });
 
 describe('shortAddress', () => {

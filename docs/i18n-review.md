@@ -61,6 +61,7 @@ Turkish and English are written directly and are not listed.
 | citizenship.roles | Rol | ڕۆڵ | نقش‌ها | الأدوار | pwap |
 | citizenship.trust | Xala Ewlehiyê | خاڵی متمانە | امتیاز اعتماد | درجة الثقة | pwap (review: literal 'ewlehî' ≈ security) |
 | citizenship.noRoles | Hîna rol tune. | هێشتا هیچ ڕۆڵێک نییە. | هنوز نقشی نیست. | لا توجد أدوار بعد. | draft |
+| citizenship.stepDone | qediya | تەواو بوو | انجام شد | مكتمل | draft (screen-reader text on completed steps; tr/en direct) |
 | network.title | Tor | تۆڕ | شبکه | الشبكة | pwap |
 | network.votes | Deng | دەنگدان | رأی‌ها | الأصوات | pwap |
 | network.noVotes | Niha dengdaneke çalak tune. | ئێستا هیچ دەنگدانێکی چالاک نییە. | اکنون رأی‌گیری فعالی نیست. | لا توجد تصويتات نشطة الآن. | draft |

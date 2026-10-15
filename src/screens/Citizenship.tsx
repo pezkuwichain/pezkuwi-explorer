@@ -27,7 +27,11 @@ export default function Citizenship() {
         {stage && isStep(stage) && (
           <ol className="steps">{STEPS.map((st) => (
             <li key={st} className={STEPS.indexOf(st) <= STEPS.indexOf(stage) ? 'done' : ''}
-                aria-current={st === stage ? 'step' : undefined}>{t(`citizenship.${st}`)}</li>))}</ol>)}
+                aria-current={st === stage ? 'step' : undefined}>
+              {STEPS.indexOf(st) <= STEPS.indexOf(stage) && <span className="tick" aria-hidden="true">✓ </span>}
+              {t(`citizenship.${st}`)}
+              {STEPS.indexOf(st) <= STEPS.indexOf(stage) && <span className="sr-only"> ({t('citizenship.stepDone')})</span>}
+            </li>))}</ol>)}
       </Card>
       <Card title={t('citizenship.roles')} status={s.status}>
         {data?.roles.length

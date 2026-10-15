@@ -63,6 +63,28 @@ describe('Citizenship', () => {
     expect(bdi.textContent).not.toMatch(/[0-9]/);
   });
 
+  it('a known role is translated', async () => {
+    renderIt();
+    expect(await screen.findByText('Citizen', { selector: '.badges li' })).toBeInTheDocument();
+    expect(screen.queryByText('Welati')).toBeNull();
+  });
+
+  it('citizen marks all three steps done with hidden text', async () => {
+    impl.load = () => Promise.resolve({ stage: 'citizen', roles: [], trust: 1n });
+    const { container } = renderIt();
+    await screen.findByText('Applied');
+    expect(container.querySelectorAll('.steps .tick')).toHaveLength(3);
+    expect(container.querySelectorAll('.steps .sr-only')).toHaveLength(3);
+    expect(container.querySelectorAll('.steps li.done')).toHaveLength(3);
+  });
+
+  it('error status shows the error text and a retry button', async () => {
+    impl.load = () => Promise.reject(new Error('down'));
+    renderIt();
+    expect(await screen.findAllByText(/could not be loaded/)).not.toHaveLength(0);
+    expect(screen.getAllByRole('button', { name: 'Try again' }).length).toBeGreaterThan(0);
+  });
+
   it('no open account redirects to open with next and loads nothing', async () => {
     storage.remove('account');
     renderIt();

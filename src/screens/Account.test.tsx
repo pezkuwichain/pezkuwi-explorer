@@ -71,13 +71,13 @@ describe('Account', () => {
     expect([...document.querySelectorAll('.chain-amount')].map((c) => c.textContent)).toEqual(['≈2.9999', '1', '1']);
   });
 
-  it('the header holds only back, title and language; the address chip sits in the total card', async () => {
+  it('the header holds only back, title, theme and language; the address chip sits in the total card', async () => {
     renderAccount();
     await screen.findByTitle('5 HEZ');
     const chip = screen.getByRole('button', { name: /Copy address/ });
     expect(chip.closest('.total-card')).not.toBeNull();
     const header = screen.getByRole('banner');
-    expect(within(header).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Back']);
+    expect(within(header).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Back', 'Theme: Auto']);
     expect(within(header).getByRole('combobox', { name: 'Language' })).toBeInTheDocument();
   });
 

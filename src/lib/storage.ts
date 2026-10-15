@@ -1,5 +1,5 @@
 // Per-device conveniences only. Private browsing may throw on any access.
-const PREFIX = 'pezkuwi-explorer:';
+export const PREFIX = 'pezkuwi-explorer:';
 export const storage = {
   get(k: string): string | null { try { return localStorage.getItem(PREFIX + k); } catch { return null; } },
   // true when it was stored; false when this browser would not keep it.

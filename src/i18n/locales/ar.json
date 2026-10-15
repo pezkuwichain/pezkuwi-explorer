@@ -1,5 +1,6 @@
 {
   "app": { "name": "Pezkuwi Explorer", "experts": "للخبراء: <domain>apps.pezkuwichain.io</domain>", "back": "رجوع", "language": "اللغة", "expertsShort": "للخبراء", "signOut": "خروج" },
+  "theme": { "label": "المظهر", "auto": "تلقائي", "light": "فاتح", "dark": "داكن" },
   "home": { "account": "حسابي", "payment": "هل وصلت دفعتي؟", "citizenship": "المواطنة", "network": "الشبكة" },
   "status": { "up": "الشبكة تعمل", "down": "الشبكة لا تستجيب", "checking": "جارٍ فحص الشبكة…" },
   "open": { "title": "افتح حسابك", "wallet": "افتح بمحفظتي", "scan": "مسح رمز QR", "paste": "لصق العنوان", "pastePlaceholder": "الصق عنوانك هنا", "invalid": "هذا العنوان غير صالح. تحقق منه وحاول مجددًا.", "noWallet": "لم يتم العثور على محفظة Pezkuwi على هذا الجهاز.", "rejected": "لم تشارك المحفظة أي حساب.", "noCamera": "تعذر فتح الكاميرا. يمكنك لصق العنوان بدلًا من ذلك.", "go": "افتح", "openApp": "افتح Pezkuwi Wallet", "waiting": "بانتظار الموافقة في المحفظة…", "qrHow": "Pezkuwi Wallet → WalletConnect → امسح الرمز", "otherDevice": "محفظة على جهاز آخر (QR)", "getApp": "ليس لديك محفظة بعد؟ احصل على واحدة من هنا:", "onPlay": "تطبيق أندرويد" },

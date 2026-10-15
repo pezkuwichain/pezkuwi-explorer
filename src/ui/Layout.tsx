@@ -3,6 +3,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { shortAddress } from '../lib/address';
 import { formatAmount } from '../lib/format';
 import LanguagePicker from './LanguagePicker';
+import ThemePicker from './ThemePicker';
 import TabBar from './TabBar';
 import { DesktopShell } from './DesktopShell';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -26,6 +27,7 @@ export default function Layout() {
         <header className="brand">
           <img className="brand-mark" src="/brand/newroz-flame.svg" alt="" width={30} height={30} />
           <span className="brand-name">Pezkuwi</span>
+          <ThemePicker />
           <LanguagePicker />
         </header>
       )}

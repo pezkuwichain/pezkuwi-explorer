@@ -1,5 +1,6 @@
 {
   "app": { "name": "Pezkuwi Explorer", "experts": "بۆ شارەزایان: <domain>apps.pezkuwichain.io</domain>", "back": "گەڕانەوە", "language": "زمان", "expertsShort": "بۆ شارەزایان", "signOut": "دەرچوون" },
+  "theme": { "label": "ڕووکار", "auto": "خۆکار", "light": "ڕووناک", "dark": "تاریک" },
   "home": { "account": "هەژمارەکەم", "payment": "پارەدانەکەم گەیشت؟", "citizenship": "هاوڵاتیبوون", "network": "تۆڕ" },
   "status": { "up": "تۆڕ کار دەکات", "down": "تۆڕ وەڵام نادات", "checking": "تۆڕ دەپشکنرێت…" },
   "open": { "title": "هەژمارەکەت بکەرەوە", "wallet": "بە جزدانەکەم بیکەرەوە", "scan": "سکانی کۆدی QR بکە", "paste": "ناونیشان لێرە دابنێ", "pastePlaceholder": "ناونیشانەکەت لێرە دابنێ", "invalid": "ئەم ناونیشانە دروست نییە. بیپشکنە و دووبارە هەوڵبدەرەوە.", "noWallet": "لەم ئامێرەدا جزدانی Pezkuwi نەدۆزرایەوە.", "rejected": "جزدانەکە هەژمارێکی هاوبەش نەکرد.", "noCamera": "کامێرا نەکرایەوە. دەتوانیت لەجیاتی ئەوە ناونیشانەکە دابنێیت.", "go": "بیکەرەوە", "openApp": "Pezkuwi Wallet بکەرەوە", "waiting": "چاوەڕێی پەسەندکردنی جزدان…", "qrHow": "Pezkuwi Wallet → WalletConnect → کۆدەکە بخوێنە", "otherDevice": "جزدان لە ئامێرێکی تر (QR)", "getApp": "جزدانت نییە؟ لێرەوە بەدەستی بهێنە:", "onPlay": "ئەپی ئەندرۆید" },

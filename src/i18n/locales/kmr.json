@@ -1,5 +1,6 @@
 {
   "app": { "name": "Pezkuwi Explorer", "experts": "Ji bo pisporan: <domain>apps.pezkuwichain.io</domain>", "back": "Paşve", "language": "Ziman", "expertsShort": "Ji bo pisporan", "signOut": "Derkeve" },
+  "theme": { "label": "Tema", "auto": "Xweber", "light": "Ronî", "dark": "Tarî" },
   "home": { "account": "Hesabê min", "payment": "Dayîna min gihîşt?", "citizenship": "Hemwelatî", "network": "Tor" },
   "status": { "up": "Tor dixebite", "down": "Tor bersiv nade", "checking": "Tor tê kontrol kirin…" },
   "open": { "title": "Hesabê xwe veke", "wallet": "Bi cuzdana xwe veke", "scan": "Koda QR Bişopîne", "paste": "Navnîşanê bixe vir", "pastePlaceholder": "Navnîşana xwe li vir bixe", "invalid": "Ev navnîşan ne derbasdar e. Kontrol bike û dîsa biceribîne.", "noWallet": "Li ser vê cîhazê cuzdaneke Pezkuwi nehat dîtin.", "rejected": "Cuzdanê hesabek parve nekir.", "noCamera": "Kamera venebû. Tu dikarî li şûna wê navnîşanê bixî vir.", "go": "Veke", "openApp": "Pezkuwi Wallet veke", "waiting": "Li benda pejirandina cuzdanê…", "qrHow": "Pezkuwi Wallet → WalletConnect → kodê bixwîne", "otherDevice": "Cuzdan li cîhazeke din (QR)", "getApp": "Cuzdana te tune? Ji vir bistîne:", "onPlay": "Sepana Androidê" },

@@ -5,6 +5,7 @@ Turkish and English are written directly and are not listed.
 
 - source "pwap": kmr and ckb are taken verbatim from the pezkuwichain/pwap repo (web/src/i18n/locales/kmr.ts and ckb.ts). fa and ar are always drafts.
 - source "draft": written for this project, not reviewed by a native speaker. Some drafts reuse words found in pwap (pejirandeker, serlêdan, hemwelatî, pejirandî) in a new form; these still need review.
+- source "dks.news": taken verbatim from the dks.news site (site/news.js; its `ku` is our ckb). fa and ar there are drafts too, so those rows stay marked draft.
 - source "brand": the product name, identical in every locale.
 - Row account.failed: the kmr cell is verbatim from pwap (settingsScreen.biometricAlerts.failedTitle, "Bi ser neket"); ckb, fa and ar are drafts. The row is therefore marked "draft (kmr: pwap verbatim)".
 
@@ -14,6 +15,10 @@ Turkish and English are written directly and are not listed.
 | app.experts | Ji bo pisporan: &lt;domain&gt;apps.pezkuwichain.io&lt;/domain&gt; | بۆ شارەزایان: &lt;domain&gt;apps.pezkuwichain.io&lt;/domain&gt; | برای متخصصان: &lt;domain&gt;apps.pezkuwichain.io&lt;/domain&gt; | للخبراء: &lt;domain&gt;apps.pezkuwichain.io&lt;/domain&gt; | draft (the domain tag marks the left-to-right part; keep it around the domain) |
 | app.back | Paşve | گەڕانەوە | بازگشت | رجوع | pwap |
 | app.language | Ziman | زمان | زبان | اللغة | pwap |
+| theme.label | Tema | ڕووکار | پوسته | المظهر | dks.news (fa, ar draft) |
+| theme.auto | Xweber | خۆکار | خودکار | تلقائي | dks.news (fa, ar draft) |
+| theme.light | Ronî | ڕووناک | روشن | فاتح | dks.news (fa, ar draft) |
+| theme.dark | Tarî | تاریک | تیره | داكن | dks.news (fa, ar draft) |
 | home.account | Hesabê min | هەژمارەکەم | حساب من | حسابي | draft |
 | home.payment | Dayîna min gihîşt? | پارەدانەکەم گەیشت؟ | پرداخت من رسید؟ | هل وصلت دفعتي؟ | draft |
 | home.citizenship | Hemwelatî | هاوڵاتیبوون | شهروندی | المواطنة | draft |

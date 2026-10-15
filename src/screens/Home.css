@@ -52,7 +52,7 @@
   inline-size: var(--tile-chip-size); block-size: var(--tile-chip-size); border-radius: 14px;
   display: flex; align-items: center; justify-content: center;
 }
-@media (prefers-color-scheme: light) { .tile-icon { justify-content: flex-start; } }
+:root:not([data-theme='dark']) .tile-icon { justify-content: flex-start; }
 .tile-icon svg { inline-size: var(--tile-icon-size); block-size: var(--tile-icon-size); }
 .tile-label { font-weight: 700; font-size: 18px; line-height: 1.25; }
 .tile-pay { background: var(--tile-pay-bg); color: var(--tile-pay-text); }
@@ -63,4 +63,4 @@
 .tile-net .tile-icon { background: var(--tile-net-chip); color: var(--tile-net-icon); }
 .tile-act { background: var(--tile-act-bg); color: var(--tile-act-text); }
 .tile-act .tile-icon { background: var(--tile-act-chip); color: var(--tile-act-icon); }
-@media (prefers-color-scheme: light) { .tile { border-radius: 24px; min-block-size: 150px; } }
+:root:not([data-theme='dark']) .tile { border-radius: 24px; min-block-size: 150px; }

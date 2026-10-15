@@ -50,3 +50,34 @@
 }
 .tab span { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab[aria-current='page'] { color: var(--tab-active); font-weight: 700; }
+
+/* The theme switch (ThemePicker, ported from dks.news): a round button the size of a tap target beside the
+   language pill, and a small menu under it that sits above the tab bar. */
+.theme-pick { position: relative; flex: none; display: flex; }
+.theme-btn {
+  inline-size: var(--tap); block-size: var(--tap); box-sizing: border-box; border-radius: 999px; padding: 0;
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+  display: inline-flex; align-items: center; justify-content: center; transition: transform 0.15s ease;
+}
+.theme-btn:hover, .theme-pick.is-open .theme-btn { color: var(--text-strong); }
+.theme-btn:active { transform: scale(0.92); }
+.theme-btn[data-mode='light'] { color: var(--zer-icon); }
+.theme-btn[data-spun] svg { animation: theme-spin 0.55s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes theme-spin { from { transform: rotate(-90deg) scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.theme-menu {
+  position: absolute; z-index: 20; inset-block-start: calc(100% + 8px); inset-inline-end: 0; min-inline-size: 176px;
+  padding: 6px; box-sizing: border-box; border-radius: 16px; border: 1px solid var(--border-strong);
+  background: var(--menu-bg); box-shadow: var(--menu-shadow);
+}
+.theme-menu[hidden] { display: none; }
+.theme-menu-item {
+  display: flex; align-items: center; gap: 10px; inline-size: 100%; min-block-size: var(--tap); padding-inline: 10px;
+  border: 0; border-radius: 10px; background: transparent; color: var(--muted-strong); font-weight: 600; font-size: 15px; text-align: start;
+}
+.theme-menu-item:hover, .theme-menu-item:focus-visible { background: var(--surface-sunk); color: var(--text-strong); }
+.theme-menu-item:focus-visible { outline-offset: -3px; }
+.theme-menu-ic { display: grid; place-items: center; inline-size: 20px; color: var(--muted); }
+.theme-menu-t { flex: 1; }
+.theme-menu-ok { color: var(--link); visibility: hidden; }
+.theme-menu-item[aria-checked='true'] { color: var(--text-strong); }
+.theme-menu-item[aria-checked='true'] .theme-menu-ok { visibility: visible; }

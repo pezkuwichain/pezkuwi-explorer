@@ -2,7 +2,12 @@ name: deploy
 on:
   push:
     branches: [main]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Run rsync with --dry-run and skip verification
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -10,6 +15,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -35,8 +41,10 @@ jobs:
           KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
           HOST: ${{ secrets.DEPLOY_HOST }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
+          : "${HOST:?DEPLOY_HOST missing}" "${KEY:?DEPLOY_SSH_KEY missing}" "${HOSTS:?DEPLOY_KNOWN_HOSTS missing}"
           umask 077
           mkdir -p ~/.ssh
           install -m 600 /dev/null ~/.ssh/deploy_key
@@ -44,25 +52,32 @@ jobs:
           install -m 600 /dev/null ~/.ssh/known_hosts
           printf '%s\n' "$HOSTS" > ~/.ssh/known_hosts
           SSH="ssh -i $HOME/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o BatchMode=yes"
+          OPTS=(-z)
+          if [ "${DRY_RUN:-false}" = true ]; then OPTS+=(--dry-run --itemize-changes); fi
           DEST="explorer-deploy@$HOST:"
           # 1. everything except the entry points: new hashed assets land first, nothing is deleted
-          rsync -rlz --exclude='/index.html' --exclude='/sw.js' --exclude='/registerSW.js' --exclude='/manifest.webmanifest' -e "$SSH" dist/ "$DEST"
+          rsync -rlt "${OPTS[@]}" --exclude='/index.html' --exclude='/sw.js' --exclude='/registerSW.js' --exclude='/manifest.webmanifest' -e "$SSH" dist/ "$DEST"
           # 2. entry points last, so they never reference assets that are not there yet
-          rsync -lz -e "$SSH" dist/index.html dist/sw.js dist/registerSW.js dist/manifest.webmanifest "$DEST"
+          rsync -lt "${OPTS[@]}" -e "$SSH" dist/index.html dist/sw.js dist/registerSW.js dist/manifest.webmanifest "$DEST"
           # 3. prune files of older builds
-          rsync -rlz --delete-after -e "$SSH" dist/ "$DEST"
+          rsync -rlt "${OPTS[@]}" --delete-after -e "$SSH" dist/ "$DEST"
       - name: remove key material
         if: always()
         run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts
       - name: verify
+        if: ${{ !inputs.dry_run }}
         run: |
           set -euo pipefail
           main=$(grep -o '/assets/index-[^"]*\.js' dist/index.html | head -n1)
           test -n "$main"
           ok=0
           for i in 1 2 3 4 5; do
-            if curl -fsS https://explorer.pezkuwichain.io/ | grep -qF "$main"; then ok=1; break; fi
+            html=$(curl -fsS https://explorer.pezkuwichain.io/ || true)
+            if grep -qF "$main" <<<"$html"; then ok=1; break; fi
             sleep 5
           done
           test "$ok" = 1
-          curl -fsSI https://explorer.pezkuwichain.io/ | grep -i '^content-security-policy:'
+          asset=$(curl -sSI "https://explorer.pezkuwichain.io$main")
+          grep -qE '^HTTP/[0-9.]+ 200' <<<"$asset"
+          headers=$(curl -fsSI https://explorer.pezkuwichain.io/)
+          grep -qi '^content-security-policy:' <<<"$headers"

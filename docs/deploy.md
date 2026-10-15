@@ -2,6 +2,11 @@
 
 `.github/workflows/deploy.yml` runs on push to `main` (and manually). It runs the CI gates, builds, uploads `dist/` over rsync/SSH, then checks https://explorer.pezkuwichain.io/ serves the new hashed entry script and sends a Content-Security-Policy header.
 
+## Required setup
+In GitHub: Settings, Environments, `production`, Deployment branches = `main` only. This is the real security boundary; the job-level `if: github.ref == 'refs/heads/main'` is a second guard. The four secrets below must be ENVIRONMENT secrets of `production` (not repository secrets).
+
+Dry run: run the workflow manually with `dry_run` enabled; every rsync pass uses `--dry-run --itemize-changes` and verification is skipped.
+
 ## Secrets (environment `production`)
 - `DEPLOY_SSH_KEY`: private ed25519 key of the deploy user.
 - `DEPLOY_HOST`: host name of the web server.

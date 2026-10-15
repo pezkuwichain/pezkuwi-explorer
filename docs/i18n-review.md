@@ -6,7 +6,7 @@ Turkish and English are written directly and are not listed.
 - source "pwap": kmr and ckb are taken verbatim from the pezkuwichain/pwap repo (web/src/i18n/locales/kmr.ts and ckb.ts). fa and ar are always drafts.
 - source "draft": written for this project, not reviewed by a native speaker. Some drafts reuse words found in pwap (pejirandeker, serlêdan, hemwelatî, pejirandî) in a new form; these still need review.
 - source "brand": the product name, identical in every locale.
-- Row account.failed: kmr is verbatim from pwap ("Bi ser neket"); ckb, fa and ar are drafts.
+- Row account.failed: the kmr cell is verbatim from pwap (settingsScreen.biometricAlerts.failedTitle, "Bi ser neket"); ckb, fa and ar are drafts. The row is therefore marked "draft (kmr: pwap verbatim)".
 
 | key | kmr | ckb | fa | ar | source |
 |---|---|---|---|---|---|
@@ -40,7 +40,7 @@ Turkish and English are written directly and are not listed.
 | account.from | Ji | لە | از | من | draft |
 | account.to | Bo | بۆ | به | إلى | draft |
 | account.ok | Qediya | تەواو | انجام شد | تم | draft |
-| account.failed | Bi ser neket | سەرکەوتوو نەبوو | ناموفق | فشل | draft |
+| account.failed | Bi ser neket | سەرکەوتوو نەبوو | ناموفق | فشل | draft (kmr: pwap verbatim) |
 | account.empty | Hîna tu çalakî tune. | هێشتا هیچ چالاکییەک نییە. | هنوز فعالیتی نیست. | لا يوجد نشاط بعد. | draft |
 | payment.title | Dayîna min gihîşt? | پارەدانەکەم گەیشت؟ | پرداخت من رسید؟ | هل وصلت دفعتي؟ | draft |
 | payment.placeholder | Koda dayînê an navnîşanekê bixe vir | کۆدی پارەدان یان ناونیشانێک لێرە دابنێ | کد تراکنش یا یک آدرس را بچسبانید | الصق رمز العملية أو عنوانًا | draft |
@@ -57,7 +57,7 @@ Turkish and English are written directly and are not listed.
 | citizenship.notStarted | Hîna serlêdan nehatiye kirin | هێشتا داواکاری نییە | هنوز درخواستی نیست | لا يوجد طلب بعد | draft |
 | citizenship.revoked | Hemwelatî hat rakirin | هاوڵاتیبوون هەڵوەشێنرایەوە | شهروندی لغو شد | تم إلغاء المواطنة | draft |
 | citizenship.roles | Rol | ڕۆڵ | نقش‌ها | الأدوار | pwap |
-| citizenship.trust | Xala Ewlehiyê | خاڵی متمانە | امتیاز اعتماد | درجة الثقة | pwap |
+| citizenship.trust | Xala Ewlehiyê | خاڵی متمانە | امتیاز اعتماد | درجة الثقة | pwap (review: literal 'ewlehî' ≈ security) |
 | citizenship.noRoles | Hîna rol tune. | هێشتا هیچ ڕۆڵێک نییە. | هنوز نقشی نیست. | لا توجد أدوار بعد. | draft |
 | network.title | Tor | تۆڕ | شبکه | الشبكة | pwap |
 | network.votes | Deng | دەنگدان | رأی‌ها | الأصوات | pwap |

@@ -156,13 +156,18 @@ Matches `pezkuwichain.io`:
 
 The history screens ship with no indexer configured (`history.*` is null in
 `src/config/network.ts`), so they show "being prepared". Before any `history.*` is set to
-a real indexer, every item below must be fixed and tested:
+a real indexer, every item below must be fixed and tested. **All eight are closed** (each
+with a test that failed before its fix); the endpoint is prepared but not enabled:
+`ZAGROS_HISTORY_URL` (`https://explorer.pezkuwichain.io/history/assethub`, same origin, served
+by `location = /history/assethub` in `deploy/nginx-explorer.conf`) is exported from
+`src/config/network.ts`, and `history.assetHub` stays null until the indexer has caught up
+(bd6d51f). `src/screens/HistoryEnabled.test.tsx` runs both screens end to end with it set.
 
-1. **Address-lookup verdict**: a lookup by address must show the amount, the time and the counterparty of the payment it found (or a list of recent payments), not a bare ✅ — today it reports only the newest transfer as "Arrived".
-2. **Batch extrinsics**: a code that covers several transfers (a batch) must report every transfer, not only the first one.
-3. **null === null is 'sent'**: in toActivity, an unparseable `from` and an unparseable account both normalise to null and compare equal, so the row reads "sent"; compare only when both are valid addresses.
-4. **NaN event index**: eventIdx returns NaN for an id without a numeric second segment and the sort comparator then misorders; treat a non-numeric index as last explicitly.
-5. **Activity.code validation**: the indexer's extrinsicHash is shown as the transaction code; accept it only when it is 0x followed by 64 hex digits.
-6. **Empty list markup**: the activity card renders an empty list element next to the "no activity yet" sentence; render one or the other.
-7. **`now` frozen at mount**: relative times on the account screen are computed against the time the screen opened; refresh it so "2 minutes ago" does not stay true for an hour.
-8. **History test isolation**: tests that set NETWORK.history.* must restore it, so no test depends on another's indexer setting.
+1. **Address-lookup verdict**: a lookup by address must show the amount, the time and the counterparty of the payment it found (or a list of recent payments), not a bare ✅ — today it reports only the newest transfer as "Arrived". — **Closed** (8882abd): an address lookup lists up to five recent transfers (direction relative to the address, amount, counterparty, time, ✅/❌) with no single verdict; a code lookup keeps its verdict and shows amount, time and counterparty.
+2. **Batch extrinsics**: a code that covers several transfers (a batch) must report every transfer, not only the first one. — **Closed** (8882abd): every transfer of a code is listed, one per event, from the sender's side; mixed outcomes read "only part of it arrived".
+3. **null === null is 'sent'**: in toActivity, an unparseable `from` and an unparseable account both normalise to null and compare equal, so the row reads "sent"; compare only when both are valid addresses. — **Closed** (8882abd): addresses are compared only when both are readable; otherwise the row is neither sent nor received.
+4. **NaN event index**: eventIdx returns NaN for an id without a numeric second segment and the sort comparator then misorders; treat a non-numeric index as last explicitly. — **Closed** (8882abd): total order — numeric index, non-numeric last, then the -from node, then the id.
+5. **Activity.code validation**: the indexer's extrinsicHash is shown as the transaction code; accept it only when it is 0x followed by 64 hex digits. — **Closed** (8882abd in the data layer, 25b0a96 for router state in the activity detail, which now shows a valid code).
+6. **Empty list markup**: the activity card renders an empty list element next to the "no activity yet" sentence; render one or the other. — **Closed** (25b0a96).
+7. **`now` frozen at mount**: relative times on the account screen are computed against the time the screen opened; refresh it so "2 minutes ago" does not stay true for an hour. — **Closed** (8882abd `useNow`, 25b0a96 on the account screen): refreshed on each history load and every 60 s while mounted.
+8. **History test isolation**: tests that set NETWORK.history.* must restore it, so no test depends on another's indexer setting. — **Closed** (8882abd): beforeEach sets the indexer, afterEach restores the shipped setting.

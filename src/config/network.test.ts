@@ -36,4 +36,9 @@ describe('network config', () => {
     expect(blocks.length).toBeGreaterThan(0);
     for (const b of blocks) expect(b[1]).not.toMatch(/add_header/);
   });
+
+  it('keeps http2 on the listen line (host runs nginx 1.24, no `http2 on;`)', () => {
+    expect(conf()).not.toMatch(/http2\s+on/);
+    expect(conf()).toMatch(/listen 443 ssl http2;/);
+  });
 });

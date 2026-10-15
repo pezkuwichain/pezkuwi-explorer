@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { NETWORK, caip2 } from './network';
 
 describe('network config', () => {
@@ -14,5 +15,10 @@ describe('network config', () => {
       { id: 1000, symbol: 'wUSDT', decimals: 6 },
       { id: 2, symbol: 'wHEZ', decimals: 12 },
     ]);
+  });
+  it('every configured origin is allowed by the deployed CSP', () => {
+    const csp = readFileSync('deploy/nginx-explorer.conf', 'utf8');
+    for (const c of Object.values(NETWORK.chains)) for (const u of c.rpc) expect(csp).toContain(u);
+    for (const u of Object.values(NETWORK.history)) if (u) expect(csp).toContain(new URL(u).origin);
   });
 });

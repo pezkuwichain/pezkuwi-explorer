@@ -15,7 +15,7 @@ export async function scanQr(video: HTMLVideoElement, signal: AbortSignal): Prom
       ctx.drawImage(video, 0, 0);
       const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
       // Wallet QR codes may be "substrate:<address>:<pubkey>:<name>"; take the address part.
-      if (code?.data) return code.data.startsWith('substrate:') ? code.data.split(':')[1] : code.data;
+      if (code?.data) return code.data.startsWith('substrate:') ? (code.data.split(':')[1] ?? '') : code.data;
     }
     throw new DOMException('aborted', 'AbortError');
   } finally {

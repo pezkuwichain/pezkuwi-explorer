@@ -29,6 +29,7 @@ Turkish and English are written directly and are not listed.
 | open.invalid | Ev navnîşan ne derbasdar e. Kontrol bike û dîsa biceribîne. | ئەم ناونیشانە دروست نییە. بیپشکنە و دووبارە هەوڵبدەرەوە. | این آدرس معتبر نیست. آن را بررسی کنید و دوباره تلاش کنید. | هذا العنوان غير صالح. تحقق منه وحاول مجددًا. | draft |
 | open.noWallet | Li ser vê cîhazê berîkeke Pezkuwi nehat dîtin. | لەم ئامێرەدا جزدانی Pezkuwi نەدۆزرایەوە. | هیچ کیف پول Pezkuwi در این دستگاه پیدا نشد. | لم يتم العثور على محفظة Pezkuwi على هذا الجهاز. | draft |
 | open.rejected | Berîkê hesabek parve nekir. | جزدانەکە هەژمارێکی هاوبەش نەکرد. | کیف پول حسابی را به اشتراک نگذاشت. | لم تشارك المحفظة أي حساب. | draft |
+| open.noCamera | Kamera venebû. Tu dikarî li şûna wê navnîşanê bixî vir. | کامێرا نەکرایەوە. دەتوانیت لەجیاتی ئەوە ناونیشانەکە دابنێیت. | دوربین باز نشد. می‌توانید به جای آن آدرس را بچسبانید. | تعذر فتح الكاميرا. يمكنك لصق العنوان بدلًا من ذلك. | draft |
 | open.go | Veke | بیکەرەوە | باز کن | افتح | draft |
 | account.total | Giştî | کۆی گشتی | مجموع | المجموع | draft |
 | account.activity | Çalakiya dawî | دوایین چالاکییەکان | فعالیت‌های اخیر | النشاط الأخير | draft |

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act as flush, fireEvent, render, screen } from '@testing-library/react';
+import { act as flush, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import i18n from '../i18n';
 import { AccountProvider } from '../account/AccountContext';
@@ -44,8 +44,31 @@ describe('Account', () => {
 
   it('shows balances and an honest "being prepared" history when not indexed', async () => {
     renderAccount();
-    expect(await screen.findByText('5 HEZ')).toBeInTheDocument();
+    expect(await screen.findByTitle('5 HEZ')).toHaveTextContent('5 HEZ');
     expect(await screen.findByText('This section is being prepared.')).toBeInTheDocument();
+  });
+
+  it('breaks the HEZ total down by chain and lists each token', async () => {
+    impl.balances = () => Promise.resolve([
+      { symbol: 'HEZ', decimals: 12, amount: 5_000_000_000_000n, perChain: { relay: 2_000_000_000_000n, assetHub: 1_000_000_000_000n, people: 2_000_000_000_000n } },
+      { symbol: 'PEZ', decimals: 12, amount: 1_250_000_000_000_000n },
+    ]);
+    renderAccount();
+    await screen.findByTitle('5 HEZ');
+    const chains = [...document.querySelectorAll('.chain-tile')].map((c) => c.textContent);
+    expect(chains).toEqual(['Relay2', 'Asset Hub1', 'People2']);
+    const tokens = within(screen.getByRole('region', { name: 'Tokens' })).getAllByRole('listitem').map((r) => r.textContent);
+    expect(tokens).toEqual(['HEZPezkuwiChain5', 'PEZAsset Hub1,250']);
+  });
+
+  it('puts activity under Today and Yesterday headers', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); yesterday.setHours(12, 0, 0, 0);
+    impl.activity = () => Promise.resolve([act({ id: 'a', when: now }), act({ id: 'b', when: Math.floor(yesterday.getTime() / 1000), direction: 'received' })]);
+    renderAccount();
+    expect(await screen.findByRole('heading', { name: 'Today' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Yesterday' })).toBeInTheDocument();
+    expect(screen.getByText('You received')).toBeInTheDocument();
   });
 
   it('a failing balance source shows the error card, not a spinner', async () => {
@@ -148,7 +171,7 @@ describe('ActivityDetail', () => {
   it('valid state renders amount and counterparty', async () => {
     detail(act({}));
     expect(await screen.findByText('1 HEZ')).toBeInTheDocument();
-    expect(screen.getByText(/To:/)).toBeInTheDocument();
+    expect(screen.getByText('To').nextElementSibling?.querySelector(`bdi[title="${BOB}"]`)).not.toBeNull();
   });
   it('unknown asset renders the symbol with no amount', async () => {
     detail(act({ symbol: '#777', decimals: null, amount: 123456789n }));

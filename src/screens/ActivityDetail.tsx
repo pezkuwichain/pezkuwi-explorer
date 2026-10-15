@@ -5,6 +5,9 @@ import { validCode, type Activity } from '../data/history';
 import { Addr, Amount } from '../ui/Layout';
 import { ActivityAmount } from '../ui/ActivityAmount';
 import { NETWORK } from '../config/network';
+import PageHeader from '../ui/PageHeader';
+import { TokenIcon } from '../ui/assetIcons';
+import { IconCheck, IconCross } from '../ui/icons';
 
 // Router state is untrusted input (it can be stale or hand-built): accept it only when it is a well-formed Activity for this URL.
 function asActivity(state: unknown, id: string | undefined): Activity | null {
@@ -33,13 +36,21 @@ export default function ActivityDetail() {
   const a = asActivity(raw, decoded);
   if (!a) return <Navigate to="/account" replace />;
   return (
-    <div className="stack detail">
-      <p className={`big-mark ${a.ok ? 'ok' : 'failed'}`} role="img" aria-label={t(a.ok ? 'account.ok' : 'account.failed')}>{a.ok ? '✅' : '❌'}</p>
-      <h1><ActivityAmount a={a} />{!a.ok && <> · {t('account.failed')}</>}</h1>
-      {a.counterparty && <p>{t(a.direction === 'sent' ? 'account.to' : 'account.from')}: <Addr value={a.counterparty} /></p>}
-      <p>{t('account.when')}: {new Date(a.when * 1000).toLocaleString(i18n.language)}</p>
-      {a.code && <p>{t('account.code')}: <bdi dir="ltr" className="code">{a.code}</bdi></p>}
-      <p>{t('account.fee')}: <Amount value={a.fee} decimals={NETWORK.native.decimals} symbol={NETWORK.native.symbol} /></p>
-    </div>
+    <>
+      <PageHeader title={t('account.activity')} />
+      <div className="screen verdict">
+        <p className={`big-mark ${a.ok ? 'mark-ok' : 'mark-bad'}`} role="img" aria-label={t(a.ok ? 'account.ok' : 'account.failed')}>
+          {a.ok ? <IconCheck stroke={2.4} /> : <IconCross stroke={2.4} />}
+        </p>
+        <h2 className="verdict-word">{t(a.ok ? 'account.ok' : 'account.failed')}</h2>
+        <dl className="facts">
+          <div className="fact fact-amount"><dt className="lead"><TokenIcon symbol={a.symbol} size={32} />{t('account.amount')}</dt><dd><ActivityAmount a={a} /></dd></div>
+          {a.counterparty && <div className="fact"><dt>{t(a.direction === 'sent' ? 'account.to' : 'account.from')}</dt><dd><Addr value={a.counterparty} /></dd></div>}
+          <div className="fact"><dt>{t('account.when')}</dt><dd>{new Date(a.when * 1000).toLocaleString(i18n.language)}</dd></div>
+          {a.code && <div className="fact"><dt>{t('account.code')}</dt><dd><bdi dir="ltr" className="code">{a.code}</bdi></dd></div>}
+          <div className="fact"><dt>{t('account.fee')}</dt><dd><Amount value={a.fee} decimals={NETWORK.native.decimals} symbol={NETWORK.native.symbol} /></dd></div>
+        </dl>
+      </div>
+    </>
   );
 }

@@ -27,4 +27,10 @@ describe('i18n', () => {
       expect(text).not.toMatch(banned);
     }
   });
+  it('has a notAPayment message in every locale', async () => {
+    for (const l of LOCALES) {
+      const m = (await import(`./locales/${l}.json`)).default;
+      expect(typeof m.payment.notAPayment).toBe('string');
+    }
+  });
 });

@@ -50,6 +50,7 @@ Turkish and English are written directly and are not listed.
 | payment.arrivedText | Pere gihîşt <who/>. | پارەکە گەیشتە <who/>. | پول به <who/> رسید. | وصل المال إلى <who/>. | draft |
 | payment.notArrivedText | Nehat şandin. Pereyên te hê jî di hesabê te de ne. | نەنێردراوە. پارەکەت هێشتا لە هەژمارەکەتدایە. | ارسال نشده است. پول شما هنوز در حساب شماست. | لم يتم إرسالها. أموالك ما زالت في حسابك. | draft |
 | payment.notFound | Me hîna ev dayîn nedît. Heke te nû şandiye, deqeyekê bisekine û dîsa biceribîne. | هێشتا ئەم پارەدانەمان نەدۆزییەوە. ئەگەر تازە ناردوتە، خولەکێک چاوەڕێ بکە و دووبارە هەوڵبدەرەوە. | هنوز این پرداخت را پیدا نکردیم. اگر همین حالا فرستاده‌اید، یک دقیقه صبر کنید و دوباره تلاش کنید. | لم نعثر على هذه الدفعة بعد. إذا أرسلتها للتو، انتظر دقيقة وحاول مجددًا. | draft |
+| payment.notAPayment | Ev kod ne dayînek e. | ئەم کۆدە پارەدان نییە. | این کد یک پرداخت نیست. | هذا الرمز ليس دفعة. | draft |
 | citizenship.title | Hemwelatî | هاوڵاتیبوون | شهروندی | المواطنة | draft |
 | citizenship.applied | Serlêdan hat kirin | داواکاری نێردرا | درخواست داده شد | تم تقديم الطلب | draft |
 | citizenship.approved | Pejirandî | پەسەندکرا | تأیید شد | تمت الموافقة | draft |

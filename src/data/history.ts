@@ -6,7 +6,8 @@ import { REQUEST_TIMEOUT_MS } from '../chain/connections';
 export class NotIndexedError extends Error {}
 export type Activity = {
   id: string; when: number; direction: 'sent' | 'received' | 'other'; counterparty: string | null;
-  symbol: string; decimals: number; amount: bigint; fee: bigint; ok: boolean; code: string | null;
+  // null = asset not in NETWORK.assets: consumers must NOT format an amount when decimals is null.
+  symbol: string; decimals: number | null; amount: bigint; fee: bigint; ok: boolean; code: string | null;
 };
 type Node = {
   id: string; extrinsicHash: string | null; timestamp: string; address: string;
@@ -23,19 +24,21 @@ async function query(filter: string, fetcher: typeof fetch): Promise<Node[]> {
   const body = JSON.stringify({ query: `{historyElements(first:25,orderBy:TIMESTAMP_DESC,filter:${filter}){nodes{${FIELDS}}}}` });
   const res = await withTimeout(fetcher(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body }), REQUEST_TIMEOUT_MS);
   if (!res.ok) throw new Error(`history ${res.status}`);
-  return (await res.json()).data.historyElements.nodes as Node[];
+  const nodes = (await res.json())?.data?.historyElements?.nodes;
+  if (!Array.isArray(nodes)) throw new Error('history: malformed indexer response');
+  return nodes as Node[];
 }
 
 function toActivity(n: Node, me: string): Activity {
   const t = n.transfer ?? n.assetTransfer;
-  const asset = n.assetTransfer ? NETWORK.assets.find((a) => String(a.id) === n.assetTransfer!.assetId) : null;
+  const asset = n.assetTransfer ? NETWORK.assets.find((a) => String(a.id) === String(n.assetTransfer!.assetId)) : null;
   const symbol = asset?.symbol ?? (n.assetTransfer ? `#${n.assetTransfer.assetId}` : NETWORK.native.symbol);
-  const decimals = asset?.decimals ?? NETWORK.native.decimals;
+  const decimals = n.assetTransfer ? (asset?.decimals ?? null) : NETWORK.native.decimals;
   if (!t) {
     return { id: n.id, when: Number(n.timestamp), direction: 'other', counterparty: null, symbol, decimals, amount: 0n,
       fee: BigInt(n.extrinsic?.fee ?? '0'), ok: n.extrinsic?.success ?? true, code: n.extrinsicHash };
   }
-  const sent = t.from === me;
+  const sent = normaliseAddress(t.from) === normaliseAddress(me);
   return { id: n.id, when: Number(n.timestamp), direction: sent ? 'sent' : 'received', counterparty: sent ? t.to : t.from,
     symbol, decimals, amount: BigInt(t.amount), fee: BigInt(t.fee), ok: t.success, code: n.extrinsicHash };
 }
@@ -44,19 +47,33 @@ export async function loadActivity(address: string, fetcher: typeof fetch = fetc
   return (await query(`{address:{equalTo:${JSON.stringify(address)}}}`, fetcher)).map((n) => toActivity(n, address));
 }
 
+// Event index inside the block, parsed from ids like `<blk>-<idx>-from` / `-to`.
+const eventIdx = (n: Node) => Number(n.id.split('-')[1] ?? Number.MAX_SAFE_INTEGER);
+
 export async function findPayment(input: string, fetcher: typeof fetch = fetch) {
   const text = input.trim();
-  let nodes: Node[];
+  let act: Activity | undefined;
   if (/^0x[0-9a-fA-F]{64}$/.test(text)) {
-    nodes = await query(`{extrinsicHash:{equalTo:${JSON.stringify(text.toLowerCase())}}}`, fetcher);
+    const nodes = await query(`{extrinsicHash:{equalTo:${JSON.stringify(text.toLowerCase())}}}`, fetcher);
+    if (nodes.length === 0) return { status: 'notFound' as const };
+    const transfers = nodes
+      .filter((n) => n.transfer || n.assetTransfer)
+      .sort((a, b) => eventIdx(a) - eventIdx(b) || Number(b.id.endsWith('-from')) - Number(a.id.endsWith('-from')));
+    const first = transfers[0];
+    if (!first) {
+      const ex = nodes.find((n) => n.extrinsic) ?? nodes[0];
+      const ok = ex.extrinsic?.success ?? true;
+      return { status: ok ? ('notAPayment' as const) : ('failed' as const), activity: toActivity(ex, ex.address) };
+    }
+    // Always the sender's perspective, so the answer does not depend on which of the pair came first.
+    act = toActivity(first, (first.transfer ?? first.assetTransfer)!.from);
   } else {
     const a = normaliseAddress(text);
     if (!a) throw new Error('not a code or address');
-    nodes = (await query(`{address:{equalTo:${JSON.stringify(a)}}}`, fetcher)).filter((n) => n.transfer || n.assetTransfer);
+    const n = (await query(`{address:{equalTo:${JSON.stringify(a)}}}`, fetcher)).find((x) => x.transfer || x.assetTransfer);
+    if (!n) return { status: 'notFound' as const };
+    act = toActivity(n, a);
   }
-  const n = nodes[0];
-  if (!n) return { status: 'notFound' as const };
-  const act = toActivity(n, n.address);
   return { status: act.ok ? ('arrived' as const) : ('failed' as const), activity: act };
 }
 
@@ -65,6 +82,8 @@ export async function indexerLag(fetcher: typeof fetch = fetch): Promise<number>
   if (!url) throw new NotIndexedError();
   const res = await withTimeout(fetcher(url, { method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ query: '{_metadata{lastProcessedHeight targetHeight}}' }) }), REQUEST_TIMEOUT_MS);
-  const m = (await res.json()).data._metadata;
+  if (!res.ok) throw new Error(`history ${res.status}`);
+  const m = (await res.json())?.data?._metadata;
+  if (!Number.isFinite(m?.targetHeight) || !Number.isFinite(m?.lastProcessedHeight)) throw new Error('history: malformed indexer metadata');
   return m.targetHeight - m.lastProcessedHeight;
 }

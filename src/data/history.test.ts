@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
+import { decodeAddress, encodeAddress } from '@pezkuwi/util-crypto';
 import { NETWORK } from '../config/network';
 import { loadActivity, findPayment, indexerLag, NotIndexedError } from './history';
 
@@ -36,5 +37,43 @@ describe('history', () => {
   it('computes indexer lag from metadata', async () => {
     const f = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: { _metadata: { lastProcessedHeight: 90, targetHeight: 120 } } }) });
     expect(await indexerLag(f)).toBe(30);
+  });
+  it('says a non-transfer code is not a payment, and a failed one failed', async () => {
+    const ok = reply([node({ id: '5-1-extrinsic', extrinsic: { fee: '1', success: true } })]);
+    expect((await findPayment('0x' + 'ab'.repeat(32), ok)).status).toBe('notAPayment');
+    const bad = reply([node({ id: '5-1-extrinsic', extrinsic: { fee: '1', success: false } })]);
+    expect((await findPayment('0x' + 'ab'.repeat(32), bad)).status).toBe('failed');
+  });
+  it('code lookup is deterministic: lowest event index, sender perspective, either node order', async () => {
+    const t = { from: ME, to: BOB, amount: '7', fee: '1', success: true };
+    const mk = (id: string, address: string) => node({ id, address, transfer: t });
+    const nodes = [mk('9-4-to', BOB), mk('9-4-from', ME), mk('9-2-to', BOB)];
+    for (const order of [nodes, [...nodes].reverse()]) {
+      const r = await findPayment('0x' + 'ab'.repeat(32), reply(order));
+      expect(r.activity).toMatchObject({ id: '9-2-to', direction: 'sent', counterparty: BOB });
+    }
+    const tie = [mk('9-4-to', BOB), mk('9-4-from', ME)];
+    expect((await findPayment('0x' + 'ab'.repeat(32), reply(tie))).activity?.id).toBe('9-4-from');
+  });
+  it('compares addresses by public key, not by string', async () => {
+    const other = encodeAddress(decodeAddress(ME), 0);
+    const f = reply([node({ transfer: { from: other, to: BOB, amount: '1', fee: '0', success: true } })]);
+    expect((await loadActivity(ME, f))[0]).toMatchObject({ direction: 'sent', counterparty: BOB });
+  });
+  it('gives null decimals for an unknown asset and accepts numeric asset ids', async () => {
+    const f = reply([
+      node({ assetTransfer: { assetId: 777, from: BOB, to: ME, amount: '5', fee: '0', success: true } }),
+      node({ assetTransfer: { assetId: 1000, from: BOB, to: ME, amount: '5', fee: '0', success: true } }),
+    ]);
+    const a = await loadActivity(ME, f);
+    expect(a[0]).toMatchObject({ symbol: '#777', decimals: null });
+    expect(a[1]).toMatchObject({ symbol: 'wUSDT', decimals: 6 });
+  });
+  it('rejects malformed indexer answers', async () => {
+    const bad = (body: object, ok = true) => vi.fn().mockResolvedValue({ ok, status: 500, json: async () => body });
+    await expect(indexerLag(bad({}, false))).rejects.toThrow();
+    await expect(indexerLag(bad({ data: { _metadata: { lastProcessedHeight: null, targetHeight: 5 } } }))).rejects.toThrow();
+    await expect(indexerLag(bad({ data: {} }))).rejects.toThrow();
+    await expect(loadActivity(ME, bad({ data: {} }))).rejects.toThrow(/malformed/);
   });
 });

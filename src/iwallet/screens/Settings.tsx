@@ -39,10 +39,11 @@ function SettingsBody({ address }: { address: string }) {
     Promise.all([faceIdSupported(), hasFaceId()]).then(([s, h]) => { if (live) { setFaceSupported(s); setFaceOn(h); } }, () => undefined);
     return () => { live = false; };
   }, []);
-  // The words go as soon as the page is hidden; they must be asked for again with the password.
+  // Whatever secret is on screen goes as soon as the page is hidden, and the typed or verified password with it: the
+  // words view, the password prompts and the Face ID enable step all return to the menu and must be asked for again.
   useEffect(() => {
-    if (view !== 'words') return;
-    const onVis = () => { if (document.hidden) { setWords([]); setView('menu'); } };
+    if (view === 'menu') return;
+    const onVis = () => { if (document.hidden) { setWords([]); setPw(''); setFacePw(null); setError(null); setView('menu'); } };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [view]);

@@ -131,6 +131,15 @@ describe('keystore', () => {
     expect(pair.isLocked).toBe(true);
     lock.mockRestore();
   });
+  it('locks the temporary pair even when exporting it throws', async () => {
+    const lock = vi.fn();
+    const spy = vi.spyOn(Keyring.prototype, 'addFromMnemonic').mockReturnValue({
+      address: 'x', toJson: () => { throw new Error('encode failed'); }, lock,
+    } as never);
+    await expect(createKeystore(newMnemonic(), PW)).rejects.toThrow('encode failed');
+    expect(lock).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
   it('does not mutate or retain the mnemonic', async () => {
     const m = newMnemonic();
     const a = await createKeystore(m, PW);

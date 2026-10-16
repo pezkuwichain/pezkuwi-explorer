@@ -73,6 +73,8 @@ function CitizenBody({ address }: { address: string }) {
   const [phase, setPhase] = useState<'main' | 'confirm'>('main');
   const [action, setAction] = useState<Action | null>(null);
   const [fee, setFee] = useState<bigint | null>(null);
+  const [feeFailed, setFeeFailed] = useState(false);
+  const feeRun = useRef(0);
   const [funding, setFunding] = useState<Funding>('idle');
   const signer = useSignedTx();
 
@@ -142,10 +144,21 @@ function CitizenBody({ address }: { address: string }) {
   };
   const apiFor = (a: Action, d: Loaded) => (a.kind === 'teleport' ? d.assetHub : d.people);
 
+  // The fee is part of what is signed: without an estimate the action stays blocked until a retry succeeds.
+  const priceAction = (a: Action, d: Loaded) => {
+    const run = ++feeRun.current;
+    setFee(null); setFeeFailed(false);
+    let tx;
+    try { tx = txFor(a, d)(); } catch { setFeeFailed(true); return; }
+    void estimateFee(tx, address).then((f) => {
+      if (run !== feeRun.current) return;
+      if (f === null) setFeeFailed(true); else setFee(f);
+    });
+  };
   const review = (a: Action) => {
     if (!loaded) return;
-    setAction(a); setFee(null); signer.reset(); setPhase('confirm');
-    void estimateFee(txFor(a, loaded)(), address).then(setFee);
+    setAction(a); signer.reset(); setPhase('confirm');
+    priceAction(a, loaded);
   };
 
   const sign = async (password: string) => {
@@ -222,15 +235,24 @@ function CitizenBody({ address }: { address: string }) {
                 <dd className="iw-addr iw-recipient"><bdi dir="ltr" className="iw-addr-text">{shortAddress(address)}</bdi><CopyAddress address={address} label={t('iwallet.citizen.copyOwn')} /></dd>
                 <dt>{t('iwallet.send.amount')}</dt><dd><bdi dir="ltr">{hez(action.amount)}</bdi></dd>
               </>}
-              <dt>{t('iwallet.send.feeLabel')}</dt><dd><bdi dir="ltr">{fee !== null ? hez(fee) : '—'}</bdi></dd>
+              <dt>{t('iwallet.send.feeLabel')}</dt>
+              <dd>
+                <bdi dir="ltr">{fee !== null ? hez(fee) : '—'}</bdi>
+                {feeFailed && (
+                  <span className="iw-error" role="alert">
+                    {' '}{t('iwallet.send.feeFailed')} <button type="button" className="retry" onClick={() => priceAction(action, loaded)}>{t('state.retry')}</button>
+                  </span>
+                )}
+              </dd>
             </dl>
           )}
           busy={signer.busy}
+          blocked={fee === null}
           error={signer.authError}
           face={face}
           onPassword={(p) => void sign(p)}
           onFaceFailed={() => signer.setAuthError(t('iwallet.send.faceFailed'))}
-          onBack={() => { setPhase('main'); setAction(null); signer.reset(); }}
+          onBack={() => { feeRun.current++; setPhase('main'); setAction(null); signer.reset(); }}
           submitLabel={t('iwallet.citizen.sign')}
         />
       </div>

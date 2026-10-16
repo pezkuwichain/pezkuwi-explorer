@@ -48,8 +48,10 @@ export function useSignedTx() {
     let handedOff = false;
     // Once the extrinsic may have left this device, a lost connection means "unknown", never "failed".
     let onDisconnect: () => void = () => undefined;
+    // Ends the status subscription when the disconnect wins the race, so it cannot report into a finished attempt.
+    const stop = new AbortController();
     const disconnected = new Promise<'disconnected'>((resolve) => {
-      onDisconnect = () => { if (!terminal && handedOff) { terminal = true; set({ kind: 'interrupted' }); resolve('disconnected'); } };
+      onDisconnect = () => { if (!terminal && handedOff) { terminal = true; set({ kind: 'interrupted' }); stop.abort(); resolve('disconnected'); } };
     });
     api.on('disconnected', onDisconnect);
     const onStatus = (ev: SubmitEvent) => {
@@ -63,7 +65,7 @@ export function useSignedTx() {
       else if (ev.type === 'slow') { terminal = true; set(ev.inBlock ? { kind: 'slow' } : { kind: 'interrupted' }); }
     };
     try {
-      await Promise.race([submit(build(), pair, onStatus), disconnected]);
+      await Promise.race([submit(build(), pair, onStatus, stop.signal), disconnected]);
     } catch (err) {
       // Only a failure before hand-off, or a refusal by the node's pool, proves nothing was sent.
       if (!terminal) {

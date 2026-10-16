@@ -175,10 +175,35 @@ describe('submit', () => {
   });
 });
 
+describe('submit stop signal', () => {
+  it('unsubscribes when the caller stops waiting, whether the subscription arrived before or after', async () => {
+    for (const early of [true, false]) {
+      const unsub = vi.fn();
+      let resolveSend: (u: () => void) => void = () => undefined;
+      const tx = {
+        signAsync: () => Promise.resolve(),
+        send: () => (early ? Promise.resolve(unsub) : new Promise<() => void>((r) => { resolveSend = r; })),
+      };
+      const ctl = new AbortController();
+      const p = submit(tx as never, pairStub(), () => undefined, ctl.signal);
+      await new Promise((r) => setTimeout(r, 5));
+      ctl.abort();
+      await p;
+      if (!early) resolveSend(unsub);
+      await new Promise((r) => setTimeout(r, 5));
+      expect(unsub).toHaveBeenCalledTimes(1);
+    }
+  });
+});
+
 describe('isNodeRefusal', () => {
   it('knows the pool refusals and nothing else', () => {
     expect(isNodeRefusal({ code: 1010 })).toBe(true);
+    expect(isNodeRefusal({ code: 1011 })).toBe(true);
     expect(isNodeRefusal(new Error('1014: Priority is too low'))).toBe(true);
+    // Temporarily banned / already imported: the transaction may be in the pool, so it is not a proven refusal.
+    expect(isNodeRefusal({ code: 1012 })).toBe(false);
+    expect(isNodeRefusal(new Error('1013: Transaction Already Imported'))).toBe(false);
     expect(isNodeRefusal(new Error('WebSocket is not connected'))).toBe(false);
     expect(isNodeRefusal(new Error('Request timed out'))).toBe(false);
   });

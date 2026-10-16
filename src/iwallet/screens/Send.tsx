@@ -43,6 +43,7 @@ function SendBody({ address }: { address: string }) {
   const [api, setApi] = useState<ApiPromise | null>(null);
   const [balances, setBalances] = useState<Balances>(null);
   const [feeResult, setFeeResult] = useState<{ key: string; fee: bigint | null } | null>(null);
+  const [feeTry, setFeeTry] = useState(0);
   const [maxBusy, setMaxBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
@@ -79,7 +80,7 @@ function SendBody({ address }: { address: string }) {
   // Until the fee for the CURRENT amount is back, sending stays disabled; a failed estimate is shown as "—".
   const feeAmount = amount !== null && amount > 0n ? amount : 1n;
   const feeTo = toNorm ?? address;
-  const feeKey = `${token}|${feeTo}|${feeAmount}`;
+  const feeKey = `${token}|${feeTo}|${feeAmount}|${feeTry}`;
   const feeState: 'pending' | 'failed' | bigint = !api || feeResult?.key !== feeKey ? 'pending' : (feeResult.fee ?? 'failed');
   const fee = typeof feeState === 'bigint' ? feeState : null;
   useEffect(() => {
@@ -130,8 +131,10 @@ function SendBody({ address }: { address: string }) {
     amountError = /^\d*[.,]\d+$/.test(amountText.trim()) ? t('iwallet.send.decimals', { symbol: info.symbol, n: info.decimals }) : t('iwallet.send.amountInvalid');
   } else if (exceeds) amountError = t('iwallet.send.exceeds');
 
+  // A HEZ send is priced by the node; with no estimate the person would sign an unknown fee, so Review waits for a retry.
+  const feeBlocked = info.assetId === null && feeState === 'failed';
   const canReview = toNorm !== null && amount !== null && amount > 0n && balance !== null && !exceeds && !noFee
-    && feeState !== 'pending' && !maxBusy && (!large || ack) && !signer.busy;
+    && feeState !== 'pending' && !feeBlocked && !maxBusy && (!large || ack) && !signer.busy;
   const money = (v: bigint, tk: SendToken = token) => formatAmount(v, tokenInfo(tk).decimals, tk, lang);
   const toText = (v: bigint, decimals: number): string => {
     const x = v.toString().padStart(decimals + 1, '0');
@@ -230,7 +233,7 @@ function SendBody({ address }: { address: string }) {
           <span>{t('iwallet.send.token')}</span>
           <div className="iw-tokens" role="group" aria-label={t('iwallet.send.token')}>
             {SEND_TOKENS.map((tk) => (
-              <button key={tk} type="button" className="iw-token" aria-pressed={tk === token} onClick={() => { setToken(tk); setAck(false); }}>{tk}</button>
+              <button key={tk} type="button" className="iw-token" aria-pressed={tk === token} disabled={maxBusy} onClick={() => { setToken(tk); setAck(false); }}>{tk}</button>
             ))}
           </div>
         </div>
@@ -267,6 +270,11 @@ function SendBody({ address }: { address: string }) {
           <span aria-busy={feeState === 'pending'}>{fee === null ? t('iwallet.send.feeUnknown') : t('iwallet.send.fee', { fee: money(fee, 'HEZ') })}</span>
         </div>
         {noFee && <p className="iw-error" role="alert">{t('iwallet.send.noFee')}</p>}
+        {feeBlocked && (
+          <p className="iw-error" role="alert">
+            {t('iwallet.send.feeFailed')} <button type="button" className="retry" onClick={() => setFeeTry((n) => n + 1)}>{t('state.retry')}</button>
+          </p>
+        )}
 
         {large && (
           <div className="iw-fire" role="alert">

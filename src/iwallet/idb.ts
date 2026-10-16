@@ -44,13 +44,21 @@ async function withStore<T>(
   const db = await openDb(factory);
   try {
     const tx = db.transaction(STORE, mode);
+    // The completion handlers go on before fn runs: a synchronous throw from fn then still finds them attached, and
+    // the abort it causes cannot reject a promise nobody observes.
     const done = new Promise<void>((resolve, reject) => {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error ?? new Error('IndexedDB transaction failed'));
       tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
     });
+    let requests: IDBRequest<T>[];
+    try { requests = fn(tx.objectStore(STORE)); } catch (e) {
+      done.catch(() => undefined);
+      try { tx.abort(); } catch { /* already finished */ }
+      throw e;
+    }
     // Observe the requests and the transaction together: a failure rejects once, never unhandled.
-    const [results] = await Promise.all([Promise.all(fn(tx.objectStore(STORE)).map(request)), done]);
+    const [results] = await Promise.all([Promise.all(requests.map(request)), done]);
     return results[0];
   } finally {
     db.close();

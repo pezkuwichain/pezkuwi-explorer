@@ -26,7 +26,7 @@ describe('i-Wallet landing', () => {
     expect(await screen.findByText('iPhone kullanıcıları için geçici hizmet')).toBeInTheDocument();
     expect(screen.getByText(/Sıcak cüzdanlar doğası gereği yüksek güvenlik sunmaz/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Android uygulamasını indir' })).toHaveAttribute('href', PLAY_STORE);
-    expect(screen.getByRole('link', { name: 'i-Wallet edin' })).toHaveAttribute('href', '/i-wallet/create');
+    expect(screen.getByRole('link', { name: "i-Wallet'ini al" })).toHaveAttribute('href', '/i-wallet/create');
     expect(screen.getByRole('link', { name: /Zaten cüzdanım var/ })).toHaveAttribute('href', '/i-wallet/import');
     expect(screen.getByText('Pezkuwi ana ağ')).toBeInTheDocument();
   });
@@ -35,7 +35,7 @@ describe('i-Wallet landing', () => {
     impl.load = () => Promise.reject(new Error('no idb'));
     renderTab();
     expect(await screen.findByRole('alert')).toHaveTextContent('Bu tarayıcıda depolama kullanılamıyor');
-    expect(screen.queryByRole('link', { name: 'i-Wallet edin' })).toBeNull();
+    expect(screen.queryByRole('link', { name: "i-Wallet'ini al" })).toBeNull();
     expect(screen.queryByRole('link', { name: /Zaten cüzdanım var/ })).toBeNull();
     expect(screen.getByText('iPhone kullanıcıları için geçici hizmet')).toBeInTheDocument();
   });

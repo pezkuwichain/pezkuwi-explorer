@@ -210,6 +210,23 @@ describe('i-Wallet settings', () => {
     expect(screen.getByRole('button', { name: /Yedek kelimeleri göster/ })).toBeInTheDocument();
   });
 
+  it('drops a verified Face ID password when the page becomes hidden', async () => {
+    impl.faceSupported = true; impl.faceOn = false; impl.words.mockResolvedValue('x'); impl.enrol.mockReset();
+    renderAt('/i-wallet/settings');
+    await unlock();
+    await user.click(await screen.findByRole('button', { name: "Face ID'yi aç" }));
+    await user.type(screen.getByLabelText('Parola'), 'right-pass1');
+    await user.click(screen.getByRole('button', { name: 'Devam' }));
+    await screen.findByRole('button', { name: "Face ID'yi aç" });
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+    // Back at the menu, and asking again starts from the password prompt.
+    await user.click(await screen.findByRole('button', { name: "Face ID'yi aç" }));
+    expect(screen.getByLabelText('Parola')).toHaveValue('');
+    expect(impl.enrol).not.toHaveBeenCalled();
+  });
+
   it('hides the Face ID control where it is unsupported', async () => {
     impl.faceSupported = false;
     renderAt('/i-wallet/settings');

@@ -58,7 +58,7 @@ describe('idb store', () => {
     const { factory, log } = fakeFactory('ok');
     const s = createIdbStore(() => factory);
     expect(await s.get('a')).toBe('v:a');
-    await s.set('a', 1); await s.deleteMany!(['a', 'b']);
+    await s.set('a', 1); await s.deleteMany(['a', 'b']);
     await s.setMany({ a: 1, b: 2 }, ['c']);
     expect(log.closed).toBe(4);
   });
@@ -78,6 +78,29 @@ describe('idb store', () => {
     await expect(createIdbStore(() => factory).get('a')).rejects.toThrow('blocked');
     await new Promise((r) => setTimeout(r, 5));
     expect(log.closed).toBe(1);
+  });
+});
+
+describe('idb synchronous failure', () => {
+  it('a synchronous throw from a request rejects once, aborts the transaction and leaves no unhandled rejection', async () => {
+    process.on('unhandledRejection', onUnhandled);
+    let aborted = 0; let closed = 0;
+    const db = {
+      close: () => { closed++; },
+      createObjectStore: () => undefined,
+      transaction() {
+        const tx: Record<string, unknown> = { error: null };
+        tx.abort = () => { aborted++; queueMicrotask(() => { tx.error = new Error('aborted'); (tx.onabort as () => void)?.(); }); };
+        tx.objectStore = () => ({ put: () => { throw new Error('DataCloneError'); } });
+        return tx;
+      },
+    };
+    const factory = { open() { const r: Record<string, unknown> = { result: db, error: null }; queueMicrotask(() => { (r.onupgradeneeded as () => void)?.(); (r.onsuccess as () => void)?.(); }); return r; } } as unknown as IDBFactory;
+    await expect(createIdbStore(() => factory).set('a', 1)).rejects.toThrow('DataCloneError');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(unhandled).toEqual([]);
+    expect(aborted).toBe(1);
+    expect(closed).toBe(1);
   });
 });
 

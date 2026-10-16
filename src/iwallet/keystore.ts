@@ -85,10 +85,11 @@ export async function createKeystore(mnemonic: string, password: string): Promis
   await waitReady();
   const keyring = new Keyring({ type: 'sr25519', ss58Format: IWALLET_NETWORK.ss58 });
   const pair = keyring.addFromMnemonic(words, { name: 'i-Wallet' });
-  const json = pair.toJson(password);
-  const address = pair.address;
-  pair.lock();
-  return { address, json };
+  try {
+    return { address: pair.address, json: pair.toJson(password) };
+  } finally {
+    pair.lock();
+  }
 }
 
 export async function unlock(json: KeyringPair$Json, password: string): Promise<KeyringPair> {

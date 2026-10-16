@@ -121,7 +121,7 @@ describe('i-Wallet create', () => {
     const [pw, again] = screen.getAllByLabelText(/Parola/);
     await u.type(pw, 'longenough1'); await u.type(again, 'longenough1');
     await u.click(screen.getByRole('button', { name: 'Cüzdanı oluştur' }));
-    await waitFor(() => expect(screen.getByRole('heading', { name: "i-Wallet'iniz" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: "i-Wallet'in" })).toBeInTheDocument());
     expect(k.saveWalletAtomic).toHaveBeenCalledWith({ address: 'a' }, WORDS, 'longenough1', false);
     expect(document.body.textContent).not.toContain('orbit');
   });

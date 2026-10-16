@@ -21,7 +21,7 @@ const REF_EXTRA = 1_066_656n;
 const impl = vi.hoisted(() => ({
   status: 'NotStarted', nft: null as bigint | null, people: 0n, peopleAfter: [] as bigint[], assetHub: 0n,
   apps: [] as Array<{ applicant: string; referrer: string; status: string }>,
-  script: ['inBlock', 'finalized'] as string[], dropAfterSend: false, scans: 0,
+  script: ['inBlock', 'finalized'] as string[], dropAfterSend: false, scans: 0, feeFail: false,
   signed: [] as Array<{ name: string; args: unknown[] }>, pairs: [] as Array<{ lock: ReturnType<typeof vi.fn> }>,
 }));
 
@@ -51,7 +51,7 @@ const result = (kind: string) => {
 };
 const mkTx = (name: string, args: unknown[]) => ({
   // An apply with Some(referrer) is 32 bytes longer and costs REF_EXTRA more, as measured on mainnet.
-  paymentInfo: () => Promise.resolve({ partialFee: { toBigInt: () => (name === 'identityKyc.applyForCitizenship' && args[1] !== null ? FEE + REF_EXTRA : FEE) } }),
+  paymentInfo: () => impl.feeFail ? Promise.reject(new Error('rpc')) : Promise.resolve({ partialFee: { toBigInt: () => (name === 'identityKyc.applyForCitizenship' && args[1] !== null ? FEE + REF_EXTRA : FEE) } }),
   signAsync: vi.fn(() => { impl.signed.push({ name, args }); return Promise.resolve(); }),
   send: (cb: (r: unknown) => void) => {
     // A dropped connection after the hand-off: the node may already hold the extrinsic.
@@ -137,7 +137,7 @@ describe('i-Wallet citizenship', () => {
     await i18n.changeLanguage('tr');
     localStorage.clear();
     store = new Map<string, unknown>([['keystore', {}], ['words', {}]]);
-    Object.assign(impl, { status: 'NotStarted', nft: null, people: 0n, peopleAfter: [], assetHub: 10n * T, apps: [], script: ['inBlock', 'finalized'], dropAfterSend: false, scans: 0 });
+    Object.assign(impl, { status: 'NotStarted', nft: null, people: 0n, peopleAfter: [], assetHub: 10n * T, apps: [], script: ['inBlock', 'finalized'], dropAfterSend: false, scans: 0, feeFail: false });
     impl.signed = []; impl.pairs = [];
     Object.assign(FUNDING_POLL, { everyMs: 20, forMs: 2_000 });
   });
@@ -281,7 +281,7 @@ describe('i-Wallet citizenship', () => {
   it('shows the citizen card for Approved with an NFT', async () => {
     impl.status = 'Approved'; impl.nft = 7n;
     renderCitizen(); await login();
-    expect(await screen.findByText('Vatandaşsınız')).toBeInTheDocument();
+    expect(await screen.findByText('Vatandaşsın')).toBeInTheDocument();
     expect(screen.getByText('Welati Tiki NFT #7')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Başvuruyu Gönder' })).toBeNull();
   });
@@ -289,7 +289,24 @@ describe('i-Wallet citizenship', () => {
   it('turns an unknown status variant into a load error', async () => {
     impl.status = 'Suspended';
     renderCitizen(); await login();
-    expect(await screen.findByText('Vatandaşlık durumunuz yüklenemedi.')).toBeInTheDocument();
+    expect(await screen.findByText('Vatandaşlık durumun yüklenemedi.')).toBeInTheDocument();
+  });
+
+  it('blocks signing while the fee estimate fails, and signs after a successful retry', async () => {
+    impl.status = 'Approved'; impl.nft = 1n; impl.people = T;
+    impl.apps = [{ applicant: BOB, referrer: ADDR, status: 'PendingReferral' }];
+    impl.feeFail = true;
+    renderCitizen(); await login();
+    await user.click(await screen.findByRole('button', { name: `${BOB} onayla` }));
+    expect(await screen.findByText(/Ağ ücreti hesaplanamadı/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Parola'), 'right-pass1');
+    expect(screen.getByRole('button', { name: 'İmzala ve gönder' })).toBeDisabled();
+    expect(impl.signed).toHaveLength(0);
+    impl.feeFail = false;
+    await user.click(screen.getByRole('button', { name: 'Tekrar dene' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'İmzala ve gönder' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: 'İmzala ve gönder' }));
+    expect(await screen.findByText('Referans onaylandı')).toBeInTheDocument();
   });
 
   it('lists referrals waiting for this account and approves one', async () => {
@@ -299,7 +316,7 @@ describe('i-Wallet citizenship', () => {
       { applicant: '5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y', referrer: ADDR, status: 'ReferrerApproved' },
     ];
     renderCitizen(); await login();
-    expect(await screen.findByText('Onayınızı bekleyen başvurular')).toBeInTheDocument();
+    expect(await screen.findByText('Onayını bekleyen başvurular')).toBeInTheDocument();
     const buttons = screen.getAllByRole('button', { name: /onayla$/ });
     expect(buttons).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: `${BOB} onayla` }));
@@ -334,9 +351,9 @@ describe('i-Wallet citizenship', () => {
   it('shows the recipient (own account) and the destination chain on the teleport confirm', async () => {
     renderCitizen(); await login();
     await user.click(await screen.findByRole('button', { name: /1,5 HEZ taşı/ }));
-    expect(screen.getByText('Alıcı (kendi hesabınız)')).toBeInTheDocument();
+    expect(screen.getByText('Alıcı (kendi hesabın)')).toBeInTheDocument();
     expect(screen.getByText(shortAddress(ADDR))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Adresinizi kopyalayın' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Adresini kopyala' })).toBeInTheDocument();
     expect(screen.getByText('Pezkuwi People (vatandaşlık)')).toBeInTheDocument();
   });
 
@@ -363,12 +380,12 @@ describe('i-Wallet citizenship', () => {
     const first = renderCitizen(); await login();
     await screen.findByText('Referans Onayı Bekleniyor');
     expect(impl.scans).toBe(0);
-    expect(screen.queryByText('Onayınızı bekleyen başvurular')).toBeNull();
+    expect(screen.queryByText('Onayını bekleyen başvurular')).toBeNull();
     first.unmount();
 
     impl.status = 'Approved'; impl.nft = 3n;
     renderCitizen(); await login();
-    await screen.findByText('Onayınızı bekleyen başvurular');
+    await screen.findByText('Onayını bekleyen başvurular');
     expect(impl.scans).toBe(1);
   });
 });

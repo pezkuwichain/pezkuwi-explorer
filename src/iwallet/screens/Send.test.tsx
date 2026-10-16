@@ -17,7 +17,7 @@ const impl = vi.hoisted(() => ({
   script: [] as string[], sendRejects: false, faceOn: false, face: null as string | null,
   signed: [] as Array<{ name: string; args: unknown[] }>, pairs: [] as Array<{ lock: ReturnType<typeof vi.fn> }>, unlockPw: [] as string[],
   scanned: null as string | null, scanFails: false,
-  feeFn: null as null | ((amount: bigint) => bigint), rejectWith: null as unknown,
+  feeFn: null as null | ((amount: bigint) => bigint), feeGate: null as null | Promise<void>, unsubs: 0, rejectWith: null as unknown,
 }));
 
 vi.mock('../data', () => ({
@@ -61,13 +61,13 @@ const mkTx = (name: string, args: unknown[]) => ({
   paymentInfo: () => {
     if (impl.fee === 'fail') return Promise.reject(new Error('rpc'));
     const fee = impl.feeFn ? impl.feeFn(args[args.length - 1] as bigint) : impl.fee;
-    return Promise.resolve({ partialFee: { toBigInt: () => fee } });
+    return (impl.feeGate ?? Promise.resolve()).then(() => ({ partialFee: { toBigInt: () => fee } }));
   },
   signAsync: vi.fn(() => { impl.signed.push({ name, args }); return Promise.resolve(); }),
   send: (cb: (r: unknown) => void) => {
     if (impl.sendRejects) return Promise.reject(impl.rejectWith ?? new Error('ws closed'));
     impl.script.forEach((k) => cb(result(k)));
-    return Promise.resolve(() => undefined);
+    return Promise.resolve(() => { impl.unsubs++; });
   },
 });
 const stubApi = {
@@ -131,7 +131,7 @@ describe('i-Wallet send', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('tr');
     store = new Map<string, unknown>([['keystore', {}], ['words', {}]]);
-    Object.assign(impl, { hezSpendable: 5000n * T, assets: { 1: 20n * T, 1000: 9_000_000_000n }, fee: 2_000_000_000n, script: ['inBlock', 'finalized'], sendRejects: false, faceOn: false, face: null, scanned: null, scanFails: false, feeFn: null, rejectWith: null });
+    Object.assign(impl, { hezSpendable: 5000n * T, assets: { 1: 20n * T, 1000: 9_000_000_000n }, fee: 2_000_000_000n, script: ['inBlock', 'finalized'], sendRejects: false, faceOn: false, face: null, scanned: null, scanFails: false, feeFn: null, feeGate: null, unsubs: 0, rejectWith: null });
     impl.signed = []; impl.pairs = []; impl.unlockPw = [];
   });
 
@@ -184,16 +184,43 @@ describe('i-Wallet send', () => {
     expect(await screen.findByText(/Ağ ücreti: ~0,002/, undefined, { timeout: 3000 })).toBeInTheDocument();
   });
 
-  it('keeps confirm enabled without a fee as long as the amount fits the balance', async () => {
+  it('blocks a HEZ review while the fee estimate fails, offers a retry, and releases once it works', async () => {
     impl.fee = 'fail';
     renderSend(); await login();
     await fill(BOB, '1');
     expect(screen.getByText('Ağ ücreti: —')).toBeInTheDocument();
-    expect(review()).toBeEnabled();
-    await user.type(amountField(), '6000');
-    await settled();
-    expect(screen.getByText('Bu, gönderebileceğinden fazla.')).toBeInTheDocument();
+    expect(await screen.findByText('Ağ ücreti hesaplanamadı.', { exact: false })).toBeInTheDocument();
     expect(review()).toBeDisabled();
+    impl.fee = 2_000_000_000n;
+    await user.click(screen.getByRole('button', { name: 'Tekrar dene' }));
+    await settled();
+    expect(await screen.findByText(/Ağ ücreti: ~0,002/)).toBeInTheDocument();
+    expect(review()).toBeEnabled();
+  });
+
+  it('keeps an asset send reviewable without a fee as long as the amount fits the balance', async () => {
+    impl.fee = 'fail';
+    renderSend(); await login();
+    await user.click(screen.getByRole('button', { name: 'USDT' }));
+    await fill(BOB, '1');
+    expect(review()).toBeEnabled();
+    await user.clear(amountField());
+    await user.type(amountField(), '9001');
+    expect(await screen.findByText('Bu, gönderebileceğinden fazla.')).toBeInTheDocument();
+    expect(review()).toBeDisabled();
+  });
+
+  it('disables token switching while Max is being computed', async () => {
+    renderSend(); await login();
+    await fill(BOB, '1');
+    let release: () => void = () => undefined;
+    impl.feeGate = new Promise<void>((r) => { release = r; });
+    await user.click(screen.getByRole('button', { name: 'En çok' }));
+    expect(screen.getByRole('button', { name: 'USDT' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'PEZ' })).toBeDisabled();
+    release();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'USDT' })).toBeEnabled());
+    impl.feeGate = null;
   });
 
   it('rejects zero, a bad amount, too many decimals and a bad address', async () => {
@@ -249,7 +276,7 @@ describe('i-Wallet send', () => {
     expect(signPair().lock).toHaveBeenCalled();
     expect(await screen.findByText('77')).toBeInTheDocument();
     expect(screen.getByText('0xabc123')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'İşlem kimliğini kopyala' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'İşlem kodunu kopyala' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /payment/i })).toBeNull();
   });
 
@@ -267,7 +294,7 @@ describe('i-Wallet send', () => {
     renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
-    expect(await screen.findByText(/Bloğa girdi/)).toBeInTheDocument();
+    expect(await screen.findByText(/Ağ tarafından kabul edildi/)).toBeInTheDocument();
     expect(screen.queryByText('Gönderildi')).toBeNull();
     // The secret key is already gone while the transfer is still waiting.
     expect(signPair().lock).toHaveBeenCalled();
@@ -332,10 +359,12 @@ describe('i-Wallet send', () => {
     renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
-    await screen.findByText(/Bloğa girdi/);
+    await screen.findByText(/Ağ tarafından kabul edildi/);
     const onDisconnect = stubApi.on.mock.calls.find((c) => c[0] === 'disconnected')![1] as () => void;
     onDisconnect();
     expect(await screen.findByText(/yine de tamamlanabilir/)).toBeInTheDocument();
+    // The status subscription is released when the disconnect wins, not left running.
+    await waitFor(() => expect(impl.unsubs).toBe(1));
   });
 
   it('reports a transaction the network dropped as not sent', async () => {

@@ -59,19 +59,22 @@ export type SubmitEvent =
 const hasSuccess = (r: ISubmittableResult): boolean =>
   !r.internalError && r.events.some(({ event }) => event.section === 'system' && event.method === 'ExtrinsicSuccess');
 
-// A refusal by the node's transaction pool (invalid, stale, future, bad signature, too low priority): the
-// transaction was NOT accepted, so "failed" is true. Any other rejection after hand-off (socket closed, timeout)
-// leaves the outcome unknown.
+// A refusal by the node's transaction pool that proves the transaction was NOT accepted: 1010 invalid, 1011 cannot
+// lookup, 1014 priority too low. Others in that range (1012 temporarily banned, 1013 already imported) can mean the
+// transaction is, or was, in the pool; any other rejection after hand-off (socket closed, timeout) is unknown too.
+const REFUSAL_CODES = new Set([1010, 1011, 1014]);
 export function isNodeRefusal(e: unknown): boolean {
   const code = (e as { code?: unknown } | null)?.code;
-  if (typeof code === 'number' && code >= 1010 && code <= 1014) return true;
-  return /^\s*10(1[0-4]):/.test(String((e as { message?: unknown } | null)?.message ?? ''));
+  if (typeof code === 'number' && REFUSAL_CODES.has(code)) return true;
+  const m = /^\s*(10\d\d):/.exec(String((e as { message?: unknown } | null)?.message ?? ''));
+  return m !== null && REFUSAL_CODES.has(Number(m[1]));
 }
 
 // Signs, locks the pair, then sends. Resolves after a terminal event; rejects if signing fails (before anything left
 // this device) or if the send call rejects. 'submitted' is reported just BEFORE the extrinsic is handed to the node,
 // so a caller knows that any later rejection may hide a transaction that is already in the pool.
-export async function submit(tx: Tx, pair: KeyringPair, onStatus: (e: SubmitEvent) => void): Promise<void> {
+// `stop` ends the status subscription early (the caller gave up waiting, e.g. the connection dropped).
+export async function submit(tx: Tx, pair: KeyringPair, onStatus: (e: SubmitEvent) => void, stop?: AbortSignal): Promise<void> {
   // The secret key is needed only to sign: wipe it before the (possibly long) wait for finality.
   try { await tx.signAsync(pair, { nonce: -1 }); } finally { try { pair.lock(); } catch { /* already locked */ } }
   return new Promise<void>((resolve, reject) => {
@@ -79,6 +82,9 @@ export async function submit(tx: Tx, pair: KeyringPair, onStatus: (e: SubmitEven
     let done = false;
     let seenInBlock = false;
     const finish = () => { done = true; unsub?.(); resolve(); };
+    if (stop) {
+      if (stop.aborted) { done = true; } else stop.addEventListener('abort', () => { done = true; unsub?.(); resolve(); }, { once: true });
+    }
     const handle = (r: ISubmittableResult) => {
       if (done) return;
       if (r.dispatchError) { onStatus({ type: 'failed', dispatchError: r.dispatchError }); finish(); return; }

@@ -1,5 +1,5 @@
 // The stored keystore is already encrypted; this only hands it to the browser as a file.
-export const exportFileName = (address: string) => `i-wallet-${address.slice(0, 6)}….json`;
+export const exportFileName = (address: string) => `i-wallet-${address.slice(0, 6)}-${address.slice(-6)}.json`;
 
 export function downloadJson(filename: string, value: unknown): void {
   const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));

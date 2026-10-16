@@ -242,3 +242,5 @@ Wallet home, receive and settings (Task 6, 2026-10-16): kmr, ckb, fa and ar cell
 - iwallet.settings.title, iwallet.settings.backup, iwallet.settings.backupBody, iwallet.settings.export, iwallet.settings.exportBody, iwallet.settings.lock, iwallet.settings.delete, iwallet.settings.deleteTitle, iwallet.settings.deleteBody, iwallet.settings.deleteConfirm, iwallet.settings.deleteFailed, iwallet.settings.show, iwallet.settings.hide
 
 Fix round (Task 5, 2026-10-16): new drafts iwallet.faceid.storage, iwallet.faceid.enable, iwallet.faceid.enabled; reworded drafts iwallet.faceid.cancelled (now points to Settings) and iwallet.import.title, iwallet.import.body, iwallet.import.label, iwallet.import.invalid (12 or 24 words).
+
+Fix round 1 (Task 6): iwallet.settings.faceOff, iwallet.settings.faceBody, iwallet.settings.faceDisabled (kmr, ckb, fa, ar drafts; tr/en written).

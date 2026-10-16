@@ -2,9 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { loadAssetBalances, loadHezBalance, loadIWalletBalances } from './data';
 
-const acct = (free: bigint, reserved: bigint) => ({ data: { free: { toBigInt: () => free }, reserved: { toBigInt: () => reserved } } });
+const acct = (free: bigint, reserved: bigint, frozen = 0n) => ({ data: { free: { toBigInt: () => free }, reserved: { toBigInt: () => reserved }, frozen: { toBigInt: () => frozen } } });
 const asset = (bal: bigint | null) => ({ isSome: bal !== null, unwrap: () => ({ balance: { toBigInt: () => bal ?? 0n } }) });
-const natives: Record<string, [bigint, bigint]> = { relay: [1n, 2n], assetHub: [10n, 5n], people: [100n, 0n] };
+const natives: Record<string, [bigint, bigint, bigint?]> = { relay: [1n, 2n], assetHub: [10n, 5n], people: [100n, 0n] };
 
 const fake = (chain: string) => Promise.resolve({
   query: {
@@ -18,7 +18,22 @@ describe('i-Wallet balances', () => {
     const h = await loadHezBalance('5Grw', { getApi: fake });
     expect(h.perChain).toEqual({ relay: 3n, assetHub: 15n, people: 100n });
     expect(h.total).toBe(118n);
-    expect(h.assetHubFree).toBe(10n);
+    expect(h.assetHubSpendable).toBe(10n);
+  });
+
+  it('spendable = free - max(frozen - reserved, 0): frozen above reserved', async () => {
+    natives.assetHub = [10n, 3n, 8n];
+    expect((await loadHezBalance('5Grw', { getApi: fake })).assetHubSpendable).toBe(5n);
+    natives.assetHub = [10n, 3n, 20n];
+    expect((await loadHezBalance('5Grw', { getApi: fake })).assetHubSpendable).toBe(0n);
+  });
+
+  it('spendable = free when frozen <= reserved', async () => {
+    natives.assetHub = [10n, 3n, 3n];
+    expect((await loadHezBalance('5Grw', { getApi: fake })).assetHubSpendable).toBe(10n);
+    natives.assetHub = [10n, 3n, 0n];
+    expect((await loadHezBalance('5Grw', { getApi: fake })).assetHubSpendable).toBe(10n);
+    natives.assetHub = [10n, 5n];
   });
 
   it('fails closed when one chain rejects (no partial HEZ total)', async () => {

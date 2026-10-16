@@ -38,12 +38,17 @@ export default function Home({ address }: { address: string }) {
 
         <div className="iw-hot" role="note"><IconWarning size={16} />{t('iwallet.home.hot')}</div>
 
-        <Card status={hez.status} onRetry={hez.retry} className="iw-balance" label={symbol}>
+        {/* Address and actions need no balance, so they stay when the HEZ figure is loading or failed (fail-closed). */}
+        <section className="iw-balance" aria-label={symbol}>
           <div className="iw-addr">
             <bdi dir="ltr" className="iw-addr-text" title={address}>{shortAddress(address)}</bdi>
             <CopyAddress address={address} />
           </div>
-          {hez.data && <BigAmount className="iw-total" value={hez.data.total} decimals={decimals} symbol={symbol} />}
+          <div aria-busy={hez.status === 'loading'}>
+            {hez.status === 'loading' && <p className="card-note">{t('state.loading')}</p>}
+            {hez.status === 'error' && <p className="card-note">{t('state.error')} <button type="button" className="retry" onClick={hez.retry}>{t('state.retry')}</button></p>}
+            {hez.data && <BigAmount className="iw-total" value={hez.data.total} decimals={decimals} symbol={symbol} />}
+          </div>
           {parts && (
             <ul className="iw-parts" aria-label={t('iwallet.home.parts')}>
               {CHAINS.map((c) => (
@@ -56,14 +61,14 @@ export default function Home({ address }: { address: string }) {
             <Link className="iw-act" to="/i-wallet/receive"><IconReceived size={20} />{t('iwallet.home.receive')}</Link>
             <Link className="iw-act" to="/i-wallet/citizen"><IconIdTab size={20} />{t('iwallet.home.citizen')}</Link>
           </div>
-        </Card>
+        </section>
 
         <Card status={assets.status} onRetry={assets.retry} label={t('iwallet.home.assets')}>
           <ul className="rows">
             {assets.data?.map((a) => (
               <li key={a.id} className="row">
                 <TokenIcon symbol={a.symbol} size={36} />
-                <div className="row-main"><span className="row-title">{a.symbol}</span><span className="row-sub">{t(SUB[a.symbol] ?? 'iwallet.home.hezSub')}</span></div>
+                <div className="row-main"><span className="row-title">{a.symbol}</span>{SUB[a.symbol] && <span className="row-sub">{t(SUB[a.symbol])}</span>}</div>
                 <span className="row-amount"><bdi className="num">{formatNumber(a.amount, a.decimals, i18n.language)}</bdi></span>
               </li>
             ))}

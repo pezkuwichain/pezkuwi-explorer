@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { user } from '../test-user';
 import i18n from '../../i18n';
@@ -14,10 +14,14 @@ const ADDR = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const impl = vi.hoisted(() => ({
   hez: null as null | (() => Promise<unknown>),
   assets: null as null | (() => Promise<unknown>),
-  words: vi.fn(),
+  words: vi.fn(), enrol: vi.fn(), faceSupported: false, faceOn: false, forgot: 0,
 }));
 vi.mock('../data', () => ({ loadHezBalance: () => impl.hez!(), loadAssetBalances: () => impl.assets!() }));
-vi.mock('../faceid', () => ({ hasFaceId: () => Promise.resolve(false), unlockWithFaceId: () => Promise.resolve(null), faceIdSupported: () => Promise.resolve(false) }));
+vi.mock('../faceid', () => ({
+  hasFaceId: () => Promise.resolve(impl.faceOn), unlockWithFaceId: () => Promise.resolve(null),
+  faceIdSupported: () => Promise.resolve(impl.faceSupported),
+  enrolFaceId: (...a: unknown[]) => impl.enrol(...a), forgetFaceId: () => { impl.forgot++; impl.faceOn = false; return Promise.resolve(true); },
+}));
 vi.mock('../keystore', async (orig) => ({
   ...(await orig<typeof import('../keystore')>()),
   loadKeystore: () => Promise.resolve({ address: ADDR, encoded: 'enc' }),
@@ -27,7 +31,7 @@ vi.mock('../keystore', async (orig) => ({
 
 const T = 10n ** 12n;
 const hezOk = (relay: bigint, people: bigint) => () => Promise.resolve({
-  total: 5n * T + relay + people, perChain: { relay, assetHub: 5n * T, people }, assetHubFree: 5n * T,
+  total: 5n * T + relay + people, perChain: { relay, assetHub: 5n * T, people }, assetHubSpendable: 5n * T,
 });
 const assetsOk = () => Promise.resolve([
   { id: 1, symbol: 'PEZ', decimals: 12, amount: 2n * T }, { id: 1000, symbol: 'USDT', decimals: 6, amount: 3_000_000n },
@@ -95,6 +99,10 @@ describe('i-Wallet home', () => {
     await unlock();
     expect(await screen.findByRole('button', { name: 'Tekrar dene' })).toBeInTheDocument();
     expect(screen.queryByText('HEZ', { selector: '.sym' })).toBeNull();
+    // Address and actions need no balance: they stay while the HEZ figure is unavailable.
+    expect(screen.getByRole('link', { name: /^Al/ })).toHaveAttribute('href', '/i-wallet/receive');
+    expect(screen.getByRole('link', { name: /Gönder/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Adresi kopyala' })).toBeInTheDocument();
     expect(await screen.findByText('PEZ')).toBeInTheDocument();
   });
 
@@ -141,7 +149,7 @@ describe('i-Wallet settings', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('tr');
     store = new Map<string, unknown>([['keystore', {}], ['words', {}], ['faceid', {}], ['other', 1]]);
-    impl.words.mockReset();
+    impl.words.mockReset(); impl.enrol.mockReset(); impl.faceSupported = false; impl.faceOn = false;
   });
 
   it('asks for the password before showing the words, and drops them when hidden', async () => {
@@ -185,5 +193,50 @@ describe('i-Wallet settings', () => {
     expect(store.has('faceid')).toBe(false);
     expect(store.has('other')).toBe(true);
     await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent(/^\/i-wallet$/));
+  });
+
+  it('hides the words when the page becomes hidden', async () => {
+    impl.words.mockResolvedValue('one two three four five six seven eight nine ten eleven twelve');
+    renderAt('/i-wallet/settings');
+    await unlock();
+    await user.click(await screen.findByRole('button', { name: /Yedek kelimeleri göster/ }));
+    await user.type(screen.getByLabelText('Parola'), 'right-pass1');
+    await user.click(screen.getByRole('button', { name: 'Göster' }));
+    expect(await screen.findByText('seven')).toBeInTheDocument();
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+    expect(screen.queryByText('seven')).toBeNull();
+    expect(screen.getByRole('button', { name: /Yedek kelimeleri göster/ })).toBeInTheDocument();
+  });
+
+  it('hides the Face ID control where it is unsupported', async () => {
+    impl.faceSupported = false;
+    renderAt('/i-wallet/settings');
+    await unlock();
+    await screen.findByRole('button', { name: /Cihazdan sil/ });
+    expect(screen.queryByRole('button', { name: /Face ID/ })).toBeNull();
+  });
+
+  it('enables Face ID: password first, then a separate tap', async () => {
+    impl.faceSupported = true; impl.faceOn = false; impl.words.mockResolvedValue('x'); impl.enrol.mockResolvedValue({ ok: true });
+    renderAt('/i-wallet/settings');
+    await unlock();
+    await user.click(await screen.findByRole('button', { name: 'Face ID\'yi aç' }));
+    await user.type(screen.getByLabelText('Parola'), 'right-pass1');
+    await user.click(screen.getByRole('button', { name: 'Devam' }));
+    expect(impl.enrol).not.toHaveBeenCalled();
+    await user.click(await screen.findByRole('button', { name: 'Face ID\'yi aç' }));
+    expect(impl.enrol).toHaveBeenCalledWith('right-pass1');
+    expect(await screen.findByRole('status')).toHaveTextContent('Face ID açık');
+  });
+
+  it('turns Face ID off by forgetting the record', async () => {
+    impl.faceSupported = true; impl.faceOn = true; impl.forgot = 0;
+    renderAt('/i-wallet/settings');
+    await unlock();
+    await user.click(await screen.findByRole('button', { name: "Face ID'yi kapat" }));
+    expect(impl.forgot).toBe(1);
+    expect(await screen.findByRole('button', { name: "Face ID'yi aç" })).toBeInTheDocument();
   });
 });

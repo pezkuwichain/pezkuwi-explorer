@@ -12,8 +12,12 @@ export type HezBalance = {
   /** free + reserved, summed over relay, Asset Hub and People. */
   total: bigint;
   perChain: Record<ChainKey, bigint>;
-  /** Free (spendable) HEZ on Asset Hub only: where HEZ transfers are made (Send uses it). */
-  assetHubFree: bigint;
+  /** Spendable HEZ on Asset Hub, where HEZ transfers are made: free - max(frozen - reserved, 0). Frozen applies over free + reserved. */
+  assetHubSpendable: bigint;
+};
+export const spendable = (a: { free: bigint; reserved: bigint; frozen: bigint }): bigint => {
+  const locked = a.frozen > a.reserved ? a.frozen - a.reserved : 0n;
+  return a.free > locked ? a.free - locked : 0n;
 };
 export type AssetBalance = { id: number; symbol: string; decimals: number; amount: bigint };
 
@@ -23,16 +27,16 @@ export async function loadHezBalance(address: string, deps: Deps = real): Promis
   const [relay, assetHub, people] = await Promise.all([deps.getApi('relay'), deps.getApi('assetHub'), deps.getApi('people')]);
   const account = async (api: ApiPromise) => {
     const a = (await withTimeout(api.query.system.account(address), REQUEST_TIMEOUT_MS)) as never as {
-      data: { free: { toBigInt(): bigint }; reserved: { toBigInt(): bigint } };
+      data: { free: { toBigInt(): bigint }; reserved: { toBigInt(): bigint }; frozen: { toBigInt(): bigint } };
     };
-    return { free: a.data.free.toBigInt(), reserved: a.data.reserved.toBigInt() };
+    return { free: a.data.free.toBigInt(), reserved: a.data.reserved.toBigInt(), frozen: a.data.frozen.toBigInt() };
   };
   const [r, a, p] = await Promise.all([account(relay), account(assetHub), account(people)]);
   const sum = (x: { free: bigint; reserved: bigint }) => x.free + x.reserved;
   return {
     total: sum(r) + sum(a) + sum(p),
     perChain: { relay: sum(r), assetHub: sum(a), people: sum(p) },
-    assetHubFree: a.free,
+    assetHubSpendable: spendable(a),
   };
 }
 

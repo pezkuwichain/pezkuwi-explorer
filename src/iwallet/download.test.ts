@@ -5,8 +5,8 @@ import { isStandalone } from './standalone';
 describe('export', () => {
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
-  it('names the file after the first six characters of the address', () => {
-    expect(exportFileName('5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY')).toBe('i-wallet-5Grwva….json');
+  it('names the file after the first and last six characters of the address', () => {
+    expect(exportFileName('5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY')).toBe('i-wallet-5Grwva-GKutQY.json');
   });
 
   it('downloads the JSON through a blob URL and revokes it afterwards', async () => {
@@ -16,11 +16,11 @@ describe('export', () => {
     Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke });
     let name = '';
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) { name = this.download; });
-    downloadJson('i-wallet-5Grwva….json', { address: 'x' });
+    downloadJson('i-wallet-5Grwva-GKutQY.json', { address: 'x' });
     expect(create).toHaveBeenCalledTimes(1);
     const blob = (create.mock.calls[0] as unknown as [Blob])[0];
     expect(await blob.text()).toContain('"address": "x"');
-    expect(name).toBe('i-wallet-5Grwva….json');
+    expect(name).toBe('i-wallet-5Grwva-GKutQY.json');
     expect(revoke).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1_000);
     expect(revoke).toHaveBeenCalledWith('blob:x');

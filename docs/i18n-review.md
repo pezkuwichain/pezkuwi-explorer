@@ -244,3 +244,15 @@ Wallet home, receive and settings (Task 6, 2026-10-16): kmr, ckb, fa and ar cell
 Fix round (Task 5, 2026-10-16): new drafts iwallet.faceid.storage, iwallet.faceid.enable, iwallet.faceid.enabled; reworded drafts iwallet.faceid.cancelled (now points to Settings) and iwallet.import.title, iwallet.import.body, iwallet.import.label, iwallet.import.invalid (12 or 24 words).
 
 Fix round 1 (Task 6): iwallet.settings.faceOff, iwallet.settings.faceBody, iwallet.settings.faceDisabled (kmr, ckb, fa, ar drafts; tr/en written).
+
+Send (Task 7, 2026-10-16): tr follows the mockup where it has the sentence (title, recipient, amount, available, fee, high-amount alert, acknowledgement, confirm button); the rest of tr and every kmr, ckb, fa and ar cell is a draft needing a native reading. The chain-error texts (iwallet.err.*) carry the pwap kmr wording where pwap has an entry for an error this chain really defines; the other kmr rows are new drafts.
+
+- iwallet.send.title, iwallet.send.recipient, iwallet.send.scan, iwallet.send.invalid, iwallet.send.self, iwallet.send.token, iwallet.send.amount, iwallet.send.max, iwallet.send.available, iwallet.send.fee, iwallet.send.feeLabel, iwallet.send.feeUnknown
+- iwallet.send.amountInvalid, iwallet.send.decimals, iwallet.send.exceeds, iwallet.send.noFee, iwallet.send.largeTitle, iwallet.send.largeBody, iwallet.send.largeAck
+- iwallet.send.review, iwallet.send.confirmTitle, iwallet.send.to, iwallet.send.faceFailed, iwallet.send.confirm, iwallet.send.working
+- iwallet.send.pending, iwallet.send.inBlock, iwallet.send.doneTitle, iwallet.send.recordNo, iwallet.send.txId, iwallet.send.copyTxId, iwallet.send.done, iwallet.send.another
+- iwallet.send.failedTitle, iwallet.send.failedNamed, iwallet.send.dropped, iwallet.send.interrupted, iwallet.send.balanceFailed
+- iwallet.err.balances.InsufficientBalance, iwallet.err.balances.ExistentialDeposit, iwallet.err.balances.Expendability, iwallet.err.balances.LiquidityRestrictions
+- iwallet.err.assets.BalanceLow, iwallet.err.assets.NoAccount, iwallet.err.assets.NoPermission, iwallet.err.assets.Frozen, iwallet.err.assets.BelowMinimum, iwallet.err.assets.Unknown
+- iwallet.err.identityKyc.ApplicationAlreadyExists, iwallet.err.identityKyc.ApplicationNotFound, iwallet.err.identityKyc.ReferrerNotCitizen, iwallet.err.identityKyc.SelfReferral, iwallet.err.identityKyc.CannotApproveInCurrentState, iwallet.err.identityKyc.CannotConfirmInCurrentState, iwallet.err.identityKyc.NotTheReferrer, iwallet.err.identityKyc.IdentityHashAlreadyUsed, iwallet.err.identityKyc.AlreadyACitizen, iwallet.err.identityKyc.NotACitizen, iwallet.err.identityKyc.CannotCancelInCurrentState
+- iwallet.err.tiki.KycNotCompleted, iwallet.err.tiki.UserAlreadyHasRole, iwallet.err.tiki.RoleAlreadyTaken

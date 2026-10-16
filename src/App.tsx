@@ -14,6 +14,7 @@ import IWalletShell, { IWalletIndex } from './iwallet/IWalletRoutes';
 import Create from './iwallet/screens/Create';
 import Import from './iwallet/screens/Import';
 import Receive from './iwallet/screens/Receive';
+import Send from './iwallet/screens/Send';
 import Settings from './iwallet/screens/Settings';
 
 // Each later screen task adds its own route here.
@@ -36,6 +37,7 @@ export default function App() {
                 <Route path="create" element={<Create />} />
                 <Route path="import" element={<Import />} />
                 <Route path="receive" element={<Receive />} />
+                <Route path="send" element={<Send />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
             </Route>

@@ -135,11 +135,7 @@ export async function loadKeystore(store: KvStore = indexedDbStore): Promise<Key
 }
 
 export async function deleteKeystore(store: KvStore = indexedDbStore): Promise<void> {
-  if (store.deleteMany) { await store.deleteMany([KEYSTORE_KEY, WORDS_KEY, FACEID_KEY]); return; }
-  // Fallback for stores without a batch op: words first, so a partial failure leaves a usable wallet.
-  await store.delete(FACEID_KEY);
-  await store.delete(WORDS_KEY);
-  await store.delete(KEYSTORE_KEY);
+  await store.deleteMany([KEYSTORE_KEY, WORDS_KEY, FACEID_KEY]);
 }
 
 export async function requestPersistence(): Promise<boolean> {

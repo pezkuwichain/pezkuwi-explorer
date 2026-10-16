@@ -4,9 +4,8 @@ export interface KvStore {
   get(key: string): Promise<unknown>;
   set(key: string, value: unknown): Promise<void>;
   delete(key: string): Promise<void>;
-  // Removes every key in one transaction: all of them go, or none do. Optional so simple fakes
-  // need not implement it; the real store always does.
-  deleteMany?(keys: string[]): Promise<void>;
+  // Removes every key in one transaction: all of them go, or none do.
+  deleteMany(keys: string[]): Promise<void>;
 }
 
 const DB_NAME = 'pezkuwi-iwallet';

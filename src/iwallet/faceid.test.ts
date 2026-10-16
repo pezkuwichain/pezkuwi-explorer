@@ -10,6 +10,7 @@ const mapStore = (): KvStore & { data: Map<string, unknown> } => {
     get: async (k) => data.get(k),
     set: async (k, v) => { data.set(k, v); },
     delete: async (k) => { data.delete(k); },
+    deleteMany: async (ks) => { for (const k of ks) data.delete(k); },
   };
 };
 const PW = 'correct horse battery';
@@ -45,15 +46,15 @@ describe('SALT', () => {
 describe('faceIdSupported', () => {
   it('is false without PublicKeyCredential', async () => {
     vi.stubGlobal('PublicKeyCredential', undefined);
-    expect(await faceIdSupported()).toBe(false);
+    expect(await faceIdSupported(mapStore())).toBe(false);
   });
   it('is false without a platform authenticator', async () => {
     vi.stubGlobal('PublicKeyCredential', { isUserVerifyingPlatformAuthenticatorAvailable: async () => false });
-    expect(await faceIdSupported()).toBe(false);
+    expect(await faceIdSupported(mapStore())).toBe(false);
   });
   it('is optimistic when getClientCapabilities is absent', async () => {
     vi.stubGlobal('PublicKeyCredential', { isUserVerifyingPlatformAuthenticatorAvailable: async () => true });
-    expect(await faceIdSupported()).toBe(true);
+    expect(await faceIdSupported(mapStore())).toBe(true);
   });
   it('follows extension:prf when capabilities exist', async () => {
     const mk = (prf: boolean) => ({
@@ -61,9 +62,9 @@ describe('faceIdSupported', () => {
       getClientCapabilities: async () => ({ 'extension:prf': prf }),
     });
     vi.stubGlobal('PublicKeyCredential', mk(false));
-    expect(await faceIdSupported()).toBe(false);
+    expect(await faceIdSupported(mapStore())).toBe(false);
     vi.stubGlobal('PublicKeyCredential', mk(true));
-    expect(await faceIdSupported()).toBe(true);
+    expect(await faceIdSupported(mapStore())).toBe(true);
   });
 });
 
@@ -71,14 +72,17 @@ describe('enrol and unlock', () => {
   it('enrol without any PRF output returns false and stores nothing', async () => {
     const { get } = stubWeb({});
     const store = mapStore();
-    expect(await enrolFaceId(PW, store)).toBe(false);
+    expect(await enrolFaceId(PW, store)).toEqual({ ok: false, reason: 'unsupported' });
     expect(get).toHaveBeenCalledOnce(); // the Safari fallback was tried
-    expect(store.data.size).toBe(0);
+    expect(store.data.has('faceid')).toBe(false);
+    expect(store.data.get('faceid-unsupported')).toBe(true);
+    vi.stubGlobal('PublicKeyCredential', { isUserVerifyingPlatformAuthenticatorAvailable: async () => true });
+    expect(await faceIdSupported(store)).toBe(false); // the switch disappears on this device
   });
   it('round-trips the password when create returns PRF', async () => {
     const { create, get } = stubWeb({ createPrf: PRF, getPrf: PRF });
     const store = mapStore();
-    expect(await enrolFaceId(PW, store)).toBe(true);
+    expect(await enrolFaceId(PW, store)).toEqual({ ok: true });
     expect(get).not.toHaveBeenCalled();
     const pk = (create.mock.calls[0] as unknown as [{ publicKey: Record<string, unknown> }])[0].publicKey;
     expect(pk.authenticatorSelection).toEqual({ authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' });
@@ -92,7 +96,7 @@ describe('enrol and unlock', () => {
   it('gets the PRF from get() when create omits it (Safari)', async () => {
     const { get } = stubWeb({ getPrf: PRF });
     const store = mapStore();
-    expect(await enrolFaceId(PW, store)).toBe(true);
+    expect(await enrolFaceId(PW, store)).toEqual({ ok: true });
     expect(get).toHaveBeenCalledOnce();
     expect(await unlockWithFaceId(store)).toBe(PW);
   });
@@ -110,12 +114,56 @@ describe('enrol and unlock', () => {
     stubWeb({ getPrf: new Uint8Array(32).fill(5) });
     expect(await unlockWithFaceId(store)).toBeNull();
   });
+  it('create cancelled or aborted reports cancelled and stores nothing', async () => {
+    for (const name of ['NotAllowedError', 'AbortError']) {
+      const { create } = stubWeb({});
+      create.mockRejectedValueOnce(new DOMException('x', name));
+      const store = mapStore();
+      expect(await enrolFaceId(PW, store)).toEqual({ ok: false, reason: 'cancelled' });
+      expect(store.data.size).toBe(0);
+    }
+  });
+  it('a failing store.set reports storage', async () => {
+    stubWeb({ createPrf: PRF });
+    const store = mapStore();
+    store.set = async () => { throw new Error('quota'); };
+    expect(await enrolFaceId(PW, store)).toEqual({ ok: false, reason: 'storage' });
+  });
+  it('rejects a PRF output that is not 32 bytes', async () => {
+    stubWeb({ createPrf: new Uint8Array(16).fill(3), getPrf: new Uint8Array(24).fill(3) });
+    const store = mapStore();
+    expect(await enrolFaceId(PW, store)).toEqual({ ok: false, reason: 'unsupported' });
+    expect(store.data.has('faceid')).toBe(false);
+  });
+  it('sends the right WebAuthn arguments on create and get, with a fresh IV each time', async () => {
+    const { create, get } = stubWeb({ createPrf: PRF, getPrf: PRF });
+    const s1 = mapStore(); const s2 = mapStore();
+    await enrolFaceId(PW, s1); await enrolFaceId(PW, s2);
+    const cpk = (create.mock.calls[0] as unknown as [{ publicKey: any }])[0].publicKey;
+    expect(cpk.rp.id).toBe('explorer.pezkuwichain.io');
+    expect(cpk.user.id).toHaveLength(16);
+    expect(cpk.authenticatorSelection.userVerification).toBe('required');
+    expect(Array.from(cpk.extensions.prf.eval.first)).toEqual(Array.from(SALT));
+    expect((s1.data.get('faceid') as any).iv).not.toBe((s2.data.get('faceid') as any).iv);
+    await unlockWithFaceId(s1);
+    const gpk = (get.mock.calls[0] as unknown as [{ publicKey: any }])[0].publicKey;
+    expect(gpk.userVerification).toBe('required');
+    expect(gpk.allowCredentials).toHaveLength(1);
+    expect(Array.from(gpk.allowCredentials[0].id)).toEqual(Array.from(new Uint8Array(RAW_ID)));
+    expect(gpk.allowCredentials[0].transports).toEqual(['internal']);
+    expect(Array.from(gpk.extensions.prf.eval.first)).toEqual(Array.from(SALT));
+  });
+  it('forget reports false when the store fails', async () => {
+    const store = mapStore();
+    store.delete = async () => { throw new Error('x'); };
+    expect(await forgetFaceId(store)).toBe(false);
+  });
   it('unlock with nothing enrolled is null; forget removes the record', async () => {
     stubWeb({ createPrf: PRF, getPrf: PRF });
     const store = mapStore();
     expect(await unlockWithFaceId(store)).toBeNull();
     await enrolFaceId(PW, store);
-    await forgetFaceId(store);
+    expect(await forgetFaceId(store)).toBe(true);
     expect(await hasFaceId(store)).toBe(false);
     expect(await unlockWithFaceId(store)).toBeNull();
   });

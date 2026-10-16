@@ -4,6 +4,8 @@
 import { indexedDbStore, type KvStore } from './idb';
 
 const FACEID_KEY = 'faceid';
+// Set when this device produced no PRF output at enrolment, so the switch stays hidden afterwards.
+const UNSUPPORTED_KEY = 'faceid-unsupported';
 
 // sha256('pezkuwi-iwallet-faceid-v1'), asserted equal to the runtime hash in the tests.
 export const SALT: Uint8Array = Uint8Array.from(
@@ -27,9 +29,11 @@ interface PrfExt { prf?: { enabled?: boolean; results?: { first?: ArrayBuffer | 
 const prfFirst = (cred: PublicKeyCredential | null): Uint8Array | null => {
   const first = (cred?.getClientExtensionResults() as PrfExt | undefined)?.prf?.results?.first;
   if (!first) return null;
-  return first instanceof ArrayBuffer
+  const bytes = first instanceof ArrayBuffer
     ? new Uint8Array(first)
     : new Uint8Array(first.buffer, first.byteOffset, first.byteLength);
+  // The spec needs a 32-byte (AES-256) key; anything else would silently weaken it.
+  return bytes.byteLength === 32 ? bytes : null;
 };
 
 const aesKey = (prf: Uint8Array): Promise<CryptoKey> =>
@@ -37,8 +41,15 @@ const aesKey = (prf: Uint8Array): Promise<CryptoKey> =>
 
 const prfEval = { prf: { eval: { first: SALT } } } as AuthenticationExtensionsClientInputs;
 
-export async function faceIdSupported(): Promise<boolean> {
+export type EnrolResult = { ok: true } | { ok: false; reason: 'cancelled' | 'unsupported' | 'storage' };
+
+const isCancel = (e: unknown): boolean =>
+  e instanceof DOMException ? e.name === 'NotAllowedError' || e.name === 'AbortError'
+    : typeof e === 'object' && e !== null && ['NotAllowedError', 'AbortError'].includes((e as { name?: string }).name ?? '');
+
+export async function faceIdSupported(store: KvStore = indexedDbStore): Promise<boolean> {
   try {
+    if (await store.get(UNSUPPORTED_KEY)) return false;
     if (typeof PublicKeyCredential === 'undefined') return false;
     if (!(await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())) return false;
     const caps = (PublicKeyCredential as unknown as {
@@ -54,7 +65,7 @@ async function getPrf(credentialId: Uint8Array): Promise<Uint8Array | null> {
   const cred = (await navigator.credentials.get({
     publicKey: {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
-      allowCredentials: [{ type: 'public-key', id: credentialId as BufferSource }],
+      allowCredentials: [{ type: 'public-key', id: credentialId as BufferSource, transports: ['internal'] }],
       userVerification: 'required',
       extensions: prfEval,
     },
@@ -62,7 +73,11 @@ async function getPrf(credentialId: Uint8Array): Promise<Uint8Array | null> {
   return prfFirst(cred);
 }
 
-export async function enrolFaceId(password: string, store: KvStore = indexedDbStore): Promise<boolean> {
+// Note: a passkey that was created but turned out unusable (no PRF) cannot be deleted from the
+// web; the user has to remove "i-Wallet" in their password manager. That is why 'unsupported'
+// is remembered and the switch disappears, instead of costing more prompts and more orphans.
+export async function enrolFaceId(password: string, store: KvStore = indexedDbStore): Promise<EnrolResult> {
+  let record: StoredFaceId;
   try {
     const cred = (await navigator.credentials.create({
       publicKey: {
@@ -74,17 +89,22 @@ export async function enrolFaceId(password: string, store: KvStore = indexedDbSt
         extensions: prfEval,
       },
     })) as PublicKeyCredential | null;
-    if (!cred) return false;
+    if (!cred) return { ok: false, reason: 'cancelled' };
     const rawId = new Uint8Array(cred.rawId);
     // Some platforms (Safari) only return the PRF output from get(), not create().
     const prf = prfFirst(cred) ?? (await getPrf(rawId));
-    if (!prf) return false;
+    if (!prf) {
+      try { await store.set(UNSUPPORTED_KEY, true); } catch { /* the flag is best effort */ }
+      return { ok: false, reason: 'unsupported' };
+    }
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await aesKey(prf), new TextEncoder().encode(password));
-    const rec: StoredFaceId = { credentialId: toB64u(rawId), iv: toB64u(iv), ciphertext: toB64u(ct) };
-    await store.set(FACEID_KEY, rec);
-    return true;
-  } catch { return false; }
+    record = { credentialId: toB64u(rawId), iv: toB64u(iv), ciphertext: toB64u(ct) };
+  } catch (e) {
+    return { ok: false, reason: isCancel(e) ? 'cancelled' : 'unsupported' };
+  }
+  try { await store.set(FACEID_KEY, record); } catch { return { ok: false, reason: 'storage' }; }
+  return { ok: true };
 }
 
 export async function hasFaceId(store: KvStore = indexedDbStore): Promise<boolean> {
@@ -103,6 +123,7 @@ export async function unlockWithFaceId(store: KvStore = indexedDbStore): Promise
   } catch { return null; }
 }
 
-export async function forgetFaceId(store: KvStore = indexedDbStore): Promise<void> {
-  await store.delete(FACEID_KEY);
+// Returns false when the record could not be removed (storage failure); callers must say so.
+export async function forgetFaceId(store: KvStore = indexedDbStore): Promise<boolean> {
+  try { await store.delete(FACEID_KEY); return true; } catch { return false; }
 }

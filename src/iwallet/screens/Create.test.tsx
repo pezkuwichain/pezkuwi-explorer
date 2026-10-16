@@ -1,9 +1,10 @@
+import { useEffect } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { user } from '../test-user';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import i18n from '../../i18n';
-import { IWalletProvider } from '../IWalletContext';
+import { IWalletProvider, useIWallet } from '../IWalletContext';
 import IWalletShell, { IWalletIndex } from '../IWalletRoutes';
 import Create from './Create';
 import type { KvStore } from '../idb';
@@ -163,5 +164,29 @@ describe('i-Wallet create', () => {
     await u.click(await screen.findByRole('button', { name: "Face ID'yi aç" }));
     expect(await screen.findByText(/Ayarlar/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: "Face ID'yi aç" })).toBeEnabled();
+  });
+
+  it('drops the setup password when the wallet locks: no Enable button, no enrolment', async () => {
+    k.faceSupported = true;
+    let lockFn: () => void = () => undefined;
+    const Grab = () => { const { lock } = useIWallet(); useEffect(() => { lockFn = lock; }, [lock]); return null; };
+    render(
+      <MemoryRouter initialEntries={['/i-wallet/create']}>
+        <IWalletProvider store={{} as KvStore}>
+          <Grab />
+          <Routes><Route path="i-wallet" element={<IWalletShell />}><Route index element={<IWalletIndex />} /><Route path="create" element={<Create />} /></Route></Routes>
+        </IWalletProvider>
+      </MemoryRouter>,
+    );
+    const u = await toPasswordStep();
+    const [pw, again] = screen.getAllByLabelText(/Parola/);
+    await u.type(pw, 'longenough1'); await u.type(again, 'longenough1');
+    await u.click(await screen.findByRole('switch'));
+    await u.click(screen.getByRole('button', { name: 'Cüzdanı oluştur' }));
+    expect(await screen.findByRole('button', { name: "Face ID'yi aç" })).toBeInTheDocument();
+    await act(async () => { lockFn(); });
+    expect(screen.queryByRole('button', { name: "Face ID'yi aç" })).toBeNull();
+    expect(k.enrol).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Cüzdana git' })).toBeInTheDocument();
   });
 });

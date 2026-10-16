@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconBack } from '../../ui/icons';
@@ -23,6 +23,7 @@ export default function Import() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [facePw, setFacePw] = useState<string | null>(null);
+  const clearFacePw = useCallback(() => setFacePw(null), []);
   const [done, setDone] = useState(false);
 
   useEffect(() => () => { words.current = ''; }, []);
@@ -53,7 +54,7 @@ export default function Import() {
   const submit = (r: PasswordResult) => { if (replacing) setPending(r); else void save(r); };
 
   if (done) {
-    return <WalletReady password={facePw} onClear={() => setFacePw(null)} onContinue={() => navigate('/i-wallet', { replace: true })} />;
+    return <WalletReady password={facePw} onClear={clearFacePw} onContinue={() => navigate('/i-wallet', { replace: true })} />;
   }
 
   return (

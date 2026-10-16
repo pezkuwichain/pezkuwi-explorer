@@ -211,60 +211,190 @@ translation is written. dialog.close is the close button of every dialog (pwap t
 
 ## i-Wallet — awaiting native reading
 
-Written 2026-10-16 for the i-Wallet tab (Task 4). tr (Serok's own words) and en are not listed. Every row below is a draft that needs a native reading before launch; where a word was uncertain the English or Latin term was kept ("i-Wallet", "App Store", "Android", "iPhone", "Pezkuwi Wallet", "Pezkuwi"). kmr writes the wallet "cuzdan" (masculine "cuzdanê"). Rows are keyed `iwallet.<name>`; the tab label `tab.iwallet` is "i-Wallet" in every language (brand).
+Task 9 (2026-10-16) replaced the per-task notes that used to stand here. The i-Wallet has 254 keys (`iwallet.*`) in all six files. tr and en are the source texts and are not listed; the tr warning card (`iwallet.warning.*`) is Serok's text verbatim and is never changed. Every kmr, ckb, fa and ar cell is still a draft as a whole until a native reader signs it off; the lists below say which cells could **not** be confirmed and why.
 
-- iwallet.mainnet
-- iwallet.warning.label, iwallet.warning.title, iwallet.warning.body1, iwallet.warning.body2, iwallet.warning.android
-- iwallet.create.title, iwallet.create.body, iwallet.create.cta
-- iwallet.import.cta
-- iwallet.feature.send, iwallet.feature.citizen, iwallet.feature.balances
-- iwallet.unavailable.title, iwallet.unavailable.body
-- iwallet.locked.title, iwallet.home.title
+What "confirmed" means here:
 
-Columns: kmr, ckb, fa, ar are all drafts (source "draft"). Words to check first: kmr "Tora sereke" (mainnet), "hişyarî" (warning), "dakêşe" (download), "Karûbarê demkî"; ckb "بیرگە" (storage), "کۆدکراو" (encrypted), "جزدانە پەیوەستبووەکان بە ئینتەرنێتەوە" (internet-connected wallets, used instead of "hot wallet").
+- **kmr**: every word is in the Ferheng (Zeynelabidin Zinar, *Ferhenga Bêjebêjê*, 2025) or in pwap's `kmr.ts`, and no grammar or wording question is known. Vocabulary was checked mechanically against both sources; the Ferheng entries relied on are in the table below. Grammar and naturalness were not machine-checked.
+- **ckb**: the cell is pwap text verbatim, or every word occurs in pwap's `ckb.ts` or the explorer's other ckb strings, and no wording question is known.
+- **fa, ar**: the project has no native-reviewed fa or ar source, so a cell is "confirmed" only if it is pwap text verbatim (or a brand string). Everything else is a draft.
+- Brand strings, identical in every language and not translated (7): `iwallet.title`, `iwallet.home.hezSub`, `iwallet.home.pezSub`, `iwallet.home.usdtSub`, `iwallet.send.parsed`, `iwallet.citizen.citizen.nft`, `iwallet.citizen.chain.assetHub`.
 
-Create, import and unlock screens (Task 5, 2026-10-16): every kmr, ckb, fa and ar cell of these rows is a draft needing a native reading; kmr writes "cuzdan", and "Face ID" stays Latin in every language. tr follows the approved mockup where it has the sentence, otherwise it is a draft too.
+### Glossary (one term per concept)
 
-- iwallet.wizard.step, iwallet.next
-- iwallet.words.title, iwallet.words.body, iwallet.words.list, iwallet.words.warnTitle, iwallet.words.warnBody, iwallet.words.ack
-- iwallet.quiz.title, iwallet.quiz.body, iwallet.quiz.slot, iwallet.quiz.wrong, iwallet.quiz.verify
-- iwallet.password.title, iwallet.password.body, iwallet.password.label, iwallet.password.repeat, iwallet.password.strength.1-4, iwallet.password.mismatch
-- iwallet.faceid.title, iwallet.faceid.hint, iwallet.faceid.cancelled, iwallet.faceid.unavailable
-- iwallet.create.submit, iwallet.create.working, iwallet.create.done, iwallet.create.openWallet
-- iwallet.import.title, iwallet.import.body, iwallet.import.label, iwallet.import.invalid, iwallet.import.confirmTitle, iwallet.import.confirmBody, iwallet.import.confirmYes, iwallet.import.confirmNo, iwallet.import.submit
-- iwallet.unlock.body, iwallet.unlock.submit, iwallet.unlock.working, iwallet.unlock.corrupt, iwallet.unlock.restore
-- iwallet.error.wrongPassword, iwallet.error.notSaved, iwallet.error.generic
+| concept | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| wallet | cüzdan | wallet | cuzdan (masculine: "cuzdanê") | جزدان | کیف پول | محفظة |
+| hot wallet | sıcak cüzdan | hot wallet | cuzdanê germ | جزدانی گەرم | کیف پول گرم | محفظة ساخنة |
+| password | parola | password | şîfre | وشەی نهێنی | رمز عبور | كلمة المرور |
+| backup words | yedek kelimeler | backup words | peyvên vegerandinê | وشەکانی گەڕاندنەوە | کلمات پشتیبان | كلمات النسخ الاحتياطي |
+| key / encrypted | anahtar / şifreli | key / encrypted | mifte / şîfrekirî | کلیل / کۆدکراو | کلید / رمزگذاری‌شده | مفتاح / مشفّر |
+| send | gönder | send | şandin (bişîne) | ناردن (بنێرە) | ارسال | إرسال |
+| receive | al | receive | wergirtin (wergire) | وەرگرتن | دریافت | استلام |
+| network fee | ağ ücreti | network fee | xerca torê | کرێی تۆڕ | کارمزد شبکه | رسوم الشبكة |
+| balance / amount | bakiye / tutar | balance / amount | balans / mîqdar | باڵانس / بڕ | موجودی / مبلغ | رصيد / المبلغ |
+| address / account | adres / hesap | address / account | navnîşan / hesab | ناونیشان / هەژمار | آدرس / حساب | عنوان / حساب |
+| asset (HEZ, PEZ, USDT) | varlık | asset | token | تۆکن | توکن | عملة |
+| transaction code | işlem kimliği | transaction ID | koda dayînê | کۆدی پارەدان | کد تراکنش | رمز العملية |
+| device / browser | cihaz / tarayıcı | device / browser | cîhaz / gerok | ئامێر / وێبگەڕ | دستگاه / مرورگر | جهاز / متصفح |
+| citizenship / citizen | vatandaşlık / vatandaş | citizenship / citizen | welatîbûn / welatî | هاوڵاتیبوون / هاوڵاتی | شهروندی / شهروند | المواطنة / مواطن |
+| citizenship chain | vatandaşlık zinciri | citizenship chain | zincîrê welatîbûnê | زنجیرەی هاوڵاتیبوون | زنجیره شهروندی | سلسلة المواطنة |
+| move HEZ there (teleport) | taşı | move | birin (bibe wir) | گواستنەوە | انتقال | نقل |
+| referrer | referans | referrer | referans | ئاماژەکار | معرف | المحيل |
+| deposit | depozito | deposit | depozît | بەرامبەر | سپرده | الإيداع |
+| application | başvuru | application | serlêdan | داواکاری | درخواست | الطلب |
+| approve / confirm | onayla | approve / confirm | pejirandin / piştrastkirin | پەسەندکردن / پشتڕاستکردنەوە | تأیید | موافقة / تأكيد |
 
-Wallet home, receive and settings (Task 6, 2026-10-16): kmr, ckb, fa and ar cells are drafts needing a native reading; tr follows the mockup where it has the sentence (hot-wallet strip, Send / Receive / Citizenship, asset names), the rest is a draft. kmr writes "cuzdan"; "JSON" and "Pezkuwi Asset Hub" stay Latin.
+Sources of the terms: pwap (`transfer.*`, `newCitizen.*`, `auth.password`, `wallet.balance`, `p2pWithdraw.networkFee`) where pwap has the concept; otherwise the explorer's own strings (`account.code`, `account.tokens`, `cid.wallet`). Script rules: ckb writes a Latin name with a suffix as `NFT ـی`, `HEZ ـەکەت` (pwap style); ckb numerals ١٢, fa ۱۲, ar 12; fa writes آیفون/اندروید, ar keeps iPhone/Android Latin. No locale uses "hash" or "block" for the user: the transaction ID is the explorer's "transaction code", the block number is a "record number".
 
-- iwallet.home.hot, iwallet.home.settings, iwallet.home.send, iwallet.home.receive, iwallet.home.citizen, iwallet.home.assets, iwallet.home.hezSub, iwallet.home.pezSub, iwallet.home.usdtSub, iwallet.home.parts, iwallet.home.a2hs
-- iwallet.receive.title, iwallet.receive.body, iwallet.receive.qr, iwallet.receive.warn
-- iwallet.settings.title, iwallet.settings.backup, iwallet.settings.backupBody, iwallet.settings.export, iwallet.settings.exportBody, iwallet.settings.lock, iwallet.settings.delete, iwallet.settings.deleteTitle, iwallet.settings.deleteBody, iwallet.settings.deleteConfirm, iwallet.settings.deleteFailed, iwallet.settings.show, iwallet.settings.hide
+### Ferheng entries relied on (kmr)
 
-Fix round (Task 5, 2026-10-16): new drafts iwallet.faceid.storage, iwallet.faceid.enable, iwallet.faceid.enabled; reworded drafts iwallet.faceid.cancelled (now points to Settings) and iwallet.import.title, iwallet.import.body, iwallet.import.label, iwallet.import.invalid (12 or 24 words).
+| word as used | Ferheng entry | note |
+|---|---|---|
+| cuzdan | Xelîtk/n. Cuzdanê ku pere dixin navê. | masculine → cuzdanê (kmr-spelling.test.ts) |
+| mifte | Mifte/m. Zimanok, kilîl, kilîlk, kilîd. | "kilîd" in one draft was replaced by mifte |
+| peyv | Peyv/m. Bêje, gotin, pirs. |  |
+| vegerandin | Vegerandin/m. a) Hatina bi şûnde … | basis of "peyvên vegerandinê" |
+| kaxez | Kaxez/n. … | masculine → "kaxezekî" |
+| zincîr | Zincîr/n. Hetîte, xeleqe û xulpoqên hesin bi hev ve … | masculine → "zincîrê welatîbûnê" |
+| welatî | Welatî/m. Hemwelatî, kesên ji eynî welatê hev in. | citizen; welatîbûn = welatî + -bûn (pwap newCitizen.*) |
+| hemwelatî | Hemwelatî/m. Hevwelatî, kesên ji eynî welatî ne … | means compatriot, so not used for "citizenship" |
+| germ | Germ/m. Kelijî, sincirî, ne hênik. | "cuzdanê germ" |
+| hişyarî | Hişyarî/m. Pêşnêrî, hişmendî, agahdarî … | warning label |
+| demkî | Demkî/m. Hokera demê. | temporary |
+| sepan | Sepan/m. Bikaranîn, bicihanîn. | "app" sense is pwap usage |
+| weşandin | Weşandin/m. Hejandin, hezandin … | "publish" sense is modern usage (flagged) |
+| ewlehî | Ewlehî/m. Pêbawerî. |  |
+| piçûk / mezin / girîng | Piçûk/m.; Mezin/m.; Girîng/m. | "biçûk" unified to piçûk |
+| şandin | Şandin/m. Şeyandin, hewale, hinartin. |  |
+| wergirtin | Wergirtin/m. Kincek … li xwe kirin | Ferheng gives only "put on clothes"; "receive" is pwap/explorer usage |
+| pejirandin / piştrast | Pejirandin/m. Erêkirin; Piştrast/m. Ewle, bawer … | approve / confirm |
+| serlêdan | Serlêdan/m. a) Çûye pirsa yekî | application (pwap) |
+| betalkirin / cemidandin | Betalkirin/m. rawestandin, cemidandin. |  |
+| jêbirin / vekirin / girtin | Jêbirin/m.; Vekirin/m.; Girtin/m. |  |
+| dabeşkirin / parvekirin | Dabeşkirin/m.; Parvekirin/m. Dabeşkirin. |  |
+| hilbijartin / bijarte | Hilbijartin/m.; Bijarte/m. |  |
+| pêwîst / berdest / valahî | Pêwîst/m.; Berdest/m.; Valahî/m. |  |
+| winda / nasname / şop | Winda/m.; Nasname/m.; Şop/m. |  |
+| dane | Dane/m. Lib, heb … | Ferheng sense is "grain"; "data" is pwap usage |
+| gerok | Gerok/m. a) Parsek, b) Tûrîst | Ferheng sense differs; "browser" is pwap/explorer usage |
+| rûpel / pace / asayî / nepenî / asteng | Rûpel/m.; Pace/m.; Asayî/m.; Nepenî/m.; Asteng/m. |  |
+| navnîşan | Navnîşan/m. Pêşwan … |  |
+| damezrîner / vexwendin | in text "damezrîner, danî, hîmdar, sazker"; Vexwendin/m. |  |
+| pîşe / eşîr | Pîşe/m.; Eşîr/m. | pwap form |
+| sînor / hêdî / ceribandin / hejmar | Sînor/n.; Hêdî/m.; Ceribandin/m.; Hejmar/m. |  |
+| xerc | Xercî/m.; Mezax/m. Lêçû, mesref, xerc. | fee (explorer account.fee) |
+| cîhaz | in text: "Bûjen/m. Cîhaz, malzeme …" | device |
 
-Fix round 1 (Task 6): iwallet.settings.faceOff, iwallet.settings.faceBody, iwallet.settings.faceDisabled (kmr, ckb, fa, ar drafts; tr/en written).
+Words not in the Ferheng, taken from pwap's `kmr.ts` (a native reader may prefer other words): şîfre / şîfrekirî, token, mîqdar, derbasdar, referans, depozît, balans, bikarhêner, tomarkirin, server, ekran, guherto, danûstandin (Ferheng has it only as "conversation"), dîjîtal, rol, xizmet, garantî, moda.
 
-Send (Task 7, 2026-10-16): tr follows the mockup where it has the sentence (title, recipient, amount, available, fee, high-amount alert, acknowledgement, confirm button); the rest of tr and every kmr, ckb, fa and ar cell is a draft needing a native reading. The chain-error texts (iwallet.err.*) carry the pwap kmr wording where pwap has an entry for an error this chain really defines; the other kmr rows are new drafts.
+### Kurmancî (kmr): 220 confirmed, 34 not confirmed
 
-- iwallet.send.title, iwallet.send.recipient, iwallet.send.scan, iwallet.send.invalid, iwallet.send.self, iwallet.send.token, iwallet.send.amount, iwallet.send.max, iwallet.send.available, iwallet.send.fee, iwallet.send.feeLabel, iwallet.send.feeUnknown
-- iwallet.send.amountInvalid, iwallet.send.decimals, iwallet.send.exceeds, iwallet.send.noFee, iwallet.send.largeTitle, iwallet.send.largeBody, iwallet.send.largeAck
-- iwallet.send.review, iwallet.send.confirmTitle, iwallet.send.to, iwallet.send.faceFailed, iwallet.send.confirm, iwallet.send.working
-- iwallet.send.pending, iwallet.send.inBlock, iwallet.send.doneTitle, iwallet.send.recordNo, iwallet.send.txId, iwallet.send.copyTxId, iwallet.send.done, iwallet.send.another
-- iwallet.send.failedTitle, iwallet.send.failedNamed, iwallet.send.dropped, iwallet.send.interrupted, iwallet.send.balanceFailed
-- iwallet.err.balances.InsufficientBalance, iwallet.err.balances.ExistentialDeposit, iwallet.err.balances.Expendability, iwallet.err.balances.LiquidityRestrictions
-- iwallet.err.assets.BalanceLow, iwallet.err.assets.NoAccount, iwallet.err.assets.NoPermission, iwallet.err.assets.Frozen, iwallet.err.assets.BelowMinimum, iwallet.err.assets.Unknown
-- iwallet.err.identityKyc.ApplicationAlreadyExists, iwallet.err.identityKyc.ApplicationNotFound, iwallet.err.identityKyc.ReferrerNotCitizen, iwallet.err.identityKyc.SelfReferral, iwallet.err.identityKyc.CannotApproveInCurrentState, iwallet.err.identityKyc.CannotConfirmInCurrentState, iwallet.err.identityKyc.NotTheReferrer, iwallet.err.identityKyc.IdentityHashAlreadyUsed, iwallet.err.identityKyc.NotACitizen, iwallet.err.identityKyc.CannotCancelInCurrentState
-- iwallet.err.tiki.KycNotCompleted, iwallet.err.tiki.UserAlreadyHasRole, iwallet.err.tiki.RoleAlreadyTaken
+- `iwallet.citizen.act.teleport`: Zincîr is masculine in the Ferheng (Zincîr/n.), so the ezafe is "zincîrê welatîbûnê"; pwap usually treats it as feminine
+- `iwallet.citizen.defaultReferrer`: "Bixweber" (pwap: automatically) for "Default"
+- `iwallet.citizen.form.agree`: Zincîr is masculine in the Ferheng (Zincîr/n.), so the ezafe is "zincîrê welatîbûnê"; pwap usually treats it as feminine
+- `iwallet.citizen.form.privacy`: Zincîr is masculine in the Ferheng (Zincîr/n.), so the ezafe is "zincîrê welatîbûnê"; pwap usually treats it as feminine
+- `iwallet.citizen.fund.body`: Zincîr is masculine in the Ferheng (Zincîr/n.), so the ezafe is "zincîrê welatîbûnê"; pwap usually treats it as feminine
+- `iwallet.citizen.fund.title`: Zincîr is masculine in the Ferheng (Zincîr/n.), so the ezafe is "zincîrê welatîbûnê"; pwap usually treats it as feminine
+- `iwallet.citizen.fund.waiting`: Zincîr is masculine in the Ferheng (Zincîr/n.), so the ezafe is "zincîrê welatîbûnê"; pwap usually treats it as feminine
+- `iwallet.err.assets.BalanceLow`: "token" (pwap) has no Ferheng gender; written masculine ("vî tokenî")
+- `iwallet.err.assets.NoAccount`: "token" (pwap) has no Ferheng gender; written masculine ("vî tokenî")
+- `iwallet.err.assets.NoPermission`: "token" (pwap) has no Ferheng gender; written masculine ("vî tokenî")
+- `iwallet.err.balances.ExistentialDeposit`: the English term "existential deposit" was removed and explained in plain words; check the meaning
+- `iwallet.err.pezkuwiXcm.FeesNotMet`: "birin" used as a noun for moving HEZ between chains
+- `iwallet.err.pezkuwiXcm.Filtered`: "birin" used as a noun for moving HEZ between chains
+- `iwallet.home.a2hs`: "Ekrana Malê" for the iPhone Home Screen
+- `iwallet.home.hot`: "cuzdanê germ" is a calque of "hot wallet" (Ferheng: Germ = ne hênik)
+- `iwallet.home.title`: "Cuzdanê te yê i-Wallet" construction for "Your i-Wallet"
+- `iwallet.import.body`: "peyvên vegerandinê" (recovery words) replaces the Turkish loan "yedek", which is not in the Ferheng; the phrase is built from Ferheng words (Peyv/m., Vegerandin/m.) but is new
+- `iwallet.import.invalid`: "peyvên vegerandinê" (recovery words) replaces the Turkish loan "yedek", which is not in the Ferheng; the phrase is built from Ferheng words (Peyv/m., Vegerandin/m.) but is new
+- `iwallet.quiz.body`: "peyvên vegerandinê" (recovery words) replaces the Turkish loan "yedek", which is not in the Ferheng; the phrase is built from Ferheng words (Peyv/m., Vegerandin/m.) but is new; Kaxez is masculine in the Ferheng (Kaxez/n.), so "kaxezekî" / "li ser kaxez" were written instead of the common "kaxezê"
+- `iwallet.quiz.slot`: "Peyv {{n}}" without an ordinal ending
+- `iwallet.send.copyTxId`: "Koda dayînê" reuses the explorer's account.code (itself a draft) so the code can be pasted into "Did my payment arrive?"
+- `iwallet.send.largeTitle`: "cuzdanê germ" is a calque of "hot wallet" (Ferheng: Germ = ne hênik)
+- `iwallet.send.recordNo`: "Hejmara tomarê" (record number) is new wording
+- `iwallet.send.txId`: "Koda dayînê" reuses the explorer's account.code (itself a draft) so the code can be pasted into "Did my payment arrive?"
+- `iwallet.settings.backup`: "peyvên vegerandinê" (recovery words) replaces the Turkish loan "yedek", which is not in the Ferheng; the phrase is built from Ferheng words (Peyv/m., Vegerandin/m.) but is new
+- `iwallet.unavailable.body`: "moda nepenî" for private browsing; "moda" is not in the Ferheng
+- `iwallet.unavailable.title`: reworded ("this browser does not let the wallet be saved") instead of a literal "storage"
+- `iwallet.warning.body1`: Serok's warning card: needs a reading for faithfulness to the Turkish; "xizmet" (service) is not in the Ferheng (only Xizmetî = kinship); pwap uses it once; "weşandin" in the sense "publish" (Ferheng: Weşandin = hejandin, to shake); "cuzdanê germ" is a calque of "hot wallet" (Ferheng: Germ = ne hênik)
+- `iwallet.warning.body2`: Serok's warning card: needs a reading for faithfulness to the Turkish
+- `iwallet.warning.title`: Serok's warning card: needs a reading for faithfulness to the Turkish; "xizmet" (service) is not in the Ferheng (only Xizmetî = kinship); pwap uses it once
+- `iwallet.words.ack`: Kaxez is masculine in the Ferheng (Kaxez/n.), so "kaxezekî" / "li ser kaxez" were written instead of the common "kaxezê"
+- `iwallet.words.list`: "peyvên vegerandinê" (recovery words) replaces the Turkish loan "yedek", which is not in the Ferheng; the phrase is built from Ferheng words (Peyv/m., Vegerandin/m.) but is new
+- `iwallet.words.title`: "peyvên vegerandinê" (recovery words) replaces the Turkish loan "yedek", which is not in the Ferheng; the phrase is built from Ferheng words (Peyv/m., Vegerandin/m.) but is new
+- `iwallet.words.warnTitle`: Kaxez is masculine in the Ferheng (Kaxez/n.), so "kaxezekî" / "li ser kaxez" were written instead of the common "kaxezê"; "wêneyê ekranê" for screenshot; "ekran" is pwap usage, not in the Ferheng
 
-Citizenship (Task 8, 2026-10-16): the form, stage and deposit rows carry pwap's `newCitizen.*` text in every language where pwap has the sentence (the deposit amount is now live, `{{amount}}`, instead of "1 HEZ"; "referral code" became "referrer address" because the field takes an address). Everything else is new: tr is a draft, and every kmr, ckb, fa and ar cell is a draft needing a native reading. kmr writes "Welatîbûn" (as the i-Wallet home), "zincîr" for chain, "şop" for the on-chain fingerprint of the form (the word "hash" is not used in any locale). "Pezkuwi People", "Pezkuwi Asset Hub", "Welati Tiki NFT" and "HEZ" stay Latin.
+### Soranî (ckb): 193 confirmed, 61 not confirmed
 
-- ported from pwap (check the adaptation only): iwallet.citizen.form.personal, fullName, fatherName, grandfatherName, motherName, tribe, marital, married, unmarried, childrenCount, childName, birthYear, region, selectRegion, emailInvalid, profession, required; iwallet.citizen.region.*; iwallet.citizen.deposit.title, deposit.body; iwallet.citizen.pending.title, pending.body, pending.depositBack; iwallet.citizen.approved.title, approved.body; iwallet.citizen.apply, cancel, confirm
-- new drafts: iwallet.citizen.title, intro, loadFailed, sign, back, confirmTitle, failedTitle, interrupted, defaultReferrer, approvedNoNft, revoked
-- iwallet.citizen.fund.title, fund.body, fund.cta, fund.noHez, fund.waiting, fund.late, fund.check
-- iwallet.citizen.form.email, form.referrer, form.referrerInvalid, form.referrerNote, form.privacy, form.notSaved, form.agree, form.fix
-- iwallet.citizen.citizen.title, citizen.nft; iwallet.citizen.refs.title, refs.body, refs.approve, refs.approveFor, refs.failed
-- iwallet.citizen.row.action, row.chain, row.referrer, row.deposit, row.applicant, row.to, row.recipient, iwallet.citizen.copyOwn; iwallet.citizen.act.*; iwallet.citizen.chain.*; iwallet.citizen.done.*
-- iwallet.err.tiki.CitizenNftAlreadyExists, iwallet.err.tiki.CitizenNftNotFound, iwallet.err.pezkuwiXcm.LocalExecutionIncompleteWithError, iwallet.err.pezkuwiXcm.FeesNotMet, iwallet.err.pezkuwiXcm.Filtered
+- `iwallet.citizen.form.agree`: not attested in pwap or the explorer: پەنجەمۆرەکەیان
+- `iwallet.citizen.form.notSaved`: not attested in pwap or the explorer: بۆیە, فۆرمەکەتی, هەڵنەگرت
+- `iwallet.citizen.form.privacy`: not attested in pwap or the explorer: دەنووسرێت, کەسییەکانت
+- `iwallet.citizen.form.referrerNote`: not attested in pwap or the explorer: کردوویت
+- `iwallet.citizen.fund.body`: not attested in pwap or the explorer: لەوێ
+- `iwallet.citizen.interrupted`: not attested in pwap or the explorer: هەوڵدانەوە
+- `iwallet.citizen.intro`: not attested in pwap or the explorer: دەتناسێت
+- `iwallet.citizen.refs.body`: not attested in pwap or the explorer: بردووە
+- `iwallet.create.body`: not attested in pwap or the explorer: سێرڤەرەکانمان, نانێردرێت
+- `iwallet.err.assets.NoPermission`: not attested in pwap or the explorer: ڕێگەت
+- `iwallet.err.balances.ExistentialDeposit`: not attested in pwap or the explorer: دەسڕدرێتەوە
+- `iwallet.err.balances.Expendability`: not attested in pwap or the explorer: جێدەهێڵێت, کەمێک
+- `iwallet.err.balances.LiquidityRestrictions`: not attested in pwap or the explorer: نانێردرێت
+- `iwallet.err.identityKyc.CannotCancelInCurrentState`: not attested in pwap or the explorer: هەڵبوەشێنرێتەوە
+- `iwallet.err.identityKyc.IdentityHashAlreadyUsed`: not attested in pwap or the explorer: بەکارهاتووە, تردا
+- `iwallet.err.identityKyc.NotTheReferrer`: not attested in pwap or the explorer: داواکارییەکەدا
+- `iwallet.err.pezkuwiXcm.LocalExecutionIncompleteWithError`: not attested in pwap or the explorer: زۆرجار, نەگوازرایەوە
+- `iwallet.err.tiki.KycNotCompleted`: not attested in pwap or the explorer: kycی
+- `iwallet.error.notSaved`: not attested in pwap or the explorer: بۆیە, تری, پەنجەرەیەکی
+- `iwallet.home.a2hs`: not attested in pwap or the explorer: بسڕدرێتەوە, دەڕوات
+- `iwallet.home.hot`: "جزدانی گەرم" is a calque of "hot wallet" (گەرم not in pwap); not attested in pwap or the explorer: گەرم
+- `iwallet.home.parts`: not attested in pwap or the explorer: دابەشبوونی
+- `iwallet.home.title`: "i-Wallet ـەکەت" join
+- `iwallet.import.body`: "وشەکانی گەڕاندنەوە" (recovery words) replaces "یەدەگ", which pwap never uses; not attested in pwap or the explorer: بۆشاییەک, لەنێوانیاندا
+- `iwallet.import.confirmBody`: not attested in pwap or the explorer: بیگەیتێ, بەبێ, جارێکی, کۆنەکە
+- `iwallet.import.confirmTitle`: not attested in pwap or the explorer: بگۆڕدرێت
+- `iwallet.import.invalid`: "وشەکانی گەڕاندنەوە" (recovery words) replaces "یەدەگ", which pwap never uses; not attested in pwap or the explorer: ڕیزبەندییان
+- `iwallet.password.body`: not attested in pwap or the explorer: دادەمەزرێنیتەوە, لەبیرت, وشەکە
+- `iwallet.quiz.body`: "وشەکانی گەڕاندنەوە" (recovery words) replaces "یەدەگ", which pwap never uses; not attested in pwap or the explorer: تێپەڕێنرێت, ون, ڕۆژێک
+- `iwallet.quiz.wrong`: not attested in pwap or the explorer: وشەکە
+- `iwallet.receive.body`: not attested in pwap or the explorer: با, بخوێنێتەوە, بنێرێت, بۆت
+- `iwallet.send.copyTxId`: "کۆدی پارەدان" reuses the explorer's account.code (a draft)
+- `iwallet.send.decimals`: not attested in pwap or the explorer: وەردەگرێت
+- `iwallet.send.exceeds`: not attested in pwap or the explorer: بینێریت
+- `iwallet.send.inBlock`: not attested in pwap or the explorer: وەریگرت
+- `iwallet.send.interrupted`: not attested in pwap or the explorer: بنێریت
+- `iwallet.send.largeAck`: not attested in pwap or the explorer: دەینێرم
+- `iwallet.send.largeTitle`: "جزدانی گەرم" is a calque of "hot wallet" (گەرم not in pwap); not attested in pwap or the explorer: بڕە, گەرم
+- `iwallet.send.noFee`: not attested in pwap or the explorer: بۆی
+- `iwallet.send.otherNetwork`: not attested in pwap or the explorer: ترە, تۆڕێکی
+- `iwallet.send.recordNo`: "ژمارەی تۆمار" (record number) is new wording
+- `iwallet.send.self`: not attested in pwap or the explorer: بینێریت, خۆتە, دەمێنێتەوە, لای
+- `iwallet.send.slow`: not attested in pwap or the explorer: وەریگرت
+- `iwallet.send.txId`: "کۆدی پارەدان" reuses the explorer's account.code (a draft)
+- `iwallet.settings.backup`: "وشەکانی گەڕاندنەوە" (recovery words) replaces "یەدەگ", which pwap never uses
+- `iwallet.settings.backupBody`: not attested in pwap or the explorer: مەدە
+- `iwallet.settings.deleteBody`: not attested in pwap or the explorer: تاکە, دەسڕێتەوە, ناگەیتەوە, نەتنووسیبن, وشەکە
+- `iwallet.settings.deleteTitle`: not attested in pwap or the explorer: بسڕدرێتەوە
+- `iwallet.settings.exportBody`: not attested in pwap or the explorer: بیخەیتە, دادەبەزێنێت
+- `iwallet.unavailable.body`: not attested in pwap or the explorer: پەنجەرەیەکی
+- `iwallet.unlock.corrupt`: not attested in pwap or the explorer: ناخوێنرێتەوە, وشەکە
+- `iwallet.unlock.restore`: not attested in pwap or the explorer: بیگەڕێنەوە
+- `iwallet.warning.body1`: Serok's warning card: needs a reading for faithfulness to the Turkish; "جزدانی گەرم" is a calque of "hot wallet" (گەرم not in pwap); not attested in pwap or the explorer: بچووکەکانت, نادەن
+- `iwallet.warning.body2`: Serok's warning card: needs a reading for faithfulness to the Turkish; not attested in pwap or the explorer: بڕە
+- `iwallet.warning.title`: Serok's warning card: needs a reading for faithfulness to the Turkish
+- `iwallet.words.ack`: not attested in pwap or the explorer: وشەکەم
+- `iwallet.words.body`: not attested in pwap or the explorer: خودی, وشانە, ون
+- `iwallet.words.list`: "وشەکانی گەڕاندنەوە" (recovery words) replaces "یەدەگ", which pwap never uses
+- `iwallet.words.title`: "وشەکانی گەڕاندنەوە" (recovery words) replaces "یەدەگ", which pwap never uses
+- `iwallet.words.warnBody`: not attested in pwap or the explorer: بیانگەڕێنێتەوە, ناکات, وشانەت, ونت
+- `iwallet.words.warnTitle`: not attested in pwap or the explorer: بینووسە, مەگرە
 
-Send fix round (2026-10-16): new drafts iwallet.send.otherNetwork, iwallet.send.slow (kmr, ckb, fa, ar; tr and en written plainly); iwallet.send.parsed is the language-neutral "= {{amount}}".
+### Persian (fa): 71 confirmed, 183 not confirmed
+
+Every `iwallet.*` cell is a draft except the brand strings above and these 66 cells, which are pwap text verbatim: `warning.label`, `import.confirmNo`, `home.send`, `home.receive`, `home.citizen`, `home.assets`, `home.pezSub`, `next`, `quiz.verify`, `password.label`, `receive.title`, `send.title`, `send.recipient`, `send.scan`, `send.token`, `send.amount`, `send.max`, `send.to`, `send.confirm`, `send.feeLabel`, `citizen.title`, `citizen.apply`, `citizen.cancel`, `citizen.confirm`, `citizen.sign`, `citizen.confirmTitle`, `citizen.form.personal`, `citizen.form.fullName`, `citizen.form.fatherName`, `citizen.form.grandfatherName`, `citizen.form.motherName`, `citizen.form.tribe`, `citizen.form.marital`, `citizen.form.married`, `citizen.form.unmarried`, `citizen.form.childrenCount`, `citizen.form.childName`, `citizen.form.birthYear`, `citizen.form.region`, `citizen.form.selectRegion`, `citizen.form.email`, `citizen.form.emailInvalid`, `citizen.form.profession`, `citizen.form.required`, `citizen.region.bakur`, `citizen.region.basur`, `citizen.region.rojava`, `citizen.region.rojhelat`, `citizen.region.kurdistan_a_sor`, `citizen.region.diaspora`, `citizen.deposit.title`, `citizen.deposit.body`, `citizen.pending.title`, `citizen.pending.body`, `citizen.pending.depositBack`, `citizen.approved.title`, `citizen.approved.body`, `citizen.refs.approve`, `citizen.row.action`, `citizen.row.applicant`, `citizen.row.to`, `citizen.act.confirm`, `citizen.act.cancel`, `citizen.chain.assetHub`, `citizen.done.apply`, `citizen.done.approve`.
+
+### Arabic (ar): 65 confirmed, 189 not confirmed
+
+Every `iwallet.*` cell is a draft except the brand strings above and these 60 cells, which are pwap text verbatim: `import.confirmNo`, `home.send`, `home.receive`, `home.citizen`, `home.pezSub`, `next`, `quiz.verify`, `password.label`, `receive.title`, `send.title`, `send.recipient`, `send.amount`, `send.max`, `send.amountInvalid`, `send.to`, `send.confirm`, `send.done`, `send.feeLabel`, `citizen.title`, `citizen.apply`, `citizen.cancel`, `citizen.confirm`, `citizen.confirmTitle`, `citizen.form.personal`, `citizen.form.fullName`, `citizen.form.fatherName`, `citizen.form.grandfatherName`, `citizen.form.motherName`, `citizen.form.tribe`, `citizen.form.marital`, `citizen.form.married`, `citizen.form.unmarried`, `citizen.form.childrenCount`, `citizen.form.childName`, `citizen.form.birthYear`, `citizen.form.region`, `citizen.form.selectRegion`, `citizen.form.email`, `citizen.form.emailInvalid`, `citizen.form.profession`, `citizen.form.required`, `citizen.region.bakur`, `citizen.region.basur`, `citizen.region.rojava`, `citizen.region.rojhelat`, `citizen.region.kurdistan_a_sor`, `citizen.region.diaspora`, `citizen.deposit.title`, `citizen.pending.title`, `citizen.pending.body`, `citizen.pending.depositBack`, `citizen.approved.title`, `citizen.approved.body`, `citizen.refs.approve`, `citizen.row.to`, `citizen.act.confirm`, `citizen.act.cancel`, `citizen.chain.assetHub`, `citizen.done.apply`, `citizen.done.approve`.
+
+Read first in fa and ar: the warning card (`warning.*`, Serok's text), `home.hot` and `send.largeTitle` ("hot wallet"), `send.txId` / `send.recordNo` (no "hash"/"block"), and the citizenship-chain texts (`citizen.fund.*`).

@@ -12,4 +12,10 @@ describe('kmr spelling', () => {
   it('does not call the wallet berîk', () => {
     expect(kmr).not.toMatch(/berîk/i);
   });
+  // One term per concept in the i-Wallet texts (glossary in docs/i18n-review.md): the password is "şîfre" (pwap),
+  // the backup words are "peyvên vegerandinê", citizenship is "welatîbûn" (pwap newCitizen.*).
+  it('keeps the i-Wallet glossary terms', () => {
+    const iwallet = JSON.stringify((JSON.parse(kmr) as { iwallet: unknown }).iwallet);
+    for (const variant of [/pasword/i, /yedek/i, /hemwelatîbûn/i, /welatîtî/i]) expect(iwallet).not.toMatch(variant);
+  });
 });

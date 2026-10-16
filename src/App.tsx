@@ -16,6 +16,7 @@ import Import from './iwallet/screens/Import';
 import Receive from './iwallet/screens/Receive';
 import Send from './iwallet/screens/Send';
 import Settings from './iwallet/screens/Settings';
+import Citizen from './iwallet/screens/Citizen';
 
 // Each later screen task adds its own route here.
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
                 <Route path="receive" element={<Receive />} />
                 <Route path="send" element={<Send />} />
                 <Route path="settings" element={<Settings />} />
+                <Route path="citizen" element={<Citizen />} />
               </Route>
             </Route>
           </Routes>

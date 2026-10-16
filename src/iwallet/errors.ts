@@ -10,4 +10,7 @@ export const ERROR_KEYS: Readonly<Record<string, string>> = Object.fromEntries([
   'identityKyc.NotTheReferrer', 'identityKyc.IdentityHashAlreadyUsed', 'identityKyc.AlreadyACitizen',
   'identityKyc.NotACitizen', 'identityKyc.CannotCancelInCurrentState',
   'tiki.KycNotCompleted', 'tiki.UserAlreadyHasRole', 'tiki.RoleAlreadyTaken',
+  // Citizenship (Task 8): measured on mainnet People / Asset Hub metadata 2026-10-16.
+  'tiki.CitizenNftAlreadyExists', 'tiki.CitizenNftNotFound',
+  'pezkuwiXcm.LocalExecutionIncompleteWithError', 'pezkuwiXcm.FeesNotMet', 'pezkuwiXcm.Filtered',
 ].map((k) => [k, `iwallet.err.${k}`]));

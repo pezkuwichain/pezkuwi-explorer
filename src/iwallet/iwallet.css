@@ -175,3 +175,21 @@
 .iw-result-icon { inline-size: 64px; block-size: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--ok-soft); color: var(--ok-text); }
 .iw-result-icon.bad { background: var(--bad-soft); color: var(--bad-text); }
 .iw-result .iw-addr { inline-size: 100%; box-sizing: border-box; }
+
+/* Citizenship */
+.iw-h { margin: 0; font-size: 16px; color: var(--text-strong); }
+.iw-field select, .iw-input {
+  box-sizing: border-box; inline-size: 100%; min-block-size: 48px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--text-strong); font: inherit; font-size: 16px;
+}
+.iw-row > .iw-input { flex: 1; min-inline-size: 0; }
+.iw-row > .iw-year { flex: 0 0 7.5em; }
+.iw-fieldset { margin: 0; padding: 0; border: 0; }
+.iw-fieldset legend { padding: 0; margin-block-end: 2px; }
+.iw-fund { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px; background: var(--info-soft); border: 1px solid var(--border); color: var(--text); }
+.iw-fund p { margin: 0; }
+.iw-fund .iw-note { display: flex; align-items: center; gap: 6px; background: var(--surface); }
+.iw-stage { display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; padding: 18px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); color: var(--text-strong); }
+.iw-stage > button { align-self: stretch; }
+.iw-refs { display: flex; flex-direction: column; gap: 8px; }
+.iw-ref { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-block-size: 56px; }

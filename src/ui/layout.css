@@ -50,6 +50,12 @@
 }
 .tab span { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab[aria-current='page'] { color: var(--tab-active); font-weight: 700; }
+/* Five tabs on a 360 px phone leave 67 px per label, which cut "Vatandaşlık" (tr): give the row its edge padding back and
+   the labels a hair less size. The active (bold) label is the widest; the ellipsis stays only as the last resort. */
+@media (max-width: 380px) {
+  .tabbar { padding-inline: 4px; }
+  .tab { font-size: 11px; }
+}
 
 /* The theme switch (ThemePicker, ported from dks.news): a round button the size of a tap target beside the
    language pill, and a small menu under it that sits above the tab bar. */

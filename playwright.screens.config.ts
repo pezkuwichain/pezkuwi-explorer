@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 // The visual pass (npm run screens): every screen at 390×844 in the dark and light themes, written to
 // test-results/screens/ for comparison with the approved mockup. Not committed, not a pixel gate.
-// It serves its own build (e2e/screens.vite.config.ts) in which history is switched on.
+// It serves its own build (e2e/screens.vite.config.ts), output to dist-screens.
 export default defineConfig({
   testDir: './e2e',
   testMatch: 'screens.spec.ts',

@@ -31,3 +31,21 @@ The deploy user has no usable shell; its `authorized_keys` entry is
 3. Check: a GET to `https://explorer.pezkuwichain.io/history/assethub` answers 403, and a POST of
    `{"query":"{_metadata{lastProcessedHeight targetHeight}}"}` answers the indexer's metadata.
 4. Set `history.assetHub = ZAGROS_HISTORY_URL` in `src/config/network.ts` (no CSP change: same origin).
+
+## i-Wallet launch and the short address (cuzdan.pex.network)
+The i-Wallet lives at `https://explorer.pezkuwichain.io/i-wallet` and nowhere else. `cuzdan.pex.network` (and `wallet.pex.network`) only redirect there: browser storage is per origin, so a second copy of the site on another host would hold a different wallet.
+
+`deploy/nginx-cuzdan.conf` is the reference copy of the redirect vhost; its redirect target at launch is
+`return 301 https://explorer.pezkuwichain.io/i-wallet$is_args$args;`.
+
+### Launch checklist (owner; do these together, in this order)
+1. **Explorer vhost CSP first, in the same moment as the deploy.** The host's `connect-src` must gain the three mainnet origins, copied from `deploy/nginx-explorer.conf`:
+   `wss://rpc.pezkuwichain.io wss://asset-hub-rpc.pezkuwichain.io wss://people-rpc.pezkuwichain.io`.
+   Without them the wallet cannot read balances or sign (the browser blocks the sockets). Then `nginx -t && systemctl reload nginx`.
+2. Merge to `main` (the workflow deploys). Check `https://explorer.pezkuwichain.io/i-wallet` opens the landing and the browser console shows no Content Security Policy errors.
+3. DNS: A/AAAA records for `cuzdan.pex.network` and `wallet.pex.network` to the web server.
+4. Install `deploy/nginx-cuzdan.conf` as the vhost. The certificate does not exist yet, so first install only the port-80 server block, then:
+   `certbot certonly --webroot -w /var/www/acme -d cuzdan.pex.network -d wallet.pex.network`
+   and add the port-443 block. `nginx -t && systemctl reload nginx`.
+5. Check: `curl -sI "https://cuzdan.pex.network/?ref=X"` answers `301` with `location: https://explorer.pezkuwichain.io/i-wallet?ref=X`, and the same for `wallet.pex.network` and plain `http://`.
+6. On an iPhone, open `cuzdan.pex.network` in Safari and create a wallet (no funds needed).

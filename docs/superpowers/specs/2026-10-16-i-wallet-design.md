@@ -138,7 +138,7 @@ As in the approved mockup.
 
 Ported from pwap `shared/lib/citizenship-workflow.ts` and `NewCitizenApplication.tsx`.
 
-- **Status** is read from `identityKyc.applications` / `kycStatuses` and `tiki.userTikis`:
+- **Status** is read from `identityKyc.kycStatuses` (the live per-account status) and `tiki.citizenNft` (the citizen NFT); `applications` holds only open applications and is used for the referral list:
   NotStarted, PendingReferral, ReferrerApproved, Approved, Revoked.
 - **Apply:**
   - The form has the same fields as pwap: full name, father, grandfather, mother, tribe, marital status, children, region, email, profession, referrer.

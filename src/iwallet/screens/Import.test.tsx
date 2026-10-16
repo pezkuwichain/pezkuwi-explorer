@@ -4,6 +4,7 @@ import { user } from '../test-user';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import i18n from '../../i18n';
 import { IWalletProvider } from '../IWalletContext';
+import IWalletShell from '../IWalletRoutes';
 import Import from './Import';
 import type { KvStore } from '../idb';
 
@@ -24,7 +25,7 @@ vi.mock('../faceid', () => ({ faceIdSupported: () => Promise.resolve(false), enr
 const renderImport = () => render(
   <MemoryRouter initialEntries={['/i-wallet/import']}>
     <IWalletProvider store={{} as KvStore}>
-      <Routes><Route path="i-wallet/import" element={<Import />} /><Route path="i-wallet" element={<p>home</p>} /></Routes>
+      <Routes><Route path="i-wallet" element={<IWalletShell />}><Route index element={<p>home</p>} /><Route path="import" element={<Import />} /></Route></Routes>
     </IWalletProvider>
   </MemoryRouter>,
 );

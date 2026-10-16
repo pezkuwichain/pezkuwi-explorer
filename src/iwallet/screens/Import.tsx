@@ -26,7 +26,7 @@ export default function Import() {
 
   useEffect(() => () => { words.current = ''; }, []);
 
-  if (state === 'loading') return <p className="card-note" role="status">{t('state.loading')}</p>;
+  if (state === 'idle' || state === 'loading') return <p className="card-note" role="status">{t('state.loading')}</p>;
   if (state === 'unavailable') return <Navigate to="/i-wallet" replace />;
   const replacing = state === 'locked' || state === 'unlocked';
 

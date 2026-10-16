@@ -54,7 +54,7 @@
   --tab-bg: #FFFFFF; --tab-border: #E3E5DC; --tab-active: #017A2F; --tab-idle: #5B5F6B;
   --primary: #017A2F; --on-primary: #FFFFFF;
   --hero-bg: #017A2F; --hero-blob: rgba(253, 184, 19, 0.22); --hero-border: transparent; --hero-text: #FFFFFF; --hero-soft: rgba(255, 255, 255, 0.92);
-  --chip-bg: rgba(0, 0, 0, 0.22); --hero-ring: #017A2F; --hero-cta-bg: #FFFFFF; --hero-cta-text: #017A2F;
+  --chip-bg: rgba(0, 0, 0, 0.22); --hero-ring: #017A2F; --hero-outline: rgba(255, 255, 255, 0.4); --hero-cta-bg: #FFFFFF; --hero-cta-text: #017A2F;
   --ok-text: #017A2F; --ok-soft: #DDF3E4; --ok-line: rgba(1, 122, 47, 0.35);
   --zer-text: #7A5600; --zer-icon: #B37F00; --zer-soft: #FFF4D6; --zer-line: rgba(179, 127, 0, 0.35);
   --fire-text: #8A3C00; --fire-icon: #C25700; --fire-soft: #FFE6D1;
@@ -104,7 +104,7 @@
   --link: #2FC864; --focus: #FDB813;
   --tab-bg: rgba(15, 17, 26, 0.92); --tab-border: rgba(153, 158, 199, 0.16); --tab-active: #2FC864; --tab-idle: rgba(255, 255, 255, 0.56);
   --hero-bg: linear-gradient(160deg, #017A2F 0%, #0B2A1A 70%); --hero-blob: transparent; --hero-border: rgba(47, 200, 100, 0.35);
-  --hero-soft: rgba(255, 255, 255, 0.92); --chip-bg: rgba(0, 0, 0, 0.25); --hero-ring: #0B2A1A;
+  --hero-soft: rgba(255, 255, 255, 0.92); --hero-outline: rgba(255, 255, 255, 0.4); --chip-bg: rgba(0, 0, 0, 0.25); --hero-ring: #0B2A1A;
   --ok-text: #7BE59D; --ok-soft: rgba(47, 200, 100, 0.14); --ok-line: rgba(47, 200, 100, 0.35);
   --zer-text: #FDB813; --zer-icon: #FDB813; --zer-soft: rgba(253, 184, 19, 0.16); --zer-line: rgba(253, 184, 19, 0.35);
   --fire-text: #FF9A3D; --fire-icon: #FF9A3D; --fire-soft: rgba(255, 122, 0, 0.16);

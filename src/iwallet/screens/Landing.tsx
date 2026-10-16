@@ -17,7 +17,7 @@ export default function Landing() {
       <div className="iw-body">
         <span className="iw-chip"><span className="iw-chip-dot" />{t('iwallet.mainnet')}</span>
 
-        <section className="iw-warning" aria-label={t('iwallet.warning.label')}>
+        <section className="iw-warning" role="note" aria-label={t('iwallet.warning.label')}>
           <IconWarning size={18} className="iw-warning-icon" />
           <div className="iw-warning-text">
             <strong>{t('iwallet.warning.title')}</strong>

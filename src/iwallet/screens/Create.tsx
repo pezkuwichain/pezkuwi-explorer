@@ -29,7 +29,7 @@ export default function Create() {
   const indices = useMemo(() => quizIndices(), []);
   const options = useMemo(() => indices.map((i) => quizOptions(words, i)), [indices, words]);
 
-  if (state === 'loading') return <p className="card-note" role="status">{t('state.loading')}</p>;
+  if (state === 'idle' || state === 'loading') return <p className="card-note" role="status">{t('state.loading')}</p>;
   // An existing wallet is never overwritten from here (import asks for a confirmation); storage problems show the landing.
   if (!done && state !== 'none') return <Navigate to="/i-wallet" replace />;
 

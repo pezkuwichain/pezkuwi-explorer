@@ -6,10 +6,12 @@ import { deleteKeystore, loadKeystore, unlock as decrypt } from './keystore';
 import { unlockWithFaceId } from './faceid';
 import { indexedDbStore, type KvStore } from './idb';
 
-export type IWalletState = 'loading' | 'none' | 'locked' | 'unlocked' | 'unavailable';
+export type IWalletState = 'idle' | 'loading' | 'none' | 'locked' | 'unlocked' | 'unavailable';
 
 export interface IWalletValue {
   state: IWalletState;
+  /** Starts reading the stored keystore (once). Nothing touches IndexedDB before this is called. */
+  ensureLoaded(): void;
   address: string | null;
   pair: KeyringPair | null;
   /** Throws WrongPasswordError / CorruptKeystoreError; the state stays 'locked' then. */
@@ -29,7 +31,7 @@ export const HIDDEN_LOCK_MS = 60_000;
 const Ctx = createContext<IWalletValue | null>(null);
 
 export function IWalletProvider({ children, store = indexedDbStore }: { children: ReactNode; store?: KvStore }) {
-  const [state, setState] = useState<IWalletState>('loading');
+  const [state, setState] = useState<IWalletState>('idle');
   const [json, setJson] = useState<KeyringPair$Json | null>(null);
   const [pair, setPair] = useState<KeyringPair | null>(null);
   const pairRef = useRef<KeyringPair | null>(null);
@@ -42,19 +44,28 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
     setPair(null);
   }, []);
 
-  useEffect(() => {
-    let live = true;
+  const started = useRef(false);
+  const live = useRef(true);
+  useEffect(() => { live.current = true; return () => { live.current = false; }; }, []);
+
+  const ensureLoaded = useCallback(() => {
+    if (started.current) return;
+    started.current = true;
+    setState('loading');
     loadKeystore(store).then(
       (j) => {
-        if (!live) return;
+        if (!live.current) return;
         jsonRef.current = j; setJson(j); setState(j ? 'locked' : 'none');
       },
-      () => { if (live) setState('unavailable'); },
+      () => { if (live.current) setState('unavailable'); },
     );
-    return () => { live = false; };
   }, [store]);
 
-  const adopt = useCallback((p: KeyringPair) => { pairRef.current = p; setPair(p); setState('unlocked'); }, []);
+  const adopt = useCallback((p: KeyringPair) => {
+    // A second unlock must not leave the first decrypted pair live in memory.
+    if (pairRef.current && pairRef.current !== p) { try { pairRef.current.lock(); } catch { /* already locked */ } }
+    pairRef.current = p; setPair(p); setState('unlocked');
+  }, []);
 
   const unlock = useCallback(async (password: string) => {
     const j = jsonRef.current;
@@ -108,8 +119,8 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
   }, [state, lock]);
 
   const value = useMemo<IWalletValue>(() => ({
-    state, address: json?.address ?? null, pair, unlock, unlockFaceId, lock, setCreated, remove,
-  }), [state, json, pair, unlock, unlockFaceId, lock, setCreated, remove]);
+    state, ensureLoaded, address: json?.address ?? null, pair, unlock, unlockFaceId, lock, setCreated, remove,
+  }), [state, ensureLoaded, json, pair, unlock, unlockFaceId, lock, setCreated, remove]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import i18n from '../../i18n';
+import i18n, { setLanguage } from '../../i18n';
 import { PLAY_STORE } from '../../account/AccountContext';
 import { IWalletProvider } from '../IWalletContext';
 import IWalletShell, { IWalletIndex } from '../IWalletRoutes';
@@ -44,5 +44,17 @@ describe('i-Wallet landing', () => {
     impl.load = () => Promise.resolve({ address: 'x' });
     renderTab();
     await waitFor(() => expect(screen.getByRole('heading', { name: 'i-Wallet kilitli' })).toBeInTheDocument());
+  });
+
+  it('renders in right-to-left Arabic with both calls to action', async () => {
+    setLanguage('ar');
+    expect(document.documentElement.dir).toBe('rtl');
+    expect(document.documentElement.lang).toBe('ar');
+    renderTab();
+    const create = await screen.findByRole('link', { name: 'احصل على i-Wallet' });
+    expect(create).toHaveAttribute('href', '/i-wallet/create');
+    expect(screen.getByRole('link', { name: /لدي محفظة بالفعل/ })).toHaveAttribute('href', '/i-wallet/import');
+    expect(screen.getByRole('note')).toBeInTheDocument();
+    setLanguage('kmr');
   });
 });

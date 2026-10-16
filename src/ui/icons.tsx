@@ -63,3 +63,18 @@ export const IconLogOut = (p: P) => <Svg {...p} className="flip"><path d="M9 21H
 export const IconCheckCircle = (p: P) => <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.8 2.8L16.5 9.5" /></Svg>;
 // A spinning arc; the spin is in dialog.css (.spin) and stops under prefers-reduced-motion.
 export const IconLoader = (p: P) => <Svg {...p} className={`spin${p.className ? ` ${p.className}` : ''}`}><path d="M21 12a9 9 0 1 1-6.2-8.6" /></Svg>;
+// The i-Wallet tab and landing: a phone with a key, a warning triangle, an arrow and bars.
+export const IconPhoneKey = (p: P) => <Svg {...p}><rect x="6" y="2" width="12" height="20" rx="3" /><circle cx="12" cy="11" r="2.5" /><path d="M12 13.5V17" /></Svg>;
+export const IconWarning = (p: P) => <Svg {...p}><path d="M12 3L2 21h20L12 3z" /><path d="M12 10v5" /><path d="M12 18h.01" /></Svg>;
+export const IconArrow = (p: P) => <Svg {...p} className={`flip ${p.className ?? ''}`.trim()}><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></Svg>;
+export const IconBars = (p: P) => <Svg {...p}><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></Svg>;
+export const IconFaceId = (p: P) => (
+  <Svg {...p} stroke={p.stroke ?? 1.8}>
+    <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
+    <path d="M9 9v1M15 9v1M12 9v4h-1M9 16a4 4 0 0 0 6 0" />
+  </Svg>
+);
+export const IconSettings = (p: P) => (
+  <Svg {...p}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></Svg>
+);
+export const IconTrash = (p: P) => <Svg {...p}><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /></Svg>;

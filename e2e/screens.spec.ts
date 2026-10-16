@@ -179,6 +179,98 @@ for (const scheme of ['dark', 'light'] as const) {
   });
 }
 
+// i-Wallet: landing, the create steps, unlock, home, send and citizen at 390×844, and the five-tab bar at 360×780,
+// in Kurmanji and Turkish, dark and light. The wallet is created through the real UI (real IndexedDB, real WASM) in
+// the browser context; chain reads are live mainnet and may be slow or fail, so each screen is shot after a bounded
+// wait. Language-independent selectors keep one script for both languages. Nothing signs or sends.
+for (const lang of ['kmr', 'tr'] as const) {
+  for (const scheme of ['dark', 'light'] as const) {
+    test.describe(`i-Wallet ${lang}, ${scheme} theme`, () => {
+      test.use({ colorScheme: scheme });
+
+      test('landing, create steps, unlock, home, send, citizen', async ({ page }) => {
+        const blocked = await setUp(page, { account: false, lang });
+        const name = (n: string) => `iwallet-${n}-${lang}`;
+        await page.goto('/i-wallet');
+        await expect(page.locator('a.iw-hero-primary')).toBeVisible({ timeout: 30_000 });
+        await shot(page, name('landing'), scheme);
+
+        await page.locator('a.iw-hero-primary').click();
+        const words = (await page.locator('.iw-words li span:nth-child(2)').allTextContents()).map((w) => w.trim());
+        expect(words).toHaveLength(12);
+        await shot(page, name('create-1-words'), scheme);
+        await page.locator('.iw-check input[type=checkbox]').check();
+        await page.locator('button.iw-primary').click();
+
+        // Step 2: one wrong pick first (the error state), then the right words.
+        const quiz = page.locator('.iw-quiz');
+        await expect(quiz).toHaveCount(3);
+        const first = await quiz.nth(0).locator('.iw-opt').allTextContents();
+        await quiz.nth(0).locator('.iw-opt', { hasText: new RegExp(`^${first.find((w) => w !== words[2])}$`) }).click();
+        await shot(page, name('create-2-quiz-wrong'), scheme);
+        for (const [slot, idx] of [[0, 2], [1, 6], [2, 10]] as const) {
+          await quiz.nth(slot).locator('.iw-opt', { hasText: new RegExp(`^${words[idx]}$`) }).click();
+        }
+        await shot(page, name('create-2-quiz-right'), scheme);
+        await page.locator('button.iw-primary').click();
+
+        // Step 3: the password.
+        const pw = page.locator('input[type=password]');
+        await pw.nth(0).fill('Screens-pass-2026');
+        await pw.nth(1).fill('Screens-pass-2026');
+        await shot(page, name('create-3-password'), scheme);
+        await page.locator('button.iw-primary[type=submit]').click();
+        await expect(page.locator('.iw-addr-text').first()).toBeVisible({ timeout: 30_000 });
+        await page.waitForTimeout(4_000); // let the balances settle or fail
+        await shot(page, name('home'), scheme);
+
+        // The unlocked pages by in-app navigation (a reload would lock the wallet).
+        await page.locator('a.iw-act[href="/i-wallet/send"]').click();
+        await expect(page.locator('#iw-send-to')).toBeVisible();
+        await page.waitForTimeout(2_500);
+        await shot(page, name('send'), scheme);
+        await page.goBack();
+        await page.locator('a.iw-act[href="/i-wallet/citizen"]').click();
+        await page.waitForTimeout(6_000);
+        await shot(page, name('citizen'), scheme);
+
+        // Locked: a reload drops the unlocked state.
+        await page.goto('/i-wallet');
+        await expect(page.locator('input[type=password]')).toBeVisible({ timeout: 30_000 });
+        await shot(page, name('unlock'), scheme);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+        expect(blocked.filter((m) => !/Refused to apply a stylesheet/.test(m))).toEqual([]);
+      });
+
+      test('tab bar at 360×780: no label is cut off', async ({ page }) => {
+        const blocked = await setUp(page, { account: false, lang });
+        await page.setViewportSize({ width: 360, height: 780 });
+        await page.goto('/');
+        await expect(page.locator('nav.tabbar .tab')).toHaveCount(5);
+        await page.waitForLoadState('networkidle');
+        await page.evaluate(() => document.fonts.ready);
+        // A label is whole when its text fits its box with no overflow at all (an overflow of under a pixel already
+        // draws the ellipsis, so there is no tolerance).
+        // Every tab in turn is the active (bold, widest) one.
+        const cut: { text: string | null; clipped: boolean; lines: number }[] = [];
+        for (const href of ['/', '/account', '/citizenship', '/network', '/i-wallet']) {
+          await page.locator(`nav.tabbar a[href="${href}"]`).click();
+          await page.evaluate(() => document.fonts.ready);
+          cut.push(...await page.locator('nav.tabbar .tab span').evaluateAll((els) => els.map((e) => ({
+            text: e.textContent, clipped: e.scrollWidth > e.clientWidth, lines: Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)),
+          }))));
+        }
+        console.log(`tabs ${lang} ${scheme}: ${JSON.stringify(cut)}`);
+        await page.locator('nav.tabbar').screenshot({ path: `test-results/screens/tabbar-360-${lang}-${scheme}.png` });
+        await page.screenshot({ path: `test-results/screens/tabbar-360-page-${lang}-${scheme}.png` });
+        expect(cut.filter((c) => c.clipped)).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+        expect(blocked.filter((m) => !/Refused to apply a stylesheet/.test(m))).toEqual([]);
+      });
+    });
+  }
+}
+
 // Desktop (approved layout E): the app in a phone frame with the mascots around it, at two window sizes.
 for (const scheme of ['dark', 'light'] as const) {
   test.describe(`desktop, ${scheme} theme`, () => {

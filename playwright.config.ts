@@ -18,5 +18,9 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium', launchOptions: { executablePath: process.env.CHROMIUM_PATH || undefined } } }],
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium', launchOptions: { executablePath: process.env.CHROMIUM_PATH || undefined } } },
+    // WebKit stands in for Safari, the browser the i-Wallet exists for: IndexedDB and the crypto WASM under the CSP.
+    { name: 'webkit', testMatch: 'iwallet.spec.ts', use: { browserName: 'webkit' } },
+  ],
 });

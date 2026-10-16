@@ -23,6 +23,21 @@ jobs:
       - run: npm run build
       - name: bundle size
         run: test $(du -sk dist | cut -f1) -lt 4096
+  # The i-Wallet end-to-end test needs no network (it never waits for a balance), so it gates every pull request:
+  # the Safari engine (WebKit), the real IndexedDB and crypto WASM, under the production CSP.
+  iwallet-e2e:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run build
+      - run: npx playwright test e2e/iwallet.spec.ts --project=chromium --project=webkit
   # Hits the live Zagros RPCs, so it never gates a pull request: main pushes and a nightly run only.
   e2e:
     if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
@@ -37,7 +52,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 24, cache: npm }
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run build
       # playwright.config.ts starts `vite preview` on 4173 and stops it when the run ends.
       - run: npm run e2e

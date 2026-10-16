@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconHome, IconIdTab, IconSignalTab, IconWallet } from './icons';
+import { IconHome, IconIdTab, IconPhoneKey, IconSignalTab, IconWallet } from './icons';
 
 const TABS = [
   { to: '/', key: 'tab.home', Icon: IconHome, end: true },
   { to: '/account', key: 'tab.account', Icon: IconWallet, end: false },
   { to: '/citizenship', key: 'home.citizenship', Icon: IconIdTab, end: false },
   { to: '/network', key: 'home.network', Icon: IconSignalTab, end: false },
+  { to: '/i-wallet', key: 'tab.iwallet', Icon: IconPhoneKey, end: false },
 ] as const;
 
 // Present on every screen; NavLink marks the current tab with aria-current="page".

@@ -35,15 +35,15 @@ describe('Layout', () => {
     setLanguage('kmr');
   });
 
-  it('shows the four tabs on every screen and marks the current one', () => {
+  it('shows the five tabs on every screen and marks the current one', () => {
     setLanguage('en');
-    for (const [path, current] of [['/', 'Home'], ['/account', 'Account'], ['/account/open', 'Account'], ['/citizenship', 'Citizenship'], ['/network', 'Network'], ['/payment', null]] as const) {
+    for (const [path, current] of [['/', 'Home'], ['/account', 'Account'], ['/account/open', 'Account'], ['/citizenship', 'Citizenship'], ['/network', 'Network'], ['/i-wallet', 'i-Wallet'], ['/payment', null]] as const) {
       const { unmount } = render(
         <MemoryRouter initialEntries={[path]}><Routes><Route element={<Layout />}><Route path="*" element={<p>SCREEN</p>} /></Route></Routes></MemoryRouter>,
       );
       const tabs = screen.getByRole('navigation', { name: 'Sections' });
       const links = within(tabs).getAllByRole('link');
-      expect(links.map((l) => l.getAttribute('href'))).toEqual(['/', '/account', '/citizenship', '/network']);
+      expect(links.map((l) => l.getAttribute('href'))).toEqual(['/', '/account', '/citizenship', '/network', '/i-wallet']);
       const active = links.filter((l) => l.getAttribute('aria-current') === 'page');
       expect(active.map((l) => l.textContent)).toEqual(current ? [current] : []);
       unmount();

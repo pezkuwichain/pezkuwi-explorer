@@ -208,3 +208,17 @@ Wallet dialogs (2026-10-15): the walletModal.* rows are the texts of pwap's Wall
 copied verbatim from pwap web/src/i18n/locales/*.ts (tr and en too). The rows marked "draft (pwap fallback only)" are
 error messages pwap writes in English in its code with no locale entry; every locale carries that English until a
 translation is written. dialog.close is the close button of every dialog (pwap txModal.close).
+
+## i-Wallet — awaiting native reading
+
+Written 2026-10-16 for the i-Wallet tab (Task 4). tr (Serok's own words) and en are not listed. Every row below is a draft that needs a native reading before launch; where a word was uncertain the English or Latin term was kept ("i-Wallet", "App Store", "Android", "iPhone", "Pezkuwi Wallet", "Pezkuwi"). kmr writes the wallet "cuzdan" (masculine "cuzdanê"). Rows are keyed `iwallet.<name>`; the tab label `tab.iwallet` is "i-Wallet" in every language (brand).
+
+- iwallet.mainnet
+- iwallet.warning.label, iwallet.warning.title, iwallet.warning.body1, iwallet.warning.body2, iwallet.warning.android
+- iwallet.create.title, iwallet.create.body, iwallet.create.cta
+- iwallet.import.cta
+- iwallet.feature.send, iwallet.feature.citizen, iwallet.feature.balances
+- iwallet.unavailable.title, iwallet.unavailable.body
+- iwallet.locked.title, iwallet.home.title
+
+Columns: kmr, ckb, fa, ar are all drafts (source "draft"). Words to check first: kmr "Tora sereke" (mainnet), "hişyarî" (warning), "dakêşe" (download), "Karûbarê demkî"; ckb "بیرگە" (storage), "کۆدکراو" (encrypted), "جزدانە پەیوەستبووەکان بە ئینتەرنێتەوە" (internet-connected wallets, used instead of "hot wallet").

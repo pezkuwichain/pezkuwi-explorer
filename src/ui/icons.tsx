@@ -63,3 +63,8 @@ export const IconLogOut = (p: P) => <Svg {...p} className="flip"><path d="M9 21H
 export const IconCheckCircle = (p: P) => <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.8 2.8L16.5 9.5" /></Svg>;
 // A spinning arc; the spin is in dialog.css (.spin) and stops under prefers-reduced-motion.
 export const IconLoader = (p: P) => <Svg {...p} className={`spin${p.className ? ` ${p.className}` : ''}`}><path d="M21 12a9 9 0 1 1-6.2-8.6" /></Svg>;
+// The i-Wallet tab and landing: a phone with a key, a warning triangle, an arrow and bars.
+export const IconPhoneKey = (p: P) => <Svg {...p}><rect x="6" y="2" width="12" height="20" rx="3" /><circle cx="12" cy="11" r="2.5" /><path d="M12 13.5V17" /></Svg>;
+export const IconWarning = (p: P) => <Svg {...p}><path d="M12 3L2 21h20L12 3z" /><path d="M12 10v5" /><path d="M12 18h.01" /></Svg>;
+export const IconArrow = (p: P) => <Svg {...p} className={`flip ${p.className ?? ''}`.trim()}><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></Svg>;
+export const IconBars = (p: P) => <Svg {...p}><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></Svg>;

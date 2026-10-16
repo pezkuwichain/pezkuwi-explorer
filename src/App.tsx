@@ -9,23 +9,30 @@ import ActivityDetail from './screens/ActivityDetail';
 import PaymentStatus from './screens/PaymentStatus';
 import Citizenship from './screens/Citizenship';
 import Network from './screens/Network';
+import { IWalletProvider } from './iwallet/IWalletContext';
+import IWalletShell, { IWalletIndex } from './iwallet/IWalletRoutes';
 
 // Each later screen task adds its own route here.
 export default function App() {
   return (
     <BrowserRouter>
       <AccountProvider>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route path="account/open" element={<OpenAccount />} />
-            <Route path="account" element={<Account />} />
-            <Route path="account/activity/:id" element={<ActivityDetail />} />
-            <Route path="payment" element={<PaymentStatus />} />
-            <Route path="citizenship" element={<Citizenship />} />
-            <Route path="network" element={<Network />} />
-          </Route>
-        </Routes>
+        <IWalletProvider>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route index element={<Home />} />
+              <Route path="account/open" element={<OpenAccount />} />
+              <Route path="account" element={<Account />} />
+              <Route path="account/activity/:id" element={<ActivityDetail />} />
+              <Route path="payment" element={<PaymentStatus />} />
+              <Route path="citizenship" element={<Citizenship />} />
+              <Route path="network" element={<Network />} />
+              <Route path="i-wallet" element={<IWalletShell />}>
+                <Route index element={<IWalletIndex />} />
+              </Route>
+            </Route>
+          </Routes>
+        </IWalletProvider>
         {/* The wallet dialog, opened from Home, /account/open and the address chips. */}
         <WalletModalHost />
       </AccountProvider>

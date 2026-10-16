@@ -40,13 +40,13 @@
   position: fixed; inset-block-end: 0; inset-inline: 0; margin-inline: auto; max-inline-size: 480px; z-index: 10;
   block-size: var(--tabbar); box-sizing: border-box;
   padding: 8px 12px max(8px, var(--sa-bottom));
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
   background: var(--tab-bg); border-block-start: 1px solid var(--tab-border);
   backdrop-filter: blur(12px);
 }
 .tab {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-block-size: var(--tap);
-  color: var(--tab-idle); text-decoration: none; font-size: 12px; font-weight: 600; border-radius: 14px; text-align: center;
+  color: var(--tab-idle); text-decoration: none; font-size: 11.5px; font-weight: 600; border-radius: 14px; text-align: center;
 }
 .tab span { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab[aria-current='page'] { color: var(--tab-active); font-weight: 700; }

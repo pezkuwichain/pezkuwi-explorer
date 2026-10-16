@@ -5,18 +5,13 @@ import PageHeader from '../ui/PageHeader';
 import { useIWallet } from './IWalletContext';
 import Landing from './screens/Landing';
 import Unlock from './screens/Unlock';
-
-// Placeholders: later tasks replace the locked and home screens.
-function Placeholder({ k }: { k: string }) {
-  const { t } = useTranslation();
-  return <h1>{t(k)}</h1>;
-}
+import Home from './screens/Home';
 
 // The index of /i-wallet switches on the wallet state; create, import, send, receive, citizen and settings
 // are added as sibling children by later tasks.
 export function IWalletIndex() {
   const { t } = useTranslation();
-  const { state } = useIWallet();
+  const { state, address } = useIWallet();
   if (state === 'idle' || state === 'loading') {
     // Same outer layout as the screens, so nothing jumps when the state resolves.
     return (
@@ -28,7 +23,7 @@ export function IWalletIndex() {
   }
   if (state === 'none' || state === 'unavailable') return <Landing />;
   if (state === 'locked') return <Unlock />;
-  return <Placeholder k="iwallet.home.title" />;
+  return address ? <Home address={address} /> : null;
 }
 
 // Every /i-wallet route loads the stored keystore; other routes never open IndexedDB.

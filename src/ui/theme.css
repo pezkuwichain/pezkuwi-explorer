@@ -87,6 +87,7 @@
   color-scheme: light;
   font-family: var(--font-body); font-size: 16px; line-height: 1.45;
   color: var(--text); background: var(--bg);
+  --qr-bg: #FFFFFF; --qr-fg: #000000;
 }
 /* The dark values apply when html[data-theme='dark'] (set before first paint by /theme-boot.js, then by
    src/ui/theme.ts): the reader's choice, else the system's. Not a media query, or a choice could not win. */
@@ -120,6 +121,7 @@
   --vote-bar-nay: rgba(229, 52, 80, 0.55);
   --bg-citizen: radial-gradient(90% 40% at 50% 22%, rgba(1, 122, 47, 0.25) 0%, #08090E 70%);
   --shadow-live: 0 0 0 10px rgba(47, 200, 100, 0.06);
+  --qr-bg: #FFFFFF; --qr-fg: #000000;
 }
 :root.in-wallet { --sa-bottom: 0px; }
 :root[dir='rtl'] {

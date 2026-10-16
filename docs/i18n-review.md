@@ -234,3 +234,9 @@ Create, import and unlock screens (Task 5, 2026-10-16): every kmr, ckb, fa and a
 - iwallet.import.title, iwallet.import.body, iwallet.import.label, iwallet.import.invalid, iwallet.import.confirmTitle, iwallet.import.confirmBody, iwallet.import.confirmYes, iwallet.import.confirmNo, iwallet.import.submit
 - iwallet.unlock.body, iwallet.unlock.submit, iwallet.unlock.working, iwallet.unlock.corrupt, iwallet.unlock.restore
 - iwallet.error.wrongPassword, iwallet.error.notSaved, iwallet.error.generic
+
+Wallet home, receive and settings (Task 6, 2026-10-16): kmr, ckb, fa and ar cells are drafts needing a native reading; tr follows the mockup where it has the sentence (hot-wallet strip, Send / Receive / Citizenship, asset names), the rest is a draft. kmr writes "cuzdan"; "JSON" and "Pezkuwi Asset Hub" stay Latin.
+
+- iwallet.home.hot, iwallet.home.settings, iwallet.home.send, iwallet.home.receive, iwallet.home.citizen, iwallet.home.assets, iwallet.home.hezSub, iwallet.home.pezSub, iwallet.home.usdtSub, iwallet.home.parts, iwallet.home.a2hs
+- iwallet.receive.title, iwallet.receive.body, iwallet.receive.qr, iwallet.receive.warn
+- iwallet.settings.title, iwallet.settings.backup, iwallet.settings.backupBody, iwallet.settings.export, iwallet.settings.exportBody, iwallet.settings.lock, iwallet.settings.delete, iwallet.settings.deleteTitle, iwallet.settings.deleteBody, iwallet.settings.deleteConfirm, iwallet.settings.deleteFailed, iwallet.settings.show, iwallet.settings.hide

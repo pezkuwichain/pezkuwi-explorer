@@ -2,7 +2,7 @@
 // signing pair. The pair is held in memory only and dropped (and locked) on every lock path.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { KeyringPair, KeyringPair$Json } from '@pezkuwi/keyring/types';
-import { deleteKeystore, loadKeystore, unlock as decrypt } from './keystore';
+import { deleteKeystore, loadKeystore, loadWords, unlock as decrypt } from './keystore';
 import { unlockWithFaceId } from './faceid';
 import { indexedDbStore, type KvStore } from './idb';
 
@@ -13,6 +13,10 @@ export interface IWalletValue {
   /** Starts reading the stored keystore (once). Nothing touches IndexedDB before this is called. */
   ensureLoaded(): void;
   address: string | null;
+  /** The stored encrypted keystore (public JSON, safe to export). */
+  keystore: KeyringPair$Json | null;
+  /** Decrypts the stored backup words with the password; throws WrongPasswordError / CorruptKeystoreError. */
+  readWords(password: string): Promise<string>;
   pair: KeyringPair | null;
   /** Throws WrongPasswordError / CorruptKeystoreError; the state stays 'locked' then. */
   unlock(password: string): Promise<void>;
@@ -81,6 +85,8 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
     adopt(await decrypt(j, pw));
   }, [adopt, store]);
 
+  const readWords = useCallback((password: string) => loadWords(password, store), [store]);
+
   const lock = useCallback(() => {
     drop();
     setState((s) => (s === 'unlocked' ? 'locked' : s));
@@ -119,8 +125,8 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
   }, [state, lock]);
 
   const value = useMemo<IWalletValue>(() => ({
-    state, ensureLoaded, address: json?.address ?? null, pair, unlock, unlockFaceId, lock, setCreated, remove,
-  }), [state, ensureLoaded, json, pair, unlock, unlockFaceId, lock, setCreated, remove]);
+    state, ensureLoaded, address: json?.address ?? null, keystore: json, readWords, pair, unlock, unlockFaceId, lock, setCreated, remove,
+  }), [state, ensureLoaded, json, readWords, pair, unlock, unlockFaceId, lock, setCreated, remove]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

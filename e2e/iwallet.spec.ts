@@ -14,11 +14,13 @@ const PASSWORD = 'e2e-Password-2026';
 
 test.use({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
 
-// WebKit logs "Refused to apply a stylesheet" when React sets an element's style through the CSSOM, although
-// the style IS applied (measured under this CSP: the desktop phone frame's computed transform is right, and the
-// message also appears on non-i-Wallet pages). It is not a blocked resource, so it is not counted as a CSP
-// failure; every other CSP message, and any WASM start-up failure, still is.
-const WEBKIT_CSSOM_NOISE = /^Refused to apply a stylesheet because its hash, its nonce, or 'unsafe-inline' does not appear/;
+// WebKit logs one "Refused to apply a stylesheet" message under this CSP. Its cause, measured with a
+// securitypolicyviolation listener: directive style-src-attr, target a <select> (the language picker). WebKit's own
+// built-in shadow tree for <select> sets a style attribute that it then checks against the page CSP; app code sets no
+// inline style. Nothing is unstyled (screenshots with and without the CSP are identical), and on iOS the select renders
+// as the native menu control. So exactly that violation, and only when it was recorded, is not a failure; any other
+// CSP message still fails WebKit.
+const WEBKIT_SELECT_NOISE = /^Refused to apply a stylesheet because its hash, its nonce, or 'unsafe-inline' does not appear/;
 
 async function setUp(page: Page) {
   await page.addInitScript(() => localStorage.setItem('pezkuwi-explorer:lang', 'en'));
@@ -26,12 +28,36 @@ async function setUp(page: Page) {
     const res = await route.fetch();
     await route.fulfill({ response: res, headers: { ...res.headers(), 'content-security-policy': CSP } });
   });
-  const problems: string[] = [];
-  page.on('console', (m) => {
-    if (/Content Security Policy|wasm-crypto|Refused to/i.test(m.text()) && !WEBKIT_CSSOM_NOISE.test(m.text())) problems.push(m.text());
+  // Every CSP violation the page sees (across reloads), with the element it hit.
+  const violations: Array<{ directive: string; target: string }> = [];
+  let selects = 0;
+  await page.exposeFunction('__cspReport', (directive: string, target: string) => { violations.push({ directive, target }); });
+  await page.exposeFunction('__selectCreated', () => { selects++; });
+  await page.addInitScript(() => {
+    // Count every <select> the page creates: each one makes WebKit report its built-in style attribute once.
+    const create = Document.prototype.createElement;
+    Document.prototype.createElement = function (this: Document, tag: string, options?: ElementCreationOptions) {
+      if (String(tag).toLowerCase() === 'select') void (window as unknown as { __selectCreated: () => Promise<void> }).__selectCreated();
+      return create.call(this, tag, options);
+    } as typeof Document.prototype.createElement;
+    document.addEventListener('securitypolicyviolation', (e) => {
+      const report = (window as unknown as { __cspReport: (d: string, t: string) => Promise<void> }).__cspReport;
+      void report(e.violatedDirective, (e.target as Element | null)?.nodeName ?? '');
+    }, true);
   });
-  page.on('pageerror', (e) => problems.push(String(e)));
-  return problems;
+  const messages: string[] = [];
+  page.on('console', (m) => { if (/Content Security Policy|wasm-crypto|Refused to/i.test(m.text())) messages.push(m.text()); });
+  page.on('pageerror', (e) => messages.push(String(e)));
+  // Read at the end of the test. The select-internals message is dropped only when every violation recorded is
+  // style-src-attr on a <select> (the target reads #document while the select is not yet attached) and there are no
+  // more of them than <select> elements created; then at most that many messages are dropped.
+  return async (): Promise<string[]> => {
+    await page.waitForTimeout(100); // let the last reports arrive
+    const selectOnly = violations.every((v) => v.directive === 'style-src-attr' && (v.target === 'SELECT' || v.target === '#document'))
+      && violations.length <= selects;
+    let allowance = selectOnly ? violations.length : 0;
+    return messages.filter((m) => !(allowance > 0 && WEBKIT_SELECT_NOISE.test(m) && allowance-- > 0));
+  };
 }
 
 test('create a wallet, prove the backup, lock on reload and unlock with the password', async ({ page }) => {
@@ -97,5 +123,5 @@ test('create a wallet, prove the backup, lock on reload and unlock with the pass
   await expect(page.getByRole('heading', { name: 'Your i-Wallet' })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.iw-addr-text').first()).toHaveAttribute('title', full!);
 
-  expect(problems).toEqual([]);
+  expect(await problems()).toEqual([]);
 });

@@ -12,6 +12,11 @@ describe('kmr spelling', () => {
   it('does not call the wallet berîk', () => {
     expect(kmr).not.toMatch(/berîk/i);
   });
+  // Owner decision (Serok, 2026-10-16): citizenship is "welatîbûn" and a citizen "welatî" everywhere in the explorer.
+  // The Ferheng gives Hemwelatî = compatriot, which is not citizenship.
+  it('never uses hemwelatî', () => {
+    expect(kmr).not.toMatch(/hemwelat/i);
+  });
   // One term per concept in the i-Wallet texts (glossary in docs/i18n-review.md): the password is "şîfre" (pwap),
   // the backup words are "peyvên vegerandinê", citizenship is "welatîbûn" (pwap newCitizen.*).
   it('keeps the i-Wallet glossary terms', () => {

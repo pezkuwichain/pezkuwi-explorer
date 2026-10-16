@@ -31,3 +31,11 @@ The deploy user has no usable shell; its `authorized_keys` entry is
 3. Check: a GET to `https://explorer.pezkuwichain.io/history/assethub` answers 403, and a POST of
    `{"query":"{_metadata{lastProcessedHeight targetHeight}}"}` answers the indexer's metadata.
 4. Set `history.assetHub = ZAGROS_HISTORY_URL` in `src/config/network.ts` (no CSP change: same origin).
+
+## Short address: cuzdan.pex.network
+`deploy/nginx-cuzdan.conf` is the reference copy of the host's `/etc/nginx/sites-available/cuzdan.conf`
+(enabled by a symlink in `sites-enabled`). It only redirects; it never serves the site, because browser storage
+is per origin and a copy of the site would hold a separate wallet. DNS: an A record `cuzdan` in the pex.network
+zone pointing at the explorer host. Certificate: `certbot certonly --webroot -w /var/www/acme -d cuzdan.pex.network`
+(the port-80 block serves the challenge); renewal runs from certbot's timer. The redirect goes to the site root until
+the i-Wallet tab ships, then to `/i-wallet`.

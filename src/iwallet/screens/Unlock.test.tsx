@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { user } from '../test-user';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import i18n from '../../i18n';
@@ -50,6 +50,7 @@ describe('i-Wallet unlock', () => {
   it('shows the Face ID button only when enrolled', async () => {
     renderTab();
     await screen.findByLabelText('Parola');
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); }); // let hasFaceId() resolve
     expect(screen.queryByRole('button', { name: /Face ID/ })).toBeNull();
   });
 

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { IconBack } from '../../ui/icons';
 import { newMnemonic, quizIndices, quizOptions } from '../keystore';
 import { NotSavedError, saveWallet } from '../saveWallet';
+import WalletReady from './WalletReady';
 import { useIWallet } from '../IWalletContext';
 import PasswordStep, { type PasswordResult } from './PasswordStep';
 import '../iwallet.css';
@@ -24,7 +25,7 @@ export default function Create() {
   const [wrong, setWrong] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
+  const [facePw, setFacePw] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const indices = useMemo(() => quizIndices(), []);
   const options = useMemo(() => indices.map((i) => quizOptions(words, i)), [indices, words]);
@@ -44,11 +45,11 @@ export default function Create() {
   const create = async ({ password, faceId }: PasswordResult) => {
     setBusy(true); setError(null);
     try {
-      const saved = await saveWallet(words.join(' '), password, { faceId, replacing: false });
+      const saved = await saveWallet(words.join(' '), password, { replacing: false });
       setWords([]);
       setDone(true);
       setCreated(saved.json, saved.pair);
-      if (saved.note) { setNote(t(saved.note)); setBusy(false); } else navigate('/i-wallet', { replace: true });
+      if (faceId) { setFacePw(password); setBusy(false); } else navigate('/i-wallet', { replace: true });
     } catch (e) {
       setError(t(e instanceof NotSavedError ? 'iwallet.error.notSaved' : 'iwallet.error.generic'));
       setBusy(false);
@@ -56,17 +57,7 @@ export default function Create() {
   };
 
   if (done) {
-    return (
-      <div className="iw iw-wizard">
-        <div className="iw-body">
-          <h1 className="iw-h1">{t('iwallet.create.done')}</h1>
-          {note && <p className="iw-note" role="status">{note}</p>}
-          <button type="button" className="iw-primary" onClick={() => navigate('/i-wallet', { replace: true })}>
-            {t('iwallet.create.openWallet')}
-          </button>
-        </div>
-      </div>
-    );
+    return <WalletReady password={facePw} onClear={() => setFacePw(null)} onContinue={() => navigate('/i-wallet', { replace: true })} />;
   }
 
   return (

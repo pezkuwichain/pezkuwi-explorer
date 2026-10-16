@@ -10,16 +10,17 @@ import type { KvStore } from '../idb';
 
 const WORDS = 'orbit fabric lunar vessel harbor candle meadow tribe glance salute oyster wisdom';
 const k = vi.hoisted(() => ({
-  saveKeystore: vi.fn(), saveWords: vi.fn(), deleteKeystore: vi.fn(), createKeystore: vi.fn(), unlock: vi.fn(),
+  saveWalletAtomic: vi.fn(), createKeystore: vi.fn(), unlock: vi.fn(), load: (): Promise<unknown> => Promise.resolve(null),
+  faceSupported: false, enrol: vi.fn(),
 }));
 vi.mock('../keystore', async (orig) => ({
   ...(await orig<typeof import('../keystore')>()),
   newMnemonic: () => 'orbit fabric lunar vessel harbor candle meadow tribe glance salute oyster wisdom',
-  loadKeystore: () => Promise.resolve(null),
+  loadKeystore: () => k.load(),
   requestPersistence: () => Promise.resolve(true),
-  createKeystore: k.createKeystore, saveKeystore: k.saveKeystore, saveWords: k.saveWords, deleteKeystore: k.deleteKeystore, unlock: k.unlock,
+  createKeystore: k.createKeystore, saveWalletAtomic: k.saveWalletAtomic, unlock: k.unlock,
 }));
-vi.mock('../faceid', () => ({ faceIdSupported: () => Promise.resolve(false), enrolFaceId: vi.fn(), forgetFaceId: vi.fn(), hasFaceId: () => Promise.resolve(false), unlockWithFaceId: vi.fn() }));
+vi.mock('../faceid', () => ({ faceIdSupported: () => Promise.resolve(k.faceSupported), enrolFaceId: (pw: string) => k.enrol(pw), hasFaceId: () => Promise.resolve(false), unlockWithFaceId: vi.fn() }));
 
 const renderCreate = () => render(
   <MemoryRouter initialEntries={['/i-wallet/create']}>
@@ -54,11 +55,10 @@ const within3 = (index: number, word: string) => {
 describe('i-Wallet create', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('tr');
-    Object.values(k).forEach((f) => f.mockReset());
+    [k.saveWalletAtomic, k.createKeystore, k.unlock, k.enrol].forEach((f) => f.mockReset());
+    k.load = () => Promise.resolve(null); k.faceSupported = false;
     k.createKeystore.mockResolvedValue({ address: 'a', json: { address: 'a' } });
-    k.saveKeystore.mockResolvedValue(true);
-    k.saveWords.mockResolvedValue(true);
-    k.deleteKeystore.mockResolvedValue(undefined);
+    k.saveWalletAtomic.mockResolvedValue(true);
     k.unlock.mockResolvedValue({ lock: vi.fn() });
   });
 
@@ -102,26 +102,66 @@ describe('i-Wallet create', () => {
     expect(k.createKeystore).not.toHaveBeenCalled();
   });
 
-  it('shows the not-saved error, stays on step 3 and removes a half-saved keystore', async () => {
-    k.saveWords.mockResolvedValue(false);
+  it('shows the not-saved error and stays on step 3 when the atomic save fails', async () => {
+    k.saveWalletAtomic.mockResolvedValue(false);
     renderCreate();
     const u = await toPasswordStep();
     const [pw, again] = screen.getAllByLabelText(/Parola/);
     await u.type(pw, 'longenough1'); await u.type(again, 'longenough1');
     await u.click(screen.getByRole('button', { name: 'Cüzdanı oluştur' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('KAYDEDİLEMEDİ');
-    expect(k.deleteKeystore).toHaveBeenCalled();
+    expect(k.unlock).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Cüzdanı oluştur' })).toBeInTheDocument();
   });
 
-  it('creates the wallet and leaves for the wallet screen', async () => {
+  it('creates the wallet, saves keystore and words together, and leaves the words out of the page', async () => {
     renderCreate();
     const u = await toPasswordStep();
     const [pw, again] = screen.getAllByLabelText(/Parola/);
     await u.type(pw, 'longenough1'); await u.type(again, 'longenough1');
     await u.click(screen.getByRole('button', { name: 'Cüzdanı oluştur' }));
     await waitFor(() => expect(screen.getByRole('heading', { name: "i-Wallet'iniz" })).toBeInTheDocument());
-    expect(k.saveKeystore).toHaveBeenCalled();
-    expect(k.saveWords).toHaveBeenCalledWith(WORDS, 'longenough1');
+    expect(k.saveWalletAtomic).toHaveBeenCalledWith({ address: 'a' }, WORDS, 'longenough1', false);
+    expect(document.body.textContent).not.toContain('orbit');
+  });
+
+  it('redirects to the wallet and never creates when a wallet already exists', async () => {
+    k.load = () => Promise.resolve({ address: 'old' });
+    renderCreate();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'i-Wallet kilitli' })).toBeInTheDocument());
+    expect(k.createKeystore).not.toHaveBeenCalled();
+    expect(k.saveWalletAtomic).not.toHaveBeenCalled();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+
+  it('enrols Face ID only from its own tap after the wallet exists, then drops the password', async () => {
+    k.faceSupported = true;
+    k.enrol.mockResolvedValue({ ok: true });
+    renderCreate();
+    const u = await toPasswordStep();
+    const [pw, again] = screen.getAllByLabelText(/Parola/);
+    await u.type(pw, 'longenough1'); await u.type(again, 'longenough1');
+    await u.click(await screen.findByRole('switch'));
+    await u.click(screen.getByRole('button', { name: 'Cüzdanı oluştur' }));
+    const enable = await screen.findByRole('button', { name: "Face ID'yi aç" });
+    expect(k.enrol).not.toHaveBeenCalled();
+    await u.click(enable);
+    expect(k.enrol).toHaveBeenCalledWith('longenough1');
+    expect(await screen.findByText('Face ID açık.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: "Face ID'yi aç" })).toBeNull();
+  });
+
+  it('keeps the wallet and allows a retry when the Face ID prompt is cancelled', async () => {
+    k.faceSupported = true;
+    k.enrol.mockResolvedValue({ ok: false, reason: 'cancelled' });
+    renderCreate();
+    const u = await toPasswordStep();
+    const [pw, again] = screen.getAllByLabelText(/Parola/);
+    await u.type(pw, 'longenough1'); await u.type(again, 'longenough1');
+    await u.click(await screen.findByRole('switch'));
+    await u.click(screen.getByRole('button', { name: 'Cüzdanı oluştur' }));
+    await u.click(await screen.findByRole('button', { name: "Face ID'yi aç" }));
+    expect(await screen.findByText(/Ayarlar/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: "Face ID'yi aç" })).toBeEnabled();
   });
 });

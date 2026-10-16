@@ -65,7 +65,7 @@
 .iw-primary { background: var(--primary); color: var(--on-primary); }
 .iw-primary:disabled { opacity: 0.45; cursor: not-allowed; }
 .iw-secondary { background: transparent; color: var(--text); border: 1px solid var(--border-strong); min-block-size: var(--tap); font-size: 15px; }
-.iw-danger { background: var(--negative); color: #FFFFFF; min-block-size: var(--tap); font-size: 15px; }
+.iw-danger { background: var(--negative); color: var(--on-negative); min-block-size: var(--tap); font-size: 15px; }
 .iw-confirm-actions { display: flex; flex-direction: column; gap: 8px; margin-block-start: 10px; }
 .iw-link { display: flex; align-items: center; justify-content: center; min-block-size: var(--tap); color: var(--link); font-weight: 700; }
 .iw-form { display: flex; flex-direction: column; gap: 14px; }
@@ -84,7 +84,7 @@
 .iw-faceid-text { display: flex; flex-direction: column; flex: 1; color: var(--text); font-size: 13px; }
 .iw-faceid-text span { color: var(--muted); font-size: 12px; }
 .iw-switch { inline-size: 52px; block-size: 32px; min-block-size: var(--tap); border-radius: 999px; border: 0; padding: 0; background: var(--border-strong); position: relative; cursor: pointer; }
-.iw-switch span { position: absolute; inset-block-start: 50%; inset-inline-start: 4px; inline-size: 24px; block-size: 24px; margin-block-start: -12px; border-radius: 50%; background: #FFFFFF; transition: inset-inline-start 0.15s; }
+.iw-switch span { position: absolute; inset-block-start: 50%; inset-inline-start: 4px; inline-size: 24px; block-size: 24px; margin-block-start: -12px; border-radius: 50%; background: var(--switch-thumb); transition: inset-inline-start 0.15s; }
 .iw-switch.on { background: var(--positive); }
 .iw-switch.on span { inset-inline-start: 24px; }
 .iw-quiz { display: flex; flex-direction: column; gap: 8px; }

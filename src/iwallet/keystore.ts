@@ -101,12 +101,28 @@ export async function unlock(json: KeyringPair$Json, password: string): Promise<
   return pair;
 }
 
+async function encryptWords(mnemonic: string, password: string): Promise<unknown> {
+  await waitReady();
+  return jsonEncrypt(stringToU8a(normaliseMnemonic(mnemonic)), WORDS_CONTENT, password);
+}
+
 export async function saveWords(mnemonic: string, password: string, store: KvStore = indexedDbStore): Promise<boolean> {
   assertStrong(password);
   try {
-    await waitReady();
-    const enc = jsonEncrypt(stringToU8a(normaliseMnemonic(mnemonic)), WORDS_CONTENT, password);
-    await store.set(WORDS_KEY, enc);
+    await store.set(WORDS_KEY, await encryptWords(mnemonic, password));
+    return true;
+  } catch { return false; }
+}
+
+// Writes the keystore and the encrypted words in ONE transaction (all or nothing). With `replace` the Face ID
+// record of the wallet being replaced goes in the same transaction. false = nothing was changed.
+export async function saveWalletAtomic(
+  json: KeyringPair$Json, mnemonic: string, password: string, replace = false, store: KvStore = indexedDbStore,
+): Promise<boolean> {
+  assertStrong(password);
+  try {
+    const words = await encryptWords(mnemonic, password);
+    await store.setMany({ [KEYSTORE_KEY]: json, [WORDS_KEY]: words }, replace ? [FACEID_KEY] : []);
     return true;
   } catch { return false; }
 }

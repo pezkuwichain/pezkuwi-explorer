@@ -39,6 +39,7 @@ const makeStore = (): KvStore => ({
   set: (k, v) => { store.set(k, v); return Promise.resolve(); },
   delete: (k) => { store.delete(k); return Promise.resolve(); },
   deleteMany: (ks) => { ks.forEach((k) => store.delete(k)); return Promise.resolve(); },
+  setMany: (e, rm = []) => { Object.entries(e).forEach(([k, v]) => store.set(k, v)); rm.forEach((k) => store.delete(k)); return Promise.resolve(); },
 });
 function Where() { return <p data-testid="where">{useLocation().pathname}</p>; }
 

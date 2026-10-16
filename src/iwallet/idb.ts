@@ -6,6 +6,8 @@ export interface KvStore {
   delete(key: string): Promise<void>;
   // Removes every key in one transaction: all of them go, or none do.
   deleteMany(keys: string[]): Promise<void>;
+  // Writes every entry and removes every key of `remove` in ONE readwrite transaction: all of it lands, or none of it.
+  setMany(entries: Record<string, unknown>, remove?: string[]): Promise<void>;
 }
 
 const DB_NAME = 'pezkuwi-iwallet';
@@ -61,6 +63,12 @@ export function createIdbStore(getFactory: () => IDBFactory | undefined): KvStor
     set: async (key, value) => { await withStore(getFactory(), 'readwrite', (s) => [s.put(value, key)]); },
     delete: async (key) => { await withStore(getFactory(), 'readwrite', (s) => [s.delete(key)]); },
     deleteMany: async (keys) => { await withStore(getFactory(), 'readwrite', (s) => keys.map((k) => s.delete(k))); },
+    setMany: async (entries, remove = []) => {
+      await withStore<unknown>(getFactory(), 'readwrite', (s) => [
+        ...Object.entries(entries).map(([k, v]) => s.put(v, k) as unknown as IDBRequest<unknown>),
+        ...remove.map((k) => s.delete(k) as unknown as IDBRequest<unknown>),
+      ]);
+    },
   };
 }
 

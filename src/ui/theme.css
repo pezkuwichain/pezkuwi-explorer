@@ -53,6 +53,7 @@
   --link: #017A2F; --focus: #0F111A;
   --tab-bg: #FFFFFF; --tab-border: #E3E5DC; --tab-active: #017A2F; --tab-idle: #5B5F6B;
   --primary: #017A2F; --on-primary: #FFFFFF;
+  --on-negative: #FFFFFF; --switch-thumb: #FFFFFF;
   --hero-bg: #017A2F; --hero-blob: rgba(253, 184, 19, 0.22); --hero-border: transparent; --hero-text: #FFFFFF; --hero-soft: rgba(255, 255, 255, 0.92);
   --chip-bg: rgba(0, 0, 0, 0.22); --hero-ring: #017A2F; --hero-outline: rgba(255, 255, 255, 0.4); --hero-cta-bg: #FFFFFF; --hero-cta-text: #017A2F;
   --ok-text: #017A2F; --ok-soft: #DDF3E4; --ok-line: rgba(1, 122, 47, 0.35);
@@ -92,6 +93,7 @@
 /* The dark values apply when html[data-theme='dark'] (set before first paint by /theme-boot.js, then by
    src/ui/theme.ts): the reader's choice, else the system's. Not a media query, or a choice could not win. */
 :root[data-theme='dark'] {
+  --on-negative: #FFFFFF; --switch-thumb: #FFFFFF;
   color-scheme: dark;
   --menu-bg: #151824; --menu-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
   --bg: #08090E;

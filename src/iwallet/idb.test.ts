@@ -59,7 +59,8 @@ describe('idb store', () => {
     const s = createIdbStore(() => factory);
     expect(await s.get('a')).toBe('v:a');
     await s.set('a', 1); await s.deleteMany!(['a', 'b']);
-    expect(log.closed).toBe(3);
+    await s.setMany({ a: 1, b: 2 }, ['c']);
+    expect(log.closed).toBe(4);
   });
   it('a failed request rejects once with no unhandled rejection', async () => {
     process.on('unhandledRejection', onUnhandled);

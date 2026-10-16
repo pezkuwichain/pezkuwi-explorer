@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { IconBack } from '../../ui/icons';
 import { isValidMnemonic, normaliseMnemonic } from '../keystore';
 import { NotSavedError, saveWallet } from '../saveWallet';
+import WalletReady from './WalletReady';
 import { useIWallet } from '../IWalletContext';
 import PasswordStep, { type PasswordResult } from './PasswordStep';
 import '../iwallet.css';
@@ -21,7 +22,7 @@ export default function Import() {
   const [pending, setPending] = useState<PasswordResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
+  const [facePw, setFacePw] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
   useEffect(() => () => { words.current = ''; }, []);
@@ -39,11 +40,11 @@ export default function Import() {
   const save = async ({ password, faceId }: PasswordResult) => {
     setBusy(true); setError(null); setPending(null);
     try {
-      const saved = await saveWallet(words.current, password, { faceId, replacing });
+      const saved = await saveWallet(words.current, password, { replacing });
       words.current = '';
       setDone(true);
       setCreated(saved.json, saved.pair);
-      if (saved.note) { setNote(t(saved.note)); setBusy(false); } else navigate('/i-wallet', { replace: true });
+      if (faceId) { setFacePw(password); setBusy(false); } else navigate('/i-wallet', { replace: true });
     } catch (e) {
       setError(t(e instanceof NotSavedError ? 'iwallet.error.notSaved' : 'iwallet.error.generic'));
       setBusy(false);
@@ -52,24 +53,14 @@ export default function Import() {
   const submit = (r: PasswordResult) => { if (replacing) setPending(r); else void save(r); };
 
   if (done) {
-    return (
-      <div className="iw iw-wizard">
-        <div className="iw-body">
-          <h1 className="iw-h1">{t('iwallet.create.done')}</h1>
-          {note && <p className="iw-note" role="status">{note}</p>}
-          <button type="button" className="iw-primary" onClick={() => navigate('/i-wallet', { replace: true })}>
-            {t('iwallet.create.openWallet')}
-          </button>
-        </div>
-      </div>
-    );
+    return <WalletReady password={facePw} onClear={() => setFacePw(null)} onContinue={() => navigate('/i-wallet', { replace: true })} />;
   }
 
   return (
     <div className="iw iw-wizard">
       <div className="iw-body">
         <div className="iw-steprow">
-          <button type="button" className="back" onClick={() => (step === 1 ? navigate(-1) : setStep(1))} aria-label={t('app.back')}>
+          <button type="button" className="back" onClick={() => { if (step === 1) navigate(-1); else { words.current = ''; setStep(1); } }} aria-label={t('app.back')}>
             <IconBack />
           </button>
         </div>

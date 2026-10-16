@@ -240,3 +240,5 @@ Wallet home, receive and settings (Task 6, 2026-10-16): kmr, ckb, fa and ar cell
 - iwallet.home.hot, iwallet.home.settings, iwallet.home.send, iwallet.home.receive, iwallet.home.citizen, iwallet.home.assets, iwallet.home.hezSub, iwallet.home.pezSub, iwallet.home.usdtSub, iwallet.home.parts, iwallet.home.a2hs
 - iwallet.receive.title, iwallet.receive.body, iwallet.receive.qr, iwallet.receive.warn
 - iwallet.settings.title, iwallet.settings.backup, iwallet.settings.backupBody, iwallet.settings.export, iwallet.settings.exportBody, iwallet.settings.lock, iwallet.settings.delete, iwallet.settings.deleteTitle, iwallet.settings.deleteBody, iwallet.settings.deleteConfirm, iwallet.settings.deleteFailed, iwallet.settings.show, iwallet.settings.hide
+
+Fix round (Task 5, 2026-10-16): new drafts iwallet.faceid.storage, iwallet.faceid.enable, iwallet.faceid.enabled; reworded drafts iwallet.faceid.cancelled (now points to Settings) and iwallet.import.title, iwallet.import.body, iwallet.import.label, iwallet.import.invalid (12 or 24 words).

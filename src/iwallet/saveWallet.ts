@@ -1,40 +1,30 @@
-// Saves a new or imported wallet in one all-or-nothing step (spec §4): the keystore and the encrypted words are both
-// written, or neither is kept. Used by the create and import screens.
+// Saves a new or imported wallet in one all-or-nothing step (spec §4): the keystore, the encrypted words and, on a
+// replace, the removal of the old Face ID record land in a single IndexedDB transaction. A failure changes nothing,
+// so an existing wallet is never damaged. Used by the create and import screens.
 import type { KeyringPair, KeyringPair$Json } from '@pezkuwi/keyring/types';
-import { createKeystore, deleteKeystore, requestPersistence, saveKeystore, saveWords, unlock } from './keystore';
-import { enrolFaceId, forgetFaceId } from './faceid';
+import { createKeystore, requestPersistence, saveWalletAtomic, unlock } from './keystore';
+import { enrolFaceId } from './faceid';
 
 export class NotSavedError extends Error {
   constructor() { super('The wallet could not be saved'); this.name = 'NotSavedError'; }
 }
 
-export interface SavedWallet {
-  json: KeyringPair$Json;
-  pair: KeyringPair;
-  /** i18n key of a non-blocking note when Face ID could not be set up; the wallet exists regardless. */
-  note: 'iwallet.faceid.cancelled' | 'iwallet.faceid.unavailable' | null;
+export interface SavedWallet { json: KeyringPair$Json; pair: KeyringPair }
+
+export async function saveWallet(mnemonic: string, password: string, opts: { replacing: boolean }): Promise<SavedWallet> {
+  const { json } = await createKeystore(mnemonic, password);
+  if (!(await saveWalletAtomic(json, mnemonic, password, opts.replacing))) throw new NotSavedError();
+  await requestPersistence();
+  const pair = await unlock(json, password);
+  return { json, pair };
 }
 
-export async function saveWallet(
-  mnemonic: string,
-  password: string,
-  opts: { faceId: boolean; replacing: boolean },
-): Promise<SavedWallet> {
-  const { json } = await createKeystore(mnemonic, password);
-  if (!(await saveKeystore(json))) throw new NotSavedError();
-  if (!(await saveWords(mnemonic, password))) {
-    // Nothing half-saved: the keystore is removed again so no wallet exists without its recovery words.
-    await deleteKeystore().catch(() => undefined);
-    throw new NotSavedError();
-  }
-  // A replaced wallet must not keep the old wallet's Face ID password.
-  if (opts.replacing) await forgetFaceId().catch(() => false);
-  await requestPersistence();
-  let note: SavedWallet['note'] = null;
-  if (opts.faceId) {
-    const r = await enrolFaceId(password);
-    if (!r.ok) note = r.reason === 'cancelled' ? 'iwallet.faceid.cancelled' : 'iwallet.faceid.unavailable';
-  }
-  const pair = await unlock(json, password);
-  return { json, pair, note };
+export type FaceIdNote = 'iwallet.faceid.cancelled' | 'iwallet.faceid.unavailable' | 'iwallet.faceid.storage';
+
+// Face ID enrolment is its own step: iOS Safari wants a fresh tap for WebAuthn, not a call chained after scrypt.
+export async function enableFaceId(password: string): Promise<{ ok: true } | { ok: false; note: FaceIdNote; retry: boolean }> {
+  const r = await enrolFaceId(password);
+  if (r.ok) return { ok: true };
+  if (r.reason === 'cancelled') return { ok: false, note: 'iwallet.faceid.cancelled', retry: true };
+  return { ok: false, note: r.reason === 'storage' ? 'iwallet.faceid.storage' : 'iwallet.faceid.unavailable', retry: false };
 }

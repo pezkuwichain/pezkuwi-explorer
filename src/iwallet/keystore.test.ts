@@ -6,7 +6,7 @@ import { base64Decode } from '@pezkuwi/util-crypto';
 import type { KvStore } from './idb';
 import {
   CorruptKeystoreError, StorageUnavailableError, WeakPasswordError, WrongPasswordError, createKeystore, deleteKeystore, isValidMnemonic, loadKeystore, loadWords, newMnemonic,
-  normaliseMnemonic, passwordStrength, quizIndices, quizOptions, saveKeystore, saveWords, unlock,
+  normaliseMnemonic, passwordStrength, quizIndices, quizOptions, saveKeystore, saveWalletAtomic, saveWords, unlock,
 } from './keystore';
 
 const mapStore = (): KvStore & { data: Map<string, unknown> } => {
@@ -17,6 +17,7 @@ const mapStore = (): KvStore & { data: Map<string, unknown> } => {
     set: async (k, v) => { data.set(k, v); },
     delete: async (k) => { data.delete(k); },
     deleteMany: async (ks) => { for (const k of ks) data.delete(k); },
+    setMany: async (e, rm = []) => { for (const [k, v] of Object.entries(e)) data.set(k, v); for (const k of rm) data.delete(k); },
   };
 };
 vi.setConfig({ testTimeout: 30_000 }); // scrypt is deliberately slow, more so on a loaded runner
@@ -139,12 +140,12 @@ describe('keystore', () => {
   });
   it('saveKeystore returns false when the store throws', async () => {
     const { json } = await createKeystore(newMnemonic(), PW);
-    const bad: KvStore = { get: async () => undefined, set: async () => { throw new Error('quota'); }, delete: async () => undefined, deleteMany: async () => undefined };
+    const bad: KvStore = { get: async () => undefined, set: async () => { throw new Error('quota'); }, delete: async () => undefined, deleteMany: async () => undefined, setMany: async () => undefined };
     expect(await saveKeystore(json, bad)).toBe(false);
   });
   it('loadKeystore returns null only for no entry; a storage failure throws', async () => {
     expect(await loadKeystore(mapStore())).toBeNull();
-    const bad: KvStore = { get: async () => { throw new Error('denied'); }, set: async () => undefined, delete: async () => undefined, deleteMany: async () => undefined };
+    const bad: KvStore = { get: async () => { throw new Error('denied'); }, set: async () => undefined, delete: async () => undefined, deleteMany: async () => undefined, setMany: async () => undefined };
     await expect(loadKeystore(bad)).rejects.toBeInstanceOf(StorageUnavailableError);
   });
 });
@@ -159,7 +160,7 @@ describe('encrypted words', () => {
     await expect(loadWords('nope nope nope', store)).rejects.toBeInstanceOf(WrongPasswordError);
   });
   it('saveWords returns false when the store throws', async () => {
-    const bad: KvStore = { get: async () => undefined, set: async () => { throw new Error('x'); }, delete: async () => undefined, deleteMany: async () => undefined };
+    const bad: KvStore = { get: async () => undefined, set: async () => { throw new Error('x'); }, delete: async () => undefined, deleteMany: async () => undefined, setMany: async () => undefined };
     expect(await saveWords(newMnemonic(), PW, bad)).toBe(false);
   });
   it('deleteKeystore removes keystore and words', async () => {
@@ -183,5 +184,42 @@ describe('passwordStrength', () => {
     expect(passwordStrength('abcdefgh')).toBe(2);
     expect(passwordStrength('abcdefgh12')).toBe(3);
     expect(passwordStrength('Abcdefgh12345!')).toBe(4);
+  });
+});
+
+describe('saveWalletAtomic', () => {
+  it('writes keystore and words together and, on replace, removes the old Face ID record in the same call', async () => {
+    const store = mapStore();
+    store.data.set('faceid', { old: true });
+    const { json } = await createKeystore(newMnemonic(), PW);
+    const spy = vi.spyOn(store, 'setMany');
+    expect(await saveWalletAtomic(json, newMnemonic(), PW, true, store)).toBe(true);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(store.data.has('keystore') && store.data.has('words')).toBe(true);
+    expect(store.data.has('faceid')).toBe(false);
+  });
+
+  it('keeps a Face ID record when this is not a replace', async () => {
+    const store = mapStore();
+    store.data.set('faceid', { x: 1 });
+    const { json } = await createKeystore(newMnemonic(), PW);
+    await saveWalletAtomic(json, newMnemonic(), PW, false, store);
+    expect(store.data.has('faceid')).toBe(true);
+  });
+
+  it('a failed transaction returns false and leaves the old wallet untouched', async () => {
+    const store = mapStore();
+    store.data.set('keystore', { old: 1 }); store.data.set('words', { old: 2 }); store.data.set('faceid', { old: 3 });
+    store.setMany = async () => { throw new Error('quota'); };
+    const { json } = await createKeystore(newMnemonic(), PW);
+    expect(await saveWalletAtomic(json, newMnemonic(), PW, true, store)).toBe(false);
+    expect([...store.data.entries()]).toEqual([['keystore', { old: 1 }], ['words', { old: 2 }], ['faceid', { old: 3 }]]);
+  });
+
+  it('refuses a weak password before touching storage', async () => {
+    const store = mapStore();
+    const spy = vi.spyOn(store, 'setMany');
+    await expect(saveWalletAtomic({} as never, newMnemonic(), 'short', false, store)).rejects.toBeInstanceOf(WeakPasswordError);
+    expect(spy).not.toHaveBeenCalled();
   });
 });

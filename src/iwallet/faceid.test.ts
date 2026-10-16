@@ -11,6 +11,7 @@ const mapStore = (): KvStore & { data: Map<string, unknown> } => {
     set: async (k, v) => { data.set(k, v); },
     delete: async (k) => { data.delete(k); },
     deleteMany: async (ks) => { for (const k of ks) data.delete(k); },
+    setMany: async (e, rm = []) => { for (const [k, v] of Object.entries(e)) data.set(k, v); for (const k of rm) data.delete(k); },
   };
 };
 const PW = 'correct horse battery';

@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useIWallet } from './IWalletContext';
 import Landing from './screens/Landing';
+import Unlock from './screens/Unlock';
 
 // Placeholders: later tasks replace the locked and home screens.
 function Placeholder({ k }: { k: string }) {
@@ -16,7 +17,8 @@ export function IWalletIndex() {
   const { state } = useIWallet();
   if (state === 'loading') return <p className="card-note" role="status">{t('state.loading')}</p>;
   if (state === 'none' || state === 'unavailable') return <Landing />;
-  return <Placeholder k={state === 'locked' ? 'iwallet.locked.title' : 'iwallet.home.title'} />;
+  if (state === 'locked') return <Unlock />;
+  return <Placeholder k="iwallet.home.title" />;
 }
 
 export default function IWalletShell() {

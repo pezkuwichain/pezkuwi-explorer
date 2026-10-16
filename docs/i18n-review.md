@@ -222,3 +222,15 @@ Written 2026-10-16 for the i-Wallet tab (Task 4). tr (Serok's own words) and en 
 - iwallet.locked.title, iwallet.home.title
 
 Columns: kmr, ckb, fa, ar are all drafts (source "draft"). Words to check first: kmr "Tora sereke" (mainnet), "hişyarî" (warning), "dakêşe" (download), "Karûbarê demkî"; ckb "بیرگە" (storage), "کۆدکراو" (encrypted), "جزدانە پەیوەستبووەکان بە ئینتەرنێتەوە" (internet-connected wallets, used instead of "hot wallet").
+
+Create, import and unlock screens (Task 5, 2026-10-16): every kmr, ckb, fa and ar cell of these rows is a draft needing a native reading; kmr writes "cuzdan", and "Face ID" stays Latin in every language. tr follows the approved mockup where it has the sentence, otherwise it is a draft too.
+
+- iwallet.wizard.step, iwallet.next
+- iwallet.words.title, iwallet.words.body, iwallet.words.list, iwallet.words.warnTitle, iwallet.words.warnBody, iwallet.words.ack
+- iwallet.quiz.title, iwallet.quiz.body, iwallet.quiz.slot, iwallet.quiz.wrong, iwallet.quiz.verify
+- iwallet.password.title, iwallet.password.body, iwallet.password.label, iwallet.password.repeat, iwallet.password.strength.1-4, iwallet.password.mismatch
+- iwallet.faceid.title, iwallet.faceid.hint, iwallet.faceid.cancelled, iwallet.faceid.unavailable
+- iwallet.create.submit, iwallet.create.working, iwallet.create.done, iwallet.create.openWallet
+- iwallet.import.title, iwallet.import.body, iwallet.import.label, iwallet.import.invalid, iwallet.import.confirmTitle, iwallet.import.confirmBody, iwallet.import.confirmYes, iwallet.import.confirmNo, iwallet.import.submit
+- iwallet.unlock.body, iwallet.unlock.submit, iwallet.unlock.working, iwallet.unlock.corrupt, iwallet.unlock.restore
+- iwallet.error.wrongPassword, iwallet.error.notSaved, iwallet.error.generic

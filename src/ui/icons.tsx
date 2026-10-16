@@ -68,3 +68,9 @@ export const IconPhoneKey = (p: P) => <Svg {...p}><rect x="6" y="2" width="12" h
 export const IconWarning = (p: P) => <Svg {...p}><path d="M12 3L2 21h20L12 3z" /><path d="M12 10v5" /><path d="M12 18h.01" /></Svg>;
 export const IconArrow = (p: P) => <Svg {...p} className={`flip ${p.className ?? ''}`.trim()}><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></Svg>;
 export const IconBars = (p: P) => <Svg {...p}><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></Svg>;
+export const IconFaceId = (p: P) => (
+  <Svg {...p} stroke={p.stroke ?? 1.8}>
+    <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
+    <path d="M9 9v1M15 9v1M12 9v4h-1M9 16a4 4 0 0 0 6 0" />
+  </Svg>
+);

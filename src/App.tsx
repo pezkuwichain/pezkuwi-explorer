@@ -11,6 +11,8 @@ import Citizenship from './screens/Citizenship';
 import Network from './screens/Network';
 import { IWalletProvider } from './iwallet/IWalletContext';
 import IWalletShell, { IWalletIndex } from './iwallet/IWalletRoutes';
+import Create from './iwallet/screens/Create';
+import Import from './iwallet/screens/Import';
 
 // Each later screen task adds its own route here.
 export default function App() {
@@ -29,6 +31,8 @@ export default function App() {
               <Route path="network" element={<Network />} />
               <Route path="i-wallet" element={<IWalletShell />}>
                 <Route index element={<IWalletIndex />} />
+                <Route path="create" element={<Create />} />
+                <Route path="import" element={<Import />} />
               </Route>
             </Route>
           </Routes>

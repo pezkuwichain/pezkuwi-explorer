@@ -122,13 +122,17 @@ describe('pendingReferrals', () => {
           [key(CHARLIE), app(ADDR)], // already approved by us
           [key(ADDR), app(BOB)], // names someone else
         ]) },
-        kycStatuses: (a: string) => Promise.resolve({ type: status[a] }),
+        kycStatuses: { multi: vi.fn((as: string[]) => Promise.resolve(as.map((a) => ({ type: status[a] })))) },
       },
     },
   } as unknown as ApiPromise;
   it('lists only applications that name this account and still wait for it', async () => {
     const list = await pendingReferrals(encodeAddress(decodeAddress(ADDR), 0), { getApi: () => Promise.resolve(people) });
     expect(list).toEqual([{ applicant: BOB, identityHash: '0xhash-5Grw' }]);
+    // One batched status read for the two applicants that name this account.
+    const multi = (people as unknown as { query: { identityKyc: { kycStatuses: { multi: ReturnType<typeof vi.fn> } } } }).query.identityKyc.kycStatuses.multi;
+    expect(multi).toHaveBeenCalledTimes(1);
+    expect(multi).toHaveBeenCalledWith([BOB, CHARLIE]);
   });
 });
 

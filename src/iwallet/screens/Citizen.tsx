@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { ApiPromise } from '@pezkuwi/api';
@@ -11,7 +11,7 @@ import { getMainnetApi } from '../chain';
 import { hasFaceId } from '../faceid';
 import { estimateFee } from '../tx';
 import {
-  FUNDING_POLL, REGIONS, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, chainSpendable, formProblems,
+  FUNDING_POLL, REGIONS, assetHubNeed, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, chainSpendable, formProblems,
   identityHash, kycDeposit, loadForm, loadStatus, needsFunding, parseReferrer, pendingReferrals, saveForm, teleportAmount,
   type CitizenForm, type CitizenStatus, type PendingReferral,
 } from '../citizen';
@@ -24,7 +24,9 @@ import '../iwallet.css';
 type Loaded = {
   people: ApiPromise; assetHub: ApiPromise;
   status: CitizenStatus; referrals: PendingReferral[] | 'failed';
-  deposit: bigint; peopleFree: bigint; ahFree: bigint; applyFee: bigint | null; teleportFee: bigint | null;
+  deposit: bigint; peopleFree: bigint; ahFree: bigint;
+  // The apply fee without and with a referrer (Some adds 32 bytes; any address prices the same).
+  applyFee: { none: bigint | null; some: bigint | null }; teleportFee: bigint | null;
 };
 type Action =
   | { kind: 'apply'; hash: string; referrer: string | null }
@@ -34,18 +36,22 @@ type Action =
 type Funding = 'idle' | 'waiting' | 'late';
 const ZERO_HASH = `0x${'0'.repeat(64)}`;
 
-async function load(address: string): Promise<Loaded> {
+// `cachedReferrals` is the referral scan from earlier in this page view; it is reused instead of scanning again.
+async function load(address: string, cachedReferrals: PendingReferral[] | null): Promise<Loaded> {
   const [people, assetHub] = await Promise.all([getMainnetApi('people'), getMainnetApi('assetHub')]);
   const deposit = kycDeposit(people);
-  const [status, referrals, peopleFree, ahFree, applyFee, teleportFee] = await Promise.all([
+  const [status, peopleFree, ahFree, feeNone, feeSome, teleportFee] = await Promise.all([
     loadStatus(address),
-    pendingReferrals(address).catch((): 'failed' => 'failed'),
     chainSpendable('people', address),
     chainSpendable('assetHub', address),
     estimateFee(buildApply(people, ZERO_HASH, null), address),
+    estimateFee(buildApply(people, ZERO_HASH, address), address),
     estimateFee(buildTeleportToPeople(assetHub, address, teleportAmount(deposit)), address),
   ]);
-  return { people, assetHub, status, referrals, deposit, peopleFree, ahFree, applyFee, teleportFee };
+  // Only an Approved citizen can be a referrer, so nobody else pays for the scan.
+  const referrals: Loaded['referrals'] = status.kyc !== 'Approved' ? []
+    : cachedReferrals ?? await pendingReferrals(address).catch((): 'failed' => 'failed');
+  return { people, assetHub, status, referrals, deposit, peopleFree, ahFree, applyFee: { none: feeNone, some: feeSome }, teleportFee };
 }
 
 function CitizenBody({ address }: { address: string }) {
@@ -70,12 +76,20 @@ function CitizenBody({ address }: { address: string }) {
   const [funding, setFunding] = useState<Funding>('idle');
   const signer = useSignedTx();
 
+  // Each load cancels the one before it, so an older load can never overwrite newer data.
+  const cancelLoad = useRef<() => void>(() => undefined);
+  const referralCache = useRef<PendingReferral[] | null>(null);
   const fetchData = useCallback(() => {
+    cancelLoad.current();
     let live = true;
-    load(address).then((d) => { if (live) setData(d); }, () => { if (live) setData('failed'); });
-    return () => { live = false; };
+    cancelLoad.current = () => { live = false; };
+    load(address, referralCache.current).then((d) => {
+      if (!live) return;
+      if (d.status.kyc === 'Approved' && d.referrals !== 'failed') referralCache.current = d.referrals;
+      setData(d);
+    }, () => { if (live) setData('failed'); });
   }, [address]);
-  useEffect(() => fetchData(), [fetchData]);
+  useEffect(() => { fetchData(); return () => cancelLoad.current(); }, [fetchData]);
   const refresh = () => { setData(null); fetchData(); };
   useEffect(() => {
     let live = true;
@@ -93,11 +107,12 @@ function CitizenBody({ address }: { address: string }) {
   };
 
   const loaded = data && data !== 'failed' ? data : null;
-  const needFunds = loaded !== null && needsFunding(loaded.peopleFree, loaded.deposit, loaded.applyFee ?? 0n, IWALLET_ED.people);
+  // The apply fee as it will be sent: with a referrer when one is typed.
+  const applyFee = (loaded && (form.referrer.trim() ? loaded.applyFee.some : loaded.applyFee.none)) ?? 0n;
+  const needFunds = loaded !== null && needsFunding(loaded.peopleFree, loaded.deposit, applyFee, IWALLET_ED.people);
 
   // After a teleport, People is polled every 6 s for up to 2 min; Apply enables as soon as the HEZ lands.
   const deposit = loaded?.deposit;
-  const applyFee = loaded?.applyFee ?? 0n;
   useEffect(() => {
     if (funding !== 'waiting' || deposit === undefined) return;
     let live = true;
@@ -138,7 +153,10 @@ function CitizenBody({ address }: { address: string }) {
     // The result screen shows once the password has decrypted the key (the outcome leaves 'idle').
     const result = await signer.run(apiFor(action, loaded), txFor(action, loaded), password);
     if (result === null) return;
-    if (action.kind === 'teleport' && result.kind === 'finalized') setFunding('waiting');
+    // Unless the teleport is proven failed (ExtrinsicFailed, or refused before it left), it may still land: poll People
+    // and keep the teleport button away, so an unknown outcome never invites a second teleport.
+    if (action.kind === 'teleport' && result.kind !== 'failed') setFunding('waiting');
+    if (action.kind === 'approve' && result.kind !== 'failed') referralCache.current = null;
   };
 
   const backToMain = () => { setPhase('main'); setAction(null); signer.reset(); refresh(); };
@@ -200,6 +218,8 @@ function CitizenBody({ address }: { address: string }) {
               {action.kind === 'approve' && <><dt>{t('iwallet.citizen.row.applicant')}</dt><dd><bdi dir="ltr">{action.applicant}</bdi></dd></>}
               {action.kind === 'teleport' && <>
                 <dt>{t('iwallet.citizen.row.to')}</dt><dd>{t('iwallet.citizen.chain.people')}</dd>
+                <dt>{t('iwallet.citizen.row.recipient')}</dt>
+                <dd className="iw-addr iw-recipient"><bdi dir="ltr" className="iw-addr-text">{shortAddress(address)}</bdi><CopyAddress address={address} label={t('iwallet.citizen.copyOwn')} /></dd>
                 <dt>{t('iwallet.send.amount')}</dt><dd><bdi dir="ltr">{hez(action.amount)}</bdi></dd>
               </>}
               <dt>{t('iwallet.send.feeLabel')}</dt><dd><bdi dir="ltr">{fee !== null ? hez(fee) : '—'}</bdi></dd>
@@ -239,8 +259,8 @@ function CitizenBody({ address }: { address: string }) {
 
   const { status } = data;
   const amount = teleportAmount(data.deposit);
-  const ahNeed = amount + (data.teleportFee ?? 0n) + IWALLET_ED.assetHub;
-  const peopleNeed = data.deposit + (data.applyFee ?? 0n) + IWALLET_ED.people;
+  const ahNeed = assetHubNeed(amount, data.teleportFee ?? 0n, IWALLET_ED.assetHub);
+  const peopleNeed = data.deposit + applyFee + IWALLET_ED.people;
   const field = (k: 'fullName' | 'fatherName' | 'grandfatherName' | 'motherName' | 'tribe' | 'profession', label: string) => (
     <>
       <label className="iw-field">

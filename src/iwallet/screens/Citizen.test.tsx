@@ -7,6 +7,7 @@ import { IWalletProvider } from '../IWalletContext';
 import IWalletShell, { IWalletIndex } from '../IWalletRoutes';
 import { FUNDING_POLL, identityHash, loadForm, type CitizenForm } from '../citizen';
 import Citizen from './Citizen';
+import { shortAddress } from '../../lib/address';
 import type { KvStore } from '../idb';
 
 const ADDR = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
@@ -15,11 +16,12 @@ const T = 10n ** 12n;
 const DEPOSIT = 1n * T;
 const FEE = 10_000_000n;
 const ED = 3_333_333n;
+const REF_EXTRA = 1_066_656n;
 
 const impl = vi.hoisted(() => ({
   status: 'NotStarted', nft: null as bigint | null, people: 0n, peopleAfter: [] as bigint[], assetHub: 0n,
   apps: [] as Array<{ applicant: string; referrer: string; status: string }>,
-  script: ['inBlock', 'finalized'] as string[],
+  script: ['inBlock', 'finalized'] as string[], dropAfterSend: false, scans: 0,
   signed: [] as Array<{ name: string; args: unknown[] }>, pairs: [] as Array<{ lock: ReturnType<typeof vi.fn> }>,
 }));
 
@@ -48,21 +50,30 @@ const result = (kind: string) => {
   return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } }, dispatchError: { isModule: true, asModule: {} } };
 };
 const mkTx = (name: string, args: unknown[]) => ({
-  paymentInfo: () => Promise.resolve({ partialFee: { toBigInt: () => FEE } }),
+  // An apply with Some(referrer) is 32 bytes longer and costs REF_EXTRA more, as measured on mainnet.
+  paymentInfo: () => Promise.resolve({ partialFee: { toBigInt: () => (name === 'identityKyc.applyForCitizenship' && args[1] !== null ? FEE + REF_EXTRA : FEE) } }),
   signAsync: vi.fn(() => { impl.signed.push({ name, args }); return Promise.resolve(); }),
-  send: (cb: (r: unknown) => void) => { impl.script.forEach((k) => cb(result(k))); return Promise.resolve(() => undefined); },
+  send: (cb: (r: unknown) => void) => {
+    // A dropped connection after the hand-off: the node may already hold the extrinsic.
+    if (impl.dropAfterSend) return Promise.reject(new Error('ws closed'));
+    impl.script.forEach((k) => cb(result(k)));
+    return Promise.resolve(() => undefined);
+  },
 });
+const statusOf = (a: string) => (a === ADDR ? impl.status : (impl.apps.find((x) => x.applicant === a)?.status ?? 'NotStarted'));
 const account = (free: () => bigint) => () => Promise.resolve({ data: { free: { toBigInt: free }, reserved: { toBigInt: () => 0n }, frozen: { toBigInt: () => 0n } } });
 const tx = (name: string) => (...a: unknown[]) => mkTx(name, a);
 const people = {
   query: {
     system: { account: account(() => (impl.peopleAfter.length ? impl.peopleAfter.shift()! : impl.people)) },
     identityKyc: {
-      kycStatuses: (a: string) => Promise.resolve({ type: a === ADDR ? impl.status : (impl.apps.find((x) => x.applicant === a)?.status ?? 'NotStarted') }),
-      applications: { entries: () => Promise.resolve(impl.apps.map((x) => [
+      kycStatuses: Object.assign((a: string) => Promise.resolve({ type: statusOf(a) }), {
+        multi: (as: string[]) => Promise.resolve(as.map((a) => ({ type: statusOf(a) }))),
+      }),
+      applications: { entries: () => { impl.scans += 1; return Promise.resolve(impl.apps.map((x) => [
         { args: [{ toString: () => x.applicant }] },
         { isSome: true, unwrap: () => ({ identityHash: { toString: () => '0xh' }, referrer: { toString: () => x.referrer } }) },
-      ])) },
+      ])); } },
     },
     tiki: { citizenNft: () => Promise.resolve({ isSome: impl.nft !== null, unwrap: () => ({ toBigInt: () => impl.nft }) }) },
   },
@@ -126,7 +137,7 @@ describe('i-Wallet citizenship', () => {
     await i18n.changeLanguage('tr');
     localStorage.clear();
     store = new Map<string, unknown>([['keystore', {}], ['words', {}]]);
-    Object.assign(impl, { status: 'NotStarted', nft: null, people: 0n, peopleAfter: [], assetHub: 10n * T, apps: [], script: ['inBlock', 'finalized'] });
+    Object.assign(impl, { status: 'NotStarted', nft: null, people: 0n, peopleAfter: [], assetHub: 10n * T, apps: [], script: ['inBlock', 'finalized'], dropAfterSend: false, scans: 0 });
     impl.signed = []; impl.pairs = [];
     Object.assign(FUNDING_POLL, { everyMs: 20, forMs: 2_000 });
   });
@@ -295,5 +306,69 @@ describe('i-Wallet citizenship', () => {
     await signWith('right-pass1');
     expect(await screen.findByText('Referans onaylandı')).toBeInTheDocument();
     expect(impl.signed).toEqual([{ name: 'identityKyc.approveReferral', args: [BOB] }]);
+  });
+  it('keeps polling after a teleport whose outcome is unknown, and never offers a second teleport', async () => {
+    impl.dropAfterSend = true;
+    renderCitizen(); await login();
+    await user.click(await screen.findByRole('button', { name: /1,5 HEZ taşı/ }));
+    await signWith('right-pass1');
+    expect(impl.signed.map((x) => x.name)).toEqual(['pezkuwiXcm.limitedTeleportAssets']);
+    await user.click(await screen.findByRole('button', { name: 'Vatandaşlığa dön' }));
+    expect(await screen.findByText('HEZ\'in vatandaşlık zincirine ulaşması bekleniyor…')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /1,5 HEZ taşı/ })).toBeNull();
+    // When the window ends without funds: "check again", still no teleport button.
+    expect(await screen.findByRole('button', { name: 'Tekrar kontrol et' }, { timeout: 4_000 })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /1,5 HEZ taşı/ })).toBeNull();
+  });
+
+  it('offers the teleport again only after a proven failure', async () => {
+    impl.script = ['failed'];
+    renderCitizen(); await login();
+    await user.click(await screen.findByRole('button', { name: /1,5 HEZ taşı/ }));
+    await signWith('right-pass1');
+    await user.click(await screen.findByRole('button', { name: 'Vatandaşlığa dön' }));
+    expect(await screen.findByRole('button', { name: /1,5 HEZ taşı/ })).toBeEnabled();
+    expect(screen.queryByText(/ulaşması bekleniyor/)).toBeNull();
+  });
+
+  it('shows the recipient (own account) and the destination chain on the teleport confirm', async () => {
+    renderCitizen(); await login();
+    await user.click(await screen.findByRole('button', { name: /1,5 HEZ taşı/ }));
+    expect(screen.getByText('Alıcı (kendi hesabınız)')).toBeInTheDocument();
+    expect(screen.getByText(shortAddress(ADDR))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Adresinizi kopyalayın' })).toBeInTheDocument();
+    expect(screen.getByText('Pezkuwi People (vatandaşlık)')).toBeInTheDocument();
+  });
+
+  it('keeps a delivery-fee allowance on Asset Hub', async () => {
+    // Exactly amount + tx fee + ED, without the allowance: not enough.
+    impl.assetHub = DEPOSIT + T / 2n + FEE + ED;
+    renderCitizen(); await login();
+    expect(await screen.findByRole('button', { name: /1,5 HEZ taşı/ })).toBeDisabled();
+  });
+
+  it('prices the apply fee with the referrer when one is entered', async () => {
+    impl.people = DEPOSIT + FEE + ED; // enough without a referrer, REF_EXTRA short with one
+    seedForm(FORM);
+    renderCitizen(); await login();
+    await screen.findByRole('button', { name: 'Başvuruyu Gönder' });
+    expect(screen.queryByRole('heading', { name: fundTitle })).toBeNull();
+    await user.type(screen.getByLabelText('Referans adresi (isteğe bağlı)'), BOB);
+    expect(screen.getByRole('heading', { name: fundTitle })).toBeInTheDocument();
+  });
+
+  it('does not scan referrals unless this account is an Approved citizen, and scans once per page view', async () => {
+    impl.apps = [{ applicant: BOB, referrer: ADDR, status: 'PendingReferral' }];
+    impl.people = T; impl.status = 'PendingReferral';
+    const first = renderCitizen(); await login();
+    await screen.findByText('Referans Onayı Bekleniyor');
+    expect(impl.scans).toBe(0);
+    expect(screen.queryByText('Onayınızı bekleyen başvurular')).toBeNull();
+    first.unmount();
+
+    impl.status = 'Approved'; impl.nft = 3n;
+    renderCitizen(); await login();
+    await screen.findByText('Onayınızı bekleyen başvurular');
+    expect(impl.scans).toBe(1);
   });
 });

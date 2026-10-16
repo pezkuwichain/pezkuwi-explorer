@@ -264,7 +264,7 @@ Citizenship (Task 8, 2026-10-16): the form, stage and deposit rows carry pwap's 
 - iwallet.citizen.fund.title, fund.body, fund.cta, fund.noHez, fund.waiting, fund.late, fund.check
 - iwallet.citizen.form.email, form.referrer, form.referrerInvalid, form.referrerNote, form.privacy, form.notSaved, form.agree, form.fix
 - iwallet.citizen.citizen.title, citizen.nft; iwallet.citizen.refs.title, refs.body, refs.approve, refs.approveFor, refs.failed
-- iwallet.citizen.row.action, row.chain, row.referrer, row.deposit, row.applicant, row.to; iwallet.citizen.act.*; iwallet.citizen.chain.*; iwallet.citizen.done.*
+- iwallet.citizen.row.action, row.chain, row.referrer, row.deposit, row.applicant, row.to, row.recipient, iwallet.citizen.copyOwn; iwallet.citizen.act.*; iwallet.citizen.chain.*; iwallet.citizen.done.*
 - iwallet.err.tiki.CitizenNftAlreadyExists, iwallet.err.tiki.CitizenNftNotFound, iwallet.err.pezkuwiXcm.LocalExecutionIncompleteWithError, iwallet.err.pezkuwiXcm.FeesNotMet, iwallet.err.pezkuwiXcm.Filtered
 
 Send fix round (2026-10-16): new drafts iwallet.send.otherNetwork, iwallet.send.slow (kmr, ckb, fa, ar; tr and en written plainly); iwallet.send.parsed is the language-neutral "= {{amount}}".

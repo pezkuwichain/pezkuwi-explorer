@@ -125,19 +125,22 @@ export async function loadStatus(address: string, deps: Deps = real): Promise<Ci
 export type PendingReferral = { applicant: string; identityHash: string };
 // Applications that name this account as referrer and still wait for its approval (pwap getPendingApprovalsForReferrer).
 // The applications struct is { identityHash, referrer } with the referrer always set (the pallet fills its default).
+// Only citizens can be referrers (ReferrerNotCitizen), so callers run this only for an Approved account. The statuses of
+// the matching applicants are read in one batched query.
 export async function pendingReferrals(address: string, deps: Deps = real): Promise<PendingReferral[]> {
   const api = await deps.getApi('people');
   const q = api.query as never as {
     identityKyc: {
       applications: { entries(): Promise<Array<[{ args: [{ toString(): string }] }, { isSome?: boolean; unwrap?(): unknown } & AppValue]>> };
-      kycStatuses(a: string): Promise<{ type: string }>;
+      kycStatuses: { multi(a: string[]): Promise<Array<{ type: string }>> };
     };
   };
   const entries = await withTimeout(q.identityKyc.applications.entries(), REQUEST_TIMEOUT_MS);
   const mine = entries
     .map(([k, v]) => ({ applicant: k.args[0].toString(), app: unwrapApp(v) }))
     .filter((e) => e.app !== null && samePublicKey(e.app.referrer.toString(), address));
-  const statuses = await withTimeout(Promise.all(mine.map((e) => q.identityKyc.kycStatuses(e.applicant))), REQUEST_TIMEOUT_MS);
+  if (mine.length === 0) return [];
+  const statuses = await withTimeout(q.identityKyc.kycStatuses.multi(mine.map((e) => e.applicant)), REQUEST_TIMEOUT_MS);
   return mine
     .filter((_, i) => statuses[i].type === 'PendingReferral')
     .map((e) => ({ applicant: e.applicant, identityHash: e.app!.identityHash.toString() }));
@@ -188,6 +191,13 @@ export function teleportArgs(address: string, amount: bigint) {
 export function buildTeleportToPeople(assetHub: ApiPromise, address: string, amount: bigint): Tx {
   return assetHub.tx.pezkuwiXcm.limitedTeleportAssets(...teleportArgs(address, amount));
 }
+
+// Asset Hub must also pay the XCM delivery fee, which paymentInfo does not include. Measured on mainnet 2026-10-16 by
+// the dry run in scripts/iwallet-live-check.mjs: 103,299,966 TYR (~0.0001 HEZ). The screen cannot dry-run cheaply, so it
+// keeps a fixed allowance of 0.001 HEZ (about 10x the measured fee) so a balance just at the edge is not offered a
+// teleport that fails on chain.
+export const DELIVERY_FEE_ALLOWANCE = 1_000_000_000n;
+export const assetHubNeed = (amount: bigint, txFee: bigint, ed: bigint): bigint => amount + txFee + DELIVERY_FEE_ALLOWANCE + ed;
 
 // People needs the deposit, the apply fee and the existential deposit left over.
 export const needsFunding = (peopleFree: bigint, deposit: bigint, fee: bigint, ed: bigint): boolean => peopleFree < deposit + fee + ed;

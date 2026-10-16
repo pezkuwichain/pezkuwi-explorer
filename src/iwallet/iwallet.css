@@ -193,3 +193,4 @@
 .iw-stage > button { align-self: stretch; }
 .iw-refs { display: flex; flex-direction: column; gap: 8px; }
 .iw-ref { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-block-size: 56px; }
+.iw-summary dd.iw-recipient { justify-content: flex-end; }

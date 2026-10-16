@@ -10,6 +10,7 @@ import { indexedDbStore, type KvStore } from './idb';
 
 const KEYSTORE_KEY = 'keystore';
 const WORDS_KEY = 'words';
+const FACEID_KEY = 'faceid';
 const WORDS_CONTENT = ['mnemonic', 'iwallet-words'];
 
 export class WrongPasswordError extends Error {
@@ -49,23 +50,59 @@ export function quizOptions(words: string[], index: number, rand: () => number =
   return options;
 }
 
+// Thrown when a password is shorter than the minimum (strength < 2); nothing is encrypted with it.
+export class WeakPasswordError extends Error {
+  constructor() { super('Password is too weak'); this.name = 'WeakPasswordError'; }
+}
+// Stored data that is malformed or not scrypt + xsalsa20-poly1305 encrypted: no password can open it.
+export class CorruptKeystoreError extends Error {
+  constructor() { super('Stored wallet data is corrupt'); this.name = 'CorruptKeystoreError'; }
+}
+// The browser storage itself failed (as opposed to holding no wallet).
+export class StorageUnavailableError extends Error {
+  constructor() { super('Storage is unavailable'); this.name = 'StorageUnavailableError'; }
+}
+
+const REQUIRED_ENCODING = ['scrypt', 'xsalsa20-poly1305'];
+
+function assertEncrypted(value: unknown): void {
+  const v = value as { encoded?: unknown; encoding?: { type?: unknown; content?: unknown } } | null | undefined;
+  const type = v?.encoding?.type;
+  if (
+    typeof v !== 'object' || v === null || typeof v.encoded !== 'string' || !Array.isArray(v.encoding?.content) ||
+    !Array.isArray(type) || !REQUIRED_ENCODING.every((t) => type.includes(t))
+  ) throw new CorruptKeystoreError();
+}
+
+const assertStrong = (password: string): void => { if (passwordStrength(password) < 2) throw new WeakPasswordError(); };
+const isWrongPassword = (e: unknown): boolean => e instanceof Error && e.message.includes('supplied passphrase');
+
 export async function createKeystore(mnemonic: string, password: string): Promise<{ address: string; json: KeyringPair$Json }> {
+  assertStrong(password);
+  const words = normaliseMnemonic(mnemonic);
+  // addFromMnemonic parses a SURI: refuse anything that is not plain words (e.g. //hard suffixes).
+  if (!isValidMnemonic(words)) throw new Error('Invalid mnemonic');
   await waitReady();
   const keyring = new Keyring({ type: 'sr25519', ss58Format: IWALLET_NETWORK.ss58 });
-  const pair = keyring.addFromMnemonic(normaliseMnemonic(mnemonic), { name: 'i-Wallet' });
+  const pair = keyring.addFromMnemonic(words, { name: 'i-Wallet' });
   const json = pair.toJson(password);
-  return { address: pair.address, json };
+  const address = pair.address;
+  pair.lock();
+  return { address, json };
 }
 
 export async function unlock(json: KeyringPair$Json, password: string): Promise<KeyringPair> {
+  assertEncrypted(json);
   await waitReady();
   const keyring = new Keyring({ type: 'sr25519', ss58Format: IWALLET_NETWORK.ss58 });
-  const pair = keyring.createFromJson(json);
-  try { pair.decodePkcs8(password); } catch { throw new WrongPasswordError(); }
+  let pair: KeyringPair;
+  try { pair = keyring.createFromJson(json); } catch { throw new CorruptKeystoreError(); }
+  try { pair.decodePkcs8(password); } catch (e) { throw isWrongPassword(e) ? new WrongPasswordError() : new CorruptKeystoreError(); }
   return pair;
 }
 
 export async function saveWords(mnemonic: string, password: string, store: KvStore = indexedDbStore): Promise<boolean> {
+  assertStrong(password);
   try {
     await waitReady();
     const enc = jsonEncrypt(stringToU8a(normaliseMnemonic(mnemonic)), WORDS_CONTENT, password);
@@ -76,23 +113,33 @@ export async function saveWords(mnemonic: string, password: string, store: KvSto
 
 export async function loadWords(password: string, store: KvStore = indexedDbStore): Promise<string> {
   await waitReady();
-  const enc = (await store.get(WORDS_KEY)) as EncryptedJson | undefined;
-  if (!enc) throw new Error('No saved words');
-  try { return u8aToString(jsonDecrypt(enc, password)); } catch { throw new WrongPasswordError(); }
+  let enc: unknown;
+  try { enc = await store.get(WORDS_KEY); } catch { throw new StorageUnavailableError(); }
+  if (enc === undefined || enc === null) throw new Error('No saved words');
+  assertEncrypted(enc);
+  try { return u8aToString(jsonDecrypt(enc as EncryptedJson, password)); } catch (e) {
+    throw isWrongPassword(e) ? new WrongPasswordError() : new CorruptKeystoreError();
+  }
 }
 
 export async function saveKeystore(json: KeyringPair$Json, store: KvStore = indexedDbStore): Promise<boolean> {
   try { await store.set(KEYSTORE_KEY, json); return true; } catch { return false; }
 }
 
-// null when there is no wallet or this browser has no usable storage (private mode, cleared data).
+// null only when there is no wallet; a storage failure throws StorageUnavailableError so the UI
+// never offers "create" over a wallet it merely failed to read.
 export async function loadKeystore(store: KvStore = indexedDbStore): Promise<KeyringPair$Json | null> {
-  try { return ((await store.get(KEYSTORE_KEY)) as KeyringPair$Json | undefined) ?? null; } catch { return null; }
+  let v: unknown;
+  try { v = await store.get(KEYSTORE_KEY); } catch { throw new StorageUnavailableError(); }
+  return (v as KeyringPair$Json | undefined) ?? null;
 }
 
 export async function deleteKeystore(store: KvStore = indexedDbStore): Promise<void> {
-  await store.delete(KEYSTORE_KEY);
+  if (store.deleteMany) { await store.deleteMany([KEYSTORE_KEY, WORDS_KEY, FACEID_KEY]); return; }
+  // Fallback for stores without a batch op: words first, so a partial failure leaves a usable wallet.
+  await store.delete(FACEID_KEY);
   await store.delete(WORDS_KEY);
+  await store.delete(KEYSTORE_KEY);
 }
 
 export async function requestPersistence(): Promise<boolean> {

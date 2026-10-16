@@ -1,10 +1,11 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import { Keyring } from '@pezkuwi/keyring';
-import { cryptoWaitReady } from '@pezkuwi/util-crypto';
+import { cryptoWaitReady, mnemonicToMiniSecret, sr25519PairFromSeed } from '@pezkuwi/util-crypto';
+import { base64Decode } from '@pezkuwi/util-crypto';
 import type { KvStore } from './idb';
 import {
-  WrongPasswordError, createKeystore, deleteKeystore, isValidMnemonic, loadKeystore, loadWords, newMnemonic,
+  CorruptKeystoreError, StorageUnavailableError, WeakPasswordError, WrongPasswordError, createKeystore, deleteKeystore, isValidMnemonic, loadKeystore, loadWords, newMnemonic,
   normaliseMnemonic, passwordStrength, quizIndices, quizOptions, saveKeystore, saveWords, unlock,
 } from './keystore';
 
@@ -15,8 +16,10 @@ const mapStore = (): KvStore & { data: Map<string, unknown> } => {
     get: async (k) => data.get(k),
     set: async (k, v) => { data.set(k, v); },
     delete: async (k) => { data.delete(k); },
+    deleteMany: async (ks) => { for (const k of ks) data.delete(k); },
   };
 };
+vi.setConfig({ testTimeout: 30_000 }); // scrypt is deliberately slow, more so on a loaded runner
 const PW = 'correct horse battery';
 
 describe('mnemonics', () => {
@@ -83,14 +86,49 @@ describe('keystore', () => {
     const { json } = await createKeystore(newMnemonic(), PW);
     await expect(unlock(json, 'not the password')).rejects.toBeInstanceOf(WrongPasswordError);
   });
-  it('never exports the pair without a password', async () => {
+  it('stores an importable, really encrypted polkadot-js keystore', async () => {
+    const m = newMnemonic();
+    const { json } = await createKeystore(m, PW);
+    expect(json.encoding.content).toEqual(['pkcs8', 'sr25519']);
+    expect(json.encoding.type).toEqual(['scrypt', 'xsalsa20-poly1305']);
+    const bytes = Buffer.from(base64Decode(json.encoded));
+    const { secretKey, publicKey } = sr25519PairFromSeed(mnemonicToMiniSecret(m));
+    expect(bytes.includes(Buffer.from(secretKey))).toBe(false);
+    expect(bytes.includes(Buffer.from(publicKey))).toBe(false);
+    expect(bytes.includes(Buffer.from(mnemonicToMiniSecret(m)))).toBe(false);
+  });
+  it('refuses weak or empty passwords and plaintext blobs', async () => {
+    const m = newMnemonic();
+    await expect(createKeystore(m, '')).rejects.toBeInstanceOf(WeakPasswordError);
+    await expect(createKeystore(m, 'short')).rejects.toBeInstanceOf(WeakPasswordError);
+    const store = mapStore();
+    await expect(saveWords(m, '', store)).rejects.toBeInstanceOf(WeakPasswordError);
+    expect(store.data.size).toBe(0);
+    // A keystore / words blob that is not scrypt + xsalsa20-poly1305 is never opened.
+    const { json } = await createKeystore(m, PW);
+    const plain = { ...json, encoding: { ...json.encoding, type: ['none'] } } as typeof json;
+    await expect(unlock(plain, '')).rejects.toBeInstanceOf(CorruptKeystoreError);
+    store.data.set('words', { encoded: 'AAAA', encoding: { content: ['x'], type: ['none'], version: '3' } });
+    await expect(loadWords('', store)).rejects.toBeInstanceOf(CorruptKeystoreError);
+  });
+  it('reports malformed data as corrupt, not as a wrong password', async () => {
     const { json } = await createKeystore(newMnemonic(), PW);
-    const pair = await unlock(json, PW);
-    const spy = vi.spyOn(pair, 'toJson');
-    await unlock(json, PW);
-    expect(spy).not.toHaveBeenCalled();
-    // The stored form is encrypted: the secret is not readable without the password.
-    expect(json.encoded).not.toContain(' ');
+    await expect(unlock({} as typeof json, PW)).rejects.toBeInstanceOf(CorruptKeystoreError);
+    const store = mapStore();
+    store.data.set('words', 'garbage');
+    await expect(loadWords(PW, store)).rejects.toBeInstanceOf(CorruptKeystoreError);
+  });
+  it('refuses a mnemonic with derivation suffixes or bad words', async () => {
+    const m = newMnemonic();
+    await expect(createKeystore(`${m}//hard`, PW)).rejects.toThrow('Invalid mnemonic');
+    await expect(createKeystore('not a mnemonic', PW)).rejects.toThrow('Invalid mnemonic');
+  });
+  it('locks the temporary pair after exporting it', async () => {
+    const lock = vi.spyOn(Keyring.prototype, 'addFromMnemonic');
+    await createKeystore(newMnemonic(), PW);
+    const pair = lock.mock.results[0].value as { isLocked: boolean };
+    expect(pair.isLocked).toBe(true);
+    lock.mockRestore();
   });
   it('does not mutate or retain the mnemonic', async () => {
     const m = newMnemonic();
@@ -101,13 +139,13 @@ describe('keystore', () => {
   });
   it('saveKeystore returns false when the store throws', async () => {
     const { json } = await createKeystore(newMnemonic(), PW);
-    const bad: KvStore = { get: async () => undefined, set: async () => { throw new Error('quota'); }, delete: async () => undefined };
+    const bad: KvStore = { get: async () => undefined, set: async () => { throw new Error('quota'); }, delete: async () => undefined, deleteMany: async () => undefined };
     expect(await saveKeystore(json, bad)).toBe(false);
   });
-  it('loadKeystore returns null when storage is empty or broken', async () => {
+  it('loadKeystore returns null only for no entry; a storage failure throws', async () => {
     expect(await loadKeystore(mapStore())).toBeNull();
-    const bad: KvStore = { get: async () => { throw new Error('denied'); }, set: async () => undefined, delete: async () => undefined };
-    expect(await loadKeystore(bad)).toBeNull();
+    const bad: KvStore = { get: async () => { throw new Error('denied'); }, set: async () => undefined, delete: async () => undefined, deleteMany: async () => undefined };
+    await expect(loadKeystore(bad)).rejects.toBeInstanceOf(StorageUnavailableError);
   });
 });
 
@@ -121,7 +159,7 @@ describe('encrypted words', () => {
     await expect(loadWords('nope nope nope', store)).rejects.toBeInstanceOf(WrongPasswordError);
   });
   it('saveWords returns false when the store throws', async () => {
-    const bad: KvStore = { get: async () => undefined, set: async () => { throw new Error('x'); }, delete: async () => undefined };
+    const bad: KvStore = { get: async () => undefined, set: async () => { throw new Error('x'); }, delete: async () => undefined, deleteMany: async () => undefined };
     expect(await saveWords(newMnemonic(), PW, bad)).toBe(false);
   });
   it('deleteKeystore removes keystore and words', async () => {
@@ -129,7 +167,10 @@ describe('encrypted words', () => {
     const m = newMnemonic();
     await saveKeystore((await createKeystore(m, PW)).json, store);
     await saveWords(m, PW, store);
+    store.data.set('faceid', { wrapped: 'x' });
+    const many = vi.spyOn(store, 'deleteMany');
     await deleteKeystore(store);
+    expect(many).toHaveBeenCalledWith(['keystore', 'words', 'faceid']);
     expect(store.data.size).toBe(0);
     expect(await loadKeystore(store)).toBeNull();
   });

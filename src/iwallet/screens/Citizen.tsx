@@ -172,6 +172,7 @@ function CitizenBody({ address }: { address: string }) {
             <h2 className="iw-h1">{t('iwallet.citizen.failedTitle')}</h2>
             <p className="iw-error" role="alert">{o.message}</p>
           </>}
+          {o.kind === 'slow' && <p className="iw-note" role="status">{t('iwallet.send.slow')}</p>}
           {o.kind === 'interrupted' && <p className="iw-note" role="alert">{t('iwallet.citizen.interrupted')}</p>}
           {o.kind !== 'pending' && o.kind !== 'inBlock' && (
             <button type="button" className="iw-primary" onClick={backToMain}>{t('iwallet.citizen.back')}</button>

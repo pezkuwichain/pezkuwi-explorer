@@ -50,28 +50,48 @@ export type SubmitEvent =
   | { type: 'inBlock'; blockHash: string }
   | { type: 'finalized'; blockHash: string; extrinsicHash: string }
   | { type: 'failed'; dispatchError: DispatchError }
-  | { type: 'dropped' };
+  | { type: 'dropped' }
+  // Finalized, but system.ExtrinsicSuccess could not be found in this extrinsic's events: the result is unknown.
+  | { type: 'unknown' }
+  // The node gave up waiting for finality; the extrinsic may still be finalized later.
+  | { type: 'slow'; inBlock: boolean };
 
-// Signs, locks the pair, then sends. Resolves after a terminal event (finalized, failed or dropped); rejects if the node refuses the
-// transaction or the connection fails. 'submitted' is reported first, so a caller knows a later rejection happened
-// after the transaction left this device.
+const hasSuccess = (r: ISubmittableResult): boolean =>
+  !r.internalError && r.events.some(({ event }) => event.section === 'system' && event.method === 'ExtrinsicSuccess');
+
+// A refusal by the node's transaction pool (invalid, stale, future, bad signature, too low priority): the
+// transaction was NOT accepted, so "failed" is true. Any other rejection after hand-off (socket closed, timeout)
+// leaves the outcome unknown.
+export function isNodeRefusal(e: unknown): boolean {
+  const code = (e as { code?: unknown } | null)?.code;
+  if (typeof code === 'number' && code >= 1010 && code <= 1014) return true;
+  return /^\s*10(1[0-4]):/.test(String((e as { message?: unknown } | null)?.message ?? ''));
+}
+
+// Signs, locks the pair, then sends. Resolves after a terminal event; rejects if signing fails (before anything left
+// this device) or if the send call rejects. 'submitted' is reported just BEFORE the extrinsic is handed to the node,
+// so a caller knows that any later rejection may hide a transaction that is already in the pool.
 export async function submit(tx: Tx, pair: KeyringPair, onStatus: (e: SubmitEvent) => void): Promise<void> {
   // The secret key is needed only to sign: wipe it before the (possibly long) wait for finality.
   try { await tx.signAsync(pair, { nonce: -1 }); } finally { try { pair.lock(); } catch { /* already locked */ } }
   return new Promise<void>((resolve, reject) => {
     let unsub: (() => void) | undefined;
     let done = false;
-    let started = false;
+    let seenInBlock = false;
     const finish = () => { done = true; unsub?.(); resolve(); };
     const handle = (r: ISubmittableResult) => {
       if (done) return;
-      if (!started) { started = true; onStatus({ type: 'submitted' }); }
       if (r.dispatchError) { onStatus({ type: 'failed', dispatchError: r.dispatchError }); finish(); return; }
       const s = r.status;
-      if (s.isInBlock) onStatus({ type: 'inBlock', blockHash: s.asInBlock.toHex() });
-      else if (s.isFinalized) { onStatus({ type: 'finalized', blockHash: s.asFinalized.toHex(), extrinsicHash: r.txHash.toHex() }); finish(); }
+      if (s.isInBlock) { seenInBlock = true; onStatus({ type: 'inBlock', blockHash: s.asInBlock.toHex() }); }
+      else if (s.isFinalized) {
+        if (hasSuccess(r)) onStatus({ type: 'finalized', blockHash: s.asFinalized.toHex(), extrinsicHash: r.txHash.toHex() });
+        else onStatus({ type: 'unknown' });
+        finish();
+      } else if (s.isFinalityTimeout) { onStatus({ type: 'slow', inBlock: seenInBlock }); finish(); }
       else if (s.isDropped || s.isInvalid || s.isUsurped) { onStatus({ type: 'dropped' }); finish(); }
     };
+    onStatus({ type: 'submitted' });
     tx.send(handle).then(
       (u) => { unsub = u as () => void; if (done) unsub(); },
       (e: unknown) => { done = true; reject(e); },

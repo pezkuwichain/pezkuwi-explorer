@@ -15,7 +15,7 @@ describe('parseAmount', () => {
     expect(parseAmount('1.0000000000001', 12)).toBeNull();
   });
   it('rejects anything that is not a plain non-negative number', () => {
-    for (const bad of ['', ' ', '.', ',', 'abc', '1e3', '-1', '+1', '1.2.3', '1,2,3', '0x10', '1 000']) {
+    for (const bad of ['', ' ', '.', ',', 'abc', '1e3', '-1', '+1', '1.2.3', '1,2,3', '0x10', '1 000', '1.000,5', '1,000.5', '1,000,5']) {
       expect(parseAmount(bad, 12), bad).toBeNull();
     }
   });

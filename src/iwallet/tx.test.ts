@@ -4,7 +4,7 @@ import type { KeyringPair } from '@pezkuwi/keyring/types';
 import { ERROR_KEYS } from './errors';
 import en from '../i18n/locales/en.json';
 import {
-  LARGE_HEZ, buildTransfer, estimateFee, friendlyError, maxSendable, needsLargeAck, submit, tokenInfo, type SubmitEvent,
+  LARGE_HEZ, buildTransfer, estimateFee, friendlyError, isNodeRefusal, maxSendable, needsLargeAck, submit, tokenInfo, type SubmitEvent,
 } from './tx';
 
 const T = 10n ** 12n;
@@ -99,9 +99,9 @@ describe('friendlyError', () => {
   });
 });
 
-const res = (over: Record<string, unknown>) => ({
-  dispatchError: undefined, txHash: { toHex: () => '0xhash' },
-  status: { isInBlock: false, isFinalized: false, isDropped: false, isInvalid: false, isUsurped: false, ...over },
+const res = (over: Record<string, unknown>, events: unknown[] = [{ event: { section: 'system', method: 'ExtrinsicSuccess' } }], internalError?: unknown) => ({
+  events, internalError, dispatchError: undefined, txHash: { toHex: () => '0xhash' },
+  status: { isInBlock: false, isFinalized: false, isDropped: false, isInvalid: false, isUsurped: false, isFinalityTimeout: false, ...over },
 });
 const pairStub = () => ({ lock: vi.fn() }) as unknown as KeyringPair & { lock: ReturnType<typeof vi.fn> };
 
@@ -142,5 +142,44 @@ describe('submit', () => {
     await expect(submit(tx as never, pair, () => undefined)).rejects.toThrow('bad');
     expect(pair.lock).toHaveBeenCalled();
     expect(tx.send).not.toHaveBeenCalled();
+  });
+  it('is not a success when the finalized result has no ExtrinsicSuccess or its events could not be read', async () => {
+    for (const [events, internalError] of [[[], undefined], [[], new Error('events')], [[{ event: { section: 'system', method: 'ExtrinsicFailed' } }], undefined]] as const) {
+      const tx = {
+        signAsync: () => Promise.resolve(),
+        send: (cb: (r: unknown) => void) => { cb(res({ isFinalized: true, asFinalized: { toHex: () => '0xb2' } }, [...events], internalError)); return Promise.resolve(() => undefined); },
+      };
+      const seen: SubmitEvent[] = [];
+      await submit(tx as never, pairStub(), (e) => seen.push(e));
+      expect(seen).toEqual([{ type: 'submitted' }, { type: 'unknown' }]);
+    }
+  });
+  it('reports hand-off before the node answers, so a later rejection is known to be uncertain', async () => {
+    const seen: SubmitEvent[] = [];
+    const tx = { signAsync: () => Promise.resolve(), send: () => Promise.reject(new Error('ws closed')) };
+    await expect(submit(tx as never, pairStub(), (e) => seen.push(e))).rejects.toThrow('ws closed');
+    expect(seen).toEqual([{ type: 'submitted' }]);
+  });
+  it('turns a finality timeout into a terminal slow event', async () => {
+    const tx = {
+      signAsync: () => Promise.resolve(),
+      send: (cb: (r: unknown) => void) => {
+        cb(res({ isInBlock: true, asInBlock: { toHex: () => '0xb1' } }));
+        cb(res({ isFinalityTimeout: true }));
+        return Promise.resolve(() => undefined);
+      },
+    };
+    const seen: SubmitEvent[] = [];
+    await submit(tx as never, pairStub(), (e) => seen.push(e));
+    expect(seen.at(-1)).toEqual({ type: 'slow', inBlock: true });
+  });
+});
+
+describe('isNodeRefusal', () => {
+  it('knows the pool refusals and nothing else', () => {
+    expect(isNodeRefusal({ code: 1010 })).toBe(true);
+    expect(isNodeRefusal(new Error('1014: Priority is too low'))).toBe(true);
+    expect(isNodeRefusal(new Error('WebSocket is not connected'))).toBe(false);
+    expect(isNodeRefusal(new Error('Request timed out'))).toBe(false);
   });
 });

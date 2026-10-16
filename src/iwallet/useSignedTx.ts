@@ -4,7 +4,7 @@ import type { ApiPromise } from '@pezkuwi/api';
 import type { SubmittableExtrinsic } from '@pezkuwi/api/types';
 import { CorruptKeystoreError, WrongPasswordError, unlock as decrypt } from './keystore';
 import { useIWallet } from './IWalletContext';
-import { friendlyError, submit, type SubmitEvent } from './tx';
+import { friendlyError, isNodeRefusal, submit, type SubmitEvent } from './tx';
 
 // The signing step shared by the citizenship actions, with the same rule as Send (Task 7): each action decrypts a
 // fresh pair from the password (or Face ID), signs, and locks that pair before waiting for the chain.
@@ -13,7 +13,9 @@ export type TxOutcome =
   | { kind: 'idle' }
   | { kind: 'pending' }
   | { kind: 'inBlock' }
-  | { kind: 'finalized'; hash: string }
+  | { kind: 'finalized'; hash: string; blockHash: string }
+  // In a block, but the node stopped waiting for finality: final confirmation is slow.
+  | { kind: 'slow' }
   | { kind: 'failed'; message: string }
   | { kind: 'interrupted' };
 
@@ -43,21 +45,31 @@ export function useSignedTx() {
     const set = (o: TxOutcome) => { last = o; setOutcome(o); };
     set({ kind: 'pending' });
     let terminal = false;
-    let submitted = false;
-    const onDisconnect = () => { if (!terminal && submitted) set({ kind: 'interrupted' }); };
+    let handedOff = false;
+    // Once the extrinsic may have left this device, a lost connection means "unknown", never "failed".
+    let onDisconnect: () => void = () => undefined;
+    const disconnected = new Promise<'disconnected'>((resolve) => {
+      onDisconnect = () => { if (!terminal && handedOff) { terminal = true; set({ kind: 'interrupted' }); resolve('disconnected'); } };
+    });
     api.on('disconnected', onDisconnect);
     const onStatus = (ev: SubmitEvent) => {
-      if (ev.type === 'submitted') submitted = true;
+      if (terminal) return;
+      if (ev.type === 'submitted') handedOff = true;
       else if (ev.type === 'inBlock') set({ kind: 'inBlock' });
-      else if (ev.type === 'finalized') { terminal = true; set({ kind: 'finalized', hash: ev.extrinsicHash }); }
+      else if (ev.type === 'finalized') { terminal = true; set({ kind: 'finalized', hash: ev.extrinsicHash, blockHash: ev.blockHash }); }
       else if (ev.type === 'failed') { terminal = true; set({ kind: 'failed', message: friendlyError(api, ev.dispatchError, t) }); }
       else if (ev.type === 'dropped') { terminal = true; set({ kind: 'failed', message: t('iwallet.send.dropped') }); }
+      else if (ev.type === 'unknown') { terminal = true; set({ kind: 'interrupted' }); }
+      else if (ev.type === 'slow') { terminal = true; set(ev.inBlock ? { kind: 'slow' } : { kind: 'interrupted' }); }
     };
     try {
-      await submit(build(), pair, onStatus);
-    } catch {
-      terminal = true;
-      set(submitted ? { kind: 'interrupted' } : { kind: 'failed', message: t('iwallet.error.generic') });
+      await Promise.race([submit(build(), pair, onStatus), disconnected]);
+    } catch (err) {
+      // Only a failure before hand-off, or a refusal by the node's pool, proves nothing was sent.
+      if (!terminal) {
+        terminal = true;
+        set(handedOff && !isNodeRefusal(err) ? { kind: 'interrupted' } : { kind: 'failed', message: t('iwallet.error.generic') });
+      }
     } finally {
       try { pair.lock(); } catch { /* already locked */ }
       api.off('disconnected', onDisconnect);

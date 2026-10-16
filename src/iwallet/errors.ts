@@ -7,7 +7,7 @@ export const ERROR_KEYS: Readonly<Record<string, string>> = Object.fromEntries([
   'assets.BalanceLow', 'assets.NoAccount', 'assets.NoPermission', 'assets.Frozen', 'assets.BelowMinimum', 'assets.Unknown',
   'identityKyc.ApplicationAlreadyExists', 'identityKyc.ApplicationNotFound', 'identityKyc.ReferrerNotCitizen',
   'identityKyc.SelfReferral', 'identityKyc.CannotApproveInCurrentState', 'identityKyc.CannotConfirmInCurrentState',
-  'identityKyc.NotTheReferrer', 'identityKyc.IdentityHashAlreadyUsed', 'identityKyc.AlreadyACitizen',
+  'identityKyc.NotTheReferrer', 'identityKyc.IdentityHashAlreadyUsed',
   'identityKyc.NotACitizen', 'identityKyc.CannotCancelInCurrentState',
   'tiki.KycNotCompleted', 'tiki.UserAlreadyHasRole', 'tiki.RoleAlreadyTaken',
   // Citizenship (Task 8): measured on mainnet People / Asset Hub metadata 2026-10-16.

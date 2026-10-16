@@ -17,6 +17,7 @@ const impl = vi.hoisted(() => ({
   script: [] as string[], sendRejects: false, faceOn: false, face: null as string | null,
   signed: [] as Array<{ name: string; args: unknown[] }>, pairs: [] as Array<{ lock: ReturnType<typeof vi.fn> }>, unlockPw: [] as string[],
   scanned: null as string | null, scanFails: false,
+  feeFn: null as null | ((amount: bigint) => bigint), rejectWith: null as unknown,
 }));
 
 vi.mock('../data', () => ({
@@ -48,17 +49,23 @@ vi.mock('../keystore', async (orig) => {
 });
 
 const result = (kind: string) => {
-  const base = { dispatchError: undefined as unknown, txHash: { toHex: () => '0xabc123' }, status: { isInBlock: false, isFinalized: false, isDropped: false, isInvalid: false, isUsurped: false } };
+  const base = { events: [{ event: { section: 'system', method: 'ExtrinsicSuccess' } }], internalError: undefined as unknown, dispatchError: undefined as unknown, txHash: { toHex: () => '0xabc123' }, status: { isInBlock: false, isFinalized: false, isDropped: false, isInvalid: false, isUsurped: false, isFinalityTimeout: false } };
   if (kind === 'inBlock') return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } } };
   if (kind === 'finalized') return { ...base, status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb2' } } };
+  if (kind === 'timeout') return { ...base, status: { ...base.status, isFinalityTimeout: true } };
+  if (kind === 'finalizedNoEvents') return { ...base, events: [], internalError: new Error('events'), status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb2' } } };
   if (kind === 'dropped') return { ...base, status: { ...base.status, isDropped: true } };
   return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } }, dispatchError: { isModule: kind === 'failed', asModule: {} } };
 };
 const mkTx = (name: string, args: unknown[]) => ({
-  paymentInfo: () => (impl.fee === 'fail' ? Promise.reject(new Error('rpc')) : Promise.resolve({ partialFee: { toBigInt: () => impl.fee } })),
+  paymentInfo: () => {
+    if (impl.fee === 'fail') return Promise.reject(new Error('rpc'));
+    const fee = impl.feeFn ? impl.feeFn(args[args.length - 1] as bigint) : impl.fee;
+    return Promise.resolve({ partialFee: { toBigInt: () => fee } });
+  },
   signAsync: vi.fn(() => { impl.signed.push({ name, args }); return Promise.resolve(); }),
   send: (cb: (r: unknown) => void) => {
-    if (impl.sendRejects) return Promise.reject(new Error('ws closed'));
+    if (impl.sendRejects) return Promise.reject(impl.rejectWith ?? new Error('ws closed'));
     impl.script.forEach((k) => cb(result(k)));
     return Promise.resolve(() => undefined);
   },
@@ -102,11 +109,15 @@ const login = async () => {
   // Wait for the balances so the screen is in its settled state.
   await screen.findByText(/Kullanılabilir: [^—]/);
 };
+// The fee for the current input is known (or known to be unavailable): Review is then meaningful.
+const settled = () => waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeNull(), { timeout: 3000 });
 const amountField = () => screen.getByLabelText('Tutar');
 const review = () => screen.getByRole('button', { name: /Face ID ya da parolayla onayla/ });
 const fill = async (to: string, amount: string) => {
   await user.type(screen.getByLabelText('Alıcı adresi'), to);
+  await settled();
   await user.type(amountField(), amount);
+  await settled();
 };
 const confirmWith = async (pw: string) => {
   await user.click(review());
@@ -120,7 +131,7 @@ describe('i-Wallet send', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('tr');
     store = new Map<string, unknown>([['keystore', {}], ['words', {}]]);
-    Object.assign(impl, { hezSpendable: 5000n * T, assets: { 1: 20n * T, 1000: 9_000_000_000n }, fee: 2_000_000_000n, script: ['inBlock', 'finalized'], sendRejects: false, faceOn: false, face: null, scanned: null, scanFails: false });
+    Object.assign(impl, { hezSpendable: 5000n * T, assets: { 1: 20n * T, 1000: 9_000_000_000n }, fee: 2_000_000_000n, script: ['inBlock', 'finalized'], sendRejects: false, faceOn: false, face: null, scanned: null, scanFails: false, feeFn: null, rejectWith: null });
     impl.signed = []; impl.pairs = []; impl.unlockPw = [];
   });
 
@@ -130,12 +141,14 @@ describe('i-Wallet send', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     expect(review()).toBeEnabled();
     await user.type(amountField(), '1000.000000000001');
+    await settled();
     expect(screen.getByText(/Bu tutar sıcak cüzdan için yüksek/)).toBeInTheDocument();
     expect(review()).toBeDisabled();
     await user.click(screen.getByRole('checkbox', { name: /Anladım, yine de göndereceğim/ }));
     expect(review()).toBeEnabled();
     // Editing the amount asks for the acknowledgement again.
     await user.type(amountField(), '1001');
+    await settled();
     expect(screen.getByRole('checkbox')).not.toBeChecked();
     expect(review()).toBeDisabled();
   });
@@ -154,7 +167,8 @@ describe('i-Wallet send', () => {
     const max = screen.getByRole('button', { name: 'En çok' });
     await waitFor(() => expect(max).toBeEnabled(), { timeout: 3000 });
     await user.click(max);
-    expect((amountField() as HTMLInputElement).value).toBe('4.997996666667');
+    // fee 0.002 HEZ plus the 10% margin, then the existential deposit.
+    expect((amountField() as HTMLInputElement).value).toBe('4.997796666667');
   });
 
   it('Max for USDT is the whole balance, without waiting for a fee', async () => {
@@ -177,6 +191,7 @@ describe('i-Wallet send', () => {
     expect(screen.getByText('Ağ ücreti: —')).toBeInTheDocument();
     expect(review()).toBeEnabled();
     await user.type(amountField(), '6000');
+    await settled();
     expect(screen.getByText('Bu, gönderebileceğinden fazla.')).toBeInTheDocument();
     expect(review()).toBeDisabled();
   });
@@ -186,12 +201,16 @@ describe('i-Wallet send', () => {
     await fill(BOB, '0');
     expect(review()).toBeDisabled();
     await user.type(amountField(), 'abc');
+    await settled();
     expect(screen.getByText('Geçerli bir tutar yaz.')).toBeInTheDocument();
     await user.type(amountField(), '1,0000000000001');
+    await settled();
     expect(screen.getByText(/en fazla 12 ondalık basamak/)).toBeInTheDocument();
     await user.type(amountField(), '1,5');
+    await settled();
     expect(review()).toBeEnabled();
     await user.type(screen.getByLabelText('Alıcı adresi'), BOB.slice(0, -1) + 'x');
+    await settled();
     expect(screen.getByText(/geçerli bir adres değil/)).toBeInTheDocument();
     expect(review()).toBeDisabled();
   });
@@ -325,5 +344,109 @@ describe('i-Wallet send', () => {
     await fill(BOB, '1');
     await confirmWith('right-pass1');
     expect(await screen.findByText(/Hiçbir şey gönderilmedi/)).toBeInTheDocument();
+  });
+
+  it('Max prices the call at the balance-sized amount and keeps a margin, so a fee that grows with the amount never overshoots', async () => {
+    impl.hezSpendable = 5n * T;
+    impl.feeFn = (a) => 1_000_000_000n + a / 1_000n; // a larger amount costs more
+    renderSend(); await login();
+    await user.type(screen.getByLabelText('Alıcı adresi'), BOB);
+    const max = screen.getByRole('button', { name: 'En çok' });
+    await waitFor(() => expect(max).toBeEnabled(), { timeout: 3000 });
+    await user.click(max);
+    const fee = 1_000_000_000n + (5n * T) / 1_000n;
+    const margin = fee + (fee + 9n) / 10n;
+    const expected = 5n * T - margin - 3_333_333n;
+    await waitFor(() => expect((amountField() as HTMLInputElement).value).not.toBe(''));
+    const typed = (amountField() as HTMLInputElement).value;
+    expect(typed).toBe((expected / T).toString() + '.' + (expected % T).toString().padStart(12, '0').replace(/0+$/, ''));
+    await settled();
+    expect(screen.queryByText('Bu, gönderebileceğinden fazla.')).toBeNull();
+    expect(review()).toBeEnabled();
+  });
+
+  it('keeps Review disabled until the fee for the current amount is known', async () => {
+    renderSend(); await login();
+    await user.type(screen.getByLabelText('Alıcı adresi'), BOB);
+    await user.type(amountField(), '1');
+    expect(review()).toBeDisabled(); // the 400 ms estimate has not come back yet
+    await settled();
+    expect(review()).toBeEnabled();
+  });
+
+  it('does not show success when the finalized events cannot be read', async () => {
+    impl.script = ['inBlock', 'finalizedNoEvents'];
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    expect(await screen.findByText(/yine de tamamlanabilir/)).toBeInTheDocument();
+    expect(screen.queryByText('Gönderildi')).toBeNull();
+  });
+
+  it('says it may still complete when the send call rejects after hand-off, but failed for a pool refusal', async () => {
+    impl.script = []; impl.sendRejects = true;
+    const first = renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    expect(await screen.findByText(/yine de tamamlanabilir/)).toBeInTheDocument();
+    expect(screen.queryByText('Gönderim başarısız')).toBeNull();
+    first.unmount();
+    impl.rejectWith = Object.assign(new Error('1010: Invalid Transaction'), { code: 1010 });
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    expect(await screen.findByText('Gönderim başarısız')).toBeInTheDocument();
+  });
+
+  it('offers Done while pending and explains a slow finality', async () => {
+    impl.script = [];
+    const first = renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    expect(await screen.findByRole('button', { name: 'Bitti' })).toBeInTheDocument();
+    first.unmount();
+    impl.script = ['inBlock', 'timeout'];
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    expect(await screen.findByText(/Son onay yavaş/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bitti' })).toBeInTheDocument();
+  });
+
+  it('"another" resets the form and a second transfer can be sent', async () => {
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    await user.click(await screen.findByRole('button', { name: 'Bir gönderim daha' }));
+    expect((screen.getByLabelText('Alıcı adresi') as HTMLInputElement).value).toBe('');
+    await fill(BOB, '2');
+    await confirmWith('right-pass1');
+    await screen.findByText('Gönderildi');
+    expect(impl.signed).toHaveLength(2);
+  });
+
+  it('asset sends need fee plus the existential deposit in HEZ', async () => {
+    impl.hezSpendable = 2_000_000_000n + 3_333_333n - 1n;
+    renderSend(); await login();
+    await user.click(screen.getByRole('button', { name: 'PEZ' }));
+    await fill(BOB, '1');
+    expect(screen.getByText(/yeterli HEZ'in yok/)).toBeInTheDocument();
+    expect(review()).toBeDisabled();
+  });
+
+  it('refuses an address of another network with its own message', async () => {
+    const { encodeAddress, decodeAddress } = await import('@pezkuwi/util-crypto');
+    renderSend(); await login();
+    await user.type(screen.getByLabelText('Alıcı adresi'), encodeAddress(decodeAddress(BOB), 0));
+    expect(screen.getByText(/başka bir ağa ait/)).toBeInTheDocument();
+    expect(review()).toBeDisabled();
+  });
+
+  it('shows what the typed amount means, so "1.000" reads as 1', async () => {
+    renderSend(); await login();
+    await user.type(amountField(), '1.000');
+    expect(screen.getByText('= 1 HEZ')).toBeInTheDocument();
+    await user.type(amountField(), '1.000,5');
+    expect(screen.getByText('Geçerli bir tutar yaz.')).toBeInTheDocument();
   });
 });

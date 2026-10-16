@@ -13,6 +13,7 @@ vi.mock('../keystore', async (orig) => ({
   ...(await orig<typeof import('../keystore')>()),
   loadKeystore: () => Promise.resolve({ address: 'x' }),
   unlock: impl.unlock,
+  verifyPassword: (...a: unknown[]) => Promise.resolve(impl.unlock(...a)).then(() => undefined),
 }));
 vi.mock('../faceid', () => ({ hasFaceId: () => Promise.resolve(impl.face), unlockWithFaceId: () => Promise.resolve(null), faceIdSupported: () => Promise.resolve(false) }));
 

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { loadAssetBalances, loadHezBalance, loadIWalletBalances } from './data';
+import { loadAssetBalances, loadHezBalance } from './data';
 
 const acct = (free: bigint, reserved: bigint, frozen = 0n) => ({ data: { free: { toBigInt: () => free }, reserved: { toBigInt: () => reserved }, frozen: { toBigInt: () => frozen } } });
 const asset = (bal: bigint | null) => ({ isSome: bal !== null, unwrap: () => ({ balance: { toBigInt: () => bal ?? 0n } }) });
@@ -46,12 +46,5 @@ describe('i-Wallet balances', () => {
       { id: 1, symbol: 'PEZ', decimals: 12, amount: 7n },
       { id: 1000, symbol: 'USDT', decimals: 6, amount: 0n },
     ]);
-  });
-
-  it('a failing relay fails the HEZ card but not the asset rows', async () => {
-    const failing = (chain: string) => (chain === 'relay' ? Promise.reject(new Error('down')) : fake(chain));
-    const r = await loadIWalletBalances('5Grw', { getApi: failing as never });
-    expect(r.hez.status).toBe('rejected');
-    expect(r.assets.status).toBe('fulfilled');
   });
 });

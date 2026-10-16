@@ -211,7 +211,7 @@ translation is written. dialog.close is the close button of every dialog (pwap t
 
 ## i-Wallet — awaiting native reading
 
-Task 9 (2026-10-16) replaced the per-task notes that used to stand here. The i-Wallet has 254 keys (`iwallet.*`) in all six files. tr and en are the source texts and are not listed; the tr warning card (`iwallet.warning.*`) is Serok's text verbatim and is never changed. Every kmr, ckb, fa and ar cell is still a draft as a whole until a native reader signs it off; the lists below say which cells could **not** be confirmed and why.
+Task 9 (2026-10-16) replaced the per-task notes that used to stand here. The i-Wallet has 255 keys (`iwallet.*`) in all six files. tr and en are the source texts and are not listed; the tr warning card (`iwallet.warning.*`) is Serok's text verbatim and is never changed. Every kmr, ckb, fa and ar cell is still a draft as a whole until a native reader signs it off; the lists below say which cells could **not** be confirmed and why.
 
 What "confirmed" means here:
 
@@ -288,7 +288,7 @@ Sources of the terms: pwap (`transfer.*`, `newCitizen.*`, `auth.password`, `wall
 
 Words not in the Ferheng, taken from pwap's `kmr.ts` (a native reader may prefer other words): şîfre / şîfrekirî, token, mîqdar, derbasdar, referans, depozît, balans, bikarhêner, tomarkirin, server, ekran, guherto, danûstandin (Ferheng has it only as "conversation"), dîjîtal, rol, xizmet, garantî, moda.
 
-### Kurmancî (kmr): 220 confirmed, 34 not confirmed
+### Kurmancî (kmr): 220 confirmed, 35 not confirmed
 
 - `iwallet.citizen.act.teleport`: Zincîr is masculine in the Ferheng (Zincîr/n.), so the ezafe is "zincîrê welatîbûnê"; pwap usually treats it as feminine
 - `iwallet.citizen.defaultReferrer`: "Bixweber" (pwap: automatically) for "Default"
@@ -303,6 +303,7 @@ Words not in the Ferheng, taken from pwap's `kmr.ts` (a native reader may prefer
 - `iwallet.err.balances.ExistentialDeposit`: the English term "existential deposit" was removed and explained in plain words; check the meaning
 - `iwallet.err.pezkuwiXcm.FeesNotMet`: "birin" used as a noun for moving HEZ between chains
 - `iwallet.err.pezkuwiXcm.Filtered`: "birin" used as a noun for moving HEZ between chains
+- `iwallet.error.networkChanged`: added in the final fix batch (the wallet refuses an endpoint whose chain is not the configured one); not checked against the Ferheng ("sererastkirin" for "fixed")
 - `iwallet.home.a2hs`: "Ekrana Malê" for the iPhone Home Screen
 - `iwallet.home.hot`: "cuzdanê germ" is a calque of "hot wallet" (Ferheng: Germ = ne hênik)
 - `iwallet.home.title`: "Cuzdanê te yê i-Wallet" construction for "Your i-Wallet"
@@ -325,7 +326,7 @@ Words not in the Ferheng, taken from pwap's `kmr.ts` (a native reader may prefer
 - `iwallet.words.title`: "peyvên vegerandinê" (recovery words) replaces the Turkish loan "yedek", which is not in the Ferheng; the phrase is built from Ferheng words (Peyv/m., Vegerandin/m.) but is new
 - `iwallet.words.warnTitle`: Kaxez is masculine in the Ferheng (Kaxez/n.), so "kaxezekî" / "li ser kaxez" were written instead of the common "kaxezê"; "wêneyê ekranê" for screenshot; "ekran" is pwap usage, not in the Ferheng
 
-### Soranî (ckb): 193 confirmed, 61 not confirmed
+### Soranî (ckb): 193 confirmed, 62 not confirmed
 
 - `iwallet.citizen.form.agree`: not attested in pwap or the explorer: پەنجەمۆرەکەیان
 - `iwallet.citizen.form.notSaved`: not attested in pwap or the explorer: بۆیە, فۆرمەکەتی, هەڵنەگرت
@@ -345,6 +346,7 @@ Words not in the Ferheng, taken from pwap's `kmr.ts` (a native reader may prefer
 - `iwallet.err.identityKyc.NotTheReferrer`: not attested in pwap or the explorer: داواکارییەکەدا
 - `iwallet.err.pezkuwiXcm.LocalExecutionIncompleteWithError`: not attested in pwap or the explorer: زۆرجار, نەگوازرایەوە
 - `iwallet.err.tiki.KycNotCompleted`: not attested in pwap or the explorer: kycی
+- `iwallet.error.networkChanged`: added in the final fix batch; not checked against pwap wording
 - `iwallet.error.notSaved`: not attested in pwap or the explorer: بۆیە, تری, پەنجەرەیەکی
 - `iwallet.home.a2hs`: not attested in pwap or the explorer: بسڕدرێتەوە, دەڕوات
 - `iwallet.home.hot`: "جزدانی گەرم" is a calque of "hot wallet" (گەرم not in pwap); not attested in pwap or the explorer: گەرم
@@ -389,11 +391,11 @@ Words not in the Ferheng, taken from pwap's `kmr.ts` (a native reader may prefer
 - `iwallet.words.warnBody`: not attested in pwap or the explorer: بیانگەڕێنێتەوە, ناکات, وشانەت, ونت
 - `iwallet.words.warnTitle`: not attested in pwap or the explorer: بینووسە, مەگرە
 
-### Persian (fa): 71 confirmed, 183 not confirmed
+### Persian (fa): 71 confirmed, 184 not confirmed
 
 Every `iwallet.*` cell is a draft except the brand strings above and these 66 cells, which are pwap text verbatim: `warning.label`, `import.confirmNo`, `home.send`, `home.receive`, `home.citizen`, `home.assets`, `home.pezSub`, `next`, `quiz.verify`, `password.label`, `receive.title`, `send.title`, `send.recipient`, `send.scan`, `send.token`, `send.amount`, `send.max`, `send.to`, `send.confirm`, `send.feeLabel`, `citizen.title`, `citizen.apply`, `citizen.cancel`, `citizen.confirm`, `citizen.sign`, `citizen.confirmTitle`, `citizen.form.personal`, `citizen.form.fullName`, `citizen.form.fatherName`, `citizen.form.grandfatherName`, `citizen.form.motherName`, `citizen.form.tribe`, `citizen.form.marital`, `citizen.form.married`, `citizen.form.unmarried`, `citizen.form.childrenCount`, `citizen.form.childName`, `citizen.form.birthYear`, `citizen.form.region`, `citizen.form.selectRegion`, `citizen.form.email`, `citizen.form.emailInvalid`, `citizen.form.profession`, `citizen.form.required`, `citizen.region.bakur`, `citizen.region.basur`, `citizen.region.rojava`, `citizen.region.rojhelat`, `citizen.region.kurdistan_a_sor`, `citizen.region.diaspora`, `citizen.deposit.title`, `citizen.deposit.body`, `citizen.pending.title`, `citizen.pending.body`, `citizen.pending.depositBack`, `citizen.approved.title`, `citizen.approved.body`, `citizen.refs.approve`, `citizen.row.action`, `citizen.row.applicant`, `citizen.row.to`, `citizen.act.confirm`, `citizen.act.cancel`, `citizen.chain.assetHub`, `citizen.done.apply`, `citizen.done.approve`.
 
-### Arabic (ar): 65 confirmed, 189 not confirmed
+### Arabic (ar): 65 confirmed, 190 not confirmed
 
 Every `iwallet.*` cell is a draft except the brand strings above and these 60 cells, which are pwap text verbatim: `import.confirmNo`, `home.send`, `home.receive`, `home.citizen`, `home.pezSub`, `next`, `quiz.verify`, `password.label`, `receive.title`, `send.title`, `send.recipient`, `send.amount`, `send.max`, `send.amountInvalid`, `send.to`, `send.confirm`, `send.done`, `send.feeLabel`, `citizen.title`, `citizen.apply`, `citizen.cancel`, `citizen.confirm`, `citizen.confirmTitle`, `citizen.form.personal`, `citizen.form.fullName`, `citizen.form.fatherName`, `citizen.form.grandfatherName`, `citizen.form.motherName`, `citizen.form.tribe`, `citizen.form.marital`, `citizen.form.married`, `citizen.form.unmarried`, `citizen.form.childrenCount`, `citizen.form.childName`, `citizen.form.birthYear`, `citizen.form.region`, `citizen.form.selectRegion`, `citizen.form.email`, `citizen.form.emailInvalid`, `citizen.form.profession`, `citizen.form.required`, `citizen.region.bakur`, `citizen.region.basur`, `citizen.region.rojava`, `citizen.region.rojhelat`, `citizen.region.kurdistan_a_sor`, `citizen.region.diaspora`, `citizen.deposit.title`, `citizen.pending.title`, `citizen.pending.body`, `citizen.pending.depositBack`, `citizen.approved.title`, `citizen.approved.body`, `citizen.refs.approve`, `citizen.row.to`, `citizen.act.confirm`, `citizen.act.cancel`, `citizen.chain.assetHub`, `citizen.done.apply`, `citizen.done.approve`.
 

@@ -8,10 +8,10 @@ import { blake2AsHex, decodeAddress } from '@pezkuwi/util-crypto';
 import type { ChainKey } from '../config/network';
 import { IWALLET_NETWORK } from '../config/iwallet-network';
 import { REQUEST_TIMEOUT_MS } from '../chain/connections';
-import { storage } from '../lib/storage';
+import { PREFIX, storage } from '../lib/storage';
 import { withTimeout } from '../lib/timeout';
 import { getMainnetApi } from './chain';
-import { spendable } from './data';
+import { chainSpendable } from './data';
 
 type Tx = SubmittableExtrinsic<'promise'>;
 type Deps = { getApi: (chain: ChainKey) => Promise<ApiPromise> };
@@ -86,6 +86,27 @@ export function loadForm(address: string): CitizenForm {
   } catch { return { ...EMPTY_FORM }; }
 }
 export const saveForm = (address: string, form: CitizenForm): boolean => storage.set(formKey(address), JSON.stringify(form));
+export const clearForm = (address: string): void => storage.remove(formKey(address));
+// "Delete from device" promises a clean device: every saved citizenship form goes, whatever wallet it belonged to.
+export function clearAllForms(): void {
+  const prefix = PREFIX + formKey('');
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(prefix)) localStorage.removeItem(k);
+    }
+  } catch { /* storage unavailable: nothing was kept */ }
+}
+
+// The short address (cuzdan.pex.network/?ref=X) lands on /i-wallet, not on the citizenship screen: the shell keeps
+// the referrer for this browser session so the citizenship form still finds it after create / unlock / home.
+const REF_KEY = `${PREFIX}iwallet-ref`;
+export function rememberReferrer(ref: string): void {
+  try { sessionStorage.setItem(REF_KEY, ref); } catch { /* the field can still be typed */ }
+}
+export function rememberedReferrer(): string | null {
+  try { return sessionStorage.getItem(REF_KEY); } catch { return null; }
+}
 
 export type Referrer = { ok: true; value: string | null } | { ok: false; reason: 'invalid' | 'self' };
 // Empty means None (the pallet's default referrer). Otherwise it must be a checksummed SS58 address that is not the
@@ -112,6 +133,10 @@ export function toKycStatus(type: string): KycStatus {
 
 export type CitizenStatus = { kyc: KycStatus; nftId: bigint | null };
 // kycStatuses is a ValueQuery (NotStarted by default); tiki.citizenNft is an OptionQuery. Measured on mainnet People.
+// Why these two and not the spec's applications / userTikis: kycStatuses is the pallet's own state machine and holds all
+// five states; applications holds only { identityHash, referrer } (it is read for the referral list, not for status).
+// citizenNft is the Welati Tiki NFT id this screen shows; userTikis lists roles and says nothing an applicant needs here.
+// The explorer's Zagros citizenship card (src/data/citizenship.ts) reads the same two (plus roles and trust for display).
 export async function loadStatus(address: string, deps: Deps = real): Promise<CitizenStatus> {
   const api = await deps.getApi('people');
   const q = api.query as never as {
@@ -155,14 +180,8 @@ function unwrapApp(v: { isSome?: boolean; unwrap?(): unknown } & Partial<AppValu
 export const kycDeposit = (people: ApiPromise): bigint =>
   (people.consts as never as { identityKyc: { kycApplicationDeposit: { toBigInt(): bigint } } }).identityKyc.kycApplicationDeposit.toBigInt();
 
-// Spendable HEZ on one chain (free minus the part frozen beyond reserved).
-export async function chainSpendable(chain: ChainKey, address: string, deps: Deps = real): Promise<bigint> {
-  const api = await deps.getApi(chain);
-  const a = (await withTimeout(api.query.system.account(address), REQUEST_TIMEOUT_MS)) as never as {
-    data: { free: { toBigInt(): bigint }; reserved: { toBigInt(): bigint }; frozen: { toBigInt(): bigint } };
-  };
-  return spendable({ free: a.data.free.toBigInt(), reserved: a.data.reserved.toBigInt(), frozen: a.data.frozen.toBigInt() });
-}
+// Spendable HEZ on one chain: shared with Send, so it lives in data.ts.
+export { chainSpendable };
 
 const kyc = (api: ApiPromise) => api.tx.identityKyc;
 export const buildApply = (people: ApiPromise, hash: string, referrer: string | null): Tx => kyc(people).applyForCitizenship(hash, referrer);
@@ -205,3 +224,25 @@ export const needsFunding = (peopleFree: bigint, deposit: bigint, fee: bigint, e
 // After a teleport the People balance is polled this often, for this long (spec §6 / global review focus 5).
 // Mutable only so tests can shorten it.
 export const FUNDING_POLL = { everyMs: 6_000, forMs: 120_000 };
+
+// A teleport that may still be landing is remembered for this browser session, per address, so leaving the screen
+// (or an auto-lock) cannot bring the teleport button back and invite a second one. For this long after sending, the
+// screen offers only "check again"; after it, a teleport that never arrived can be sent again.
+export const TELEPORT_GUARD_MS = 5 * 60_000;
+const teleportKey = (address: string) => `${PREFIX}iwallet-teleport:${address}`;
+export function teleportSentAt(address: string): number | null {
+  try {
+    const n = Number(sessionStorage.getItem(teleportKey(address)) ?? NaN);
+    return Number.isFinite(n) ? n : null;
+  } catch { return null; }
+}
+export function markTeleportSent(address: string, at: number = Date.now()): void {
+  try { sessionStorage.setItem(teleportKey(address), String(at)); } catch { /* the in-page guard still holds */ }
+}
+export function clearTeleportSent(address: string): void {
+  try { sessionStorage.removeItem(teleportKey(address)); } catch { /* nothing to remove */ }
+}
+export function teleportGuardActive(address: string, now: number = Date.now()): boolean {
+  const at = teleportSentAt(address);
+  return at !== null && now >= at && now - at < TELEPORT_GUARD_MS;
+}

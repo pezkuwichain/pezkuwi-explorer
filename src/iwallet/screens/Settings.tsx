@@ -6,7 +6,7 @@ import { Dialog } from '../../ui/Dialog';
 import { IconFaceId, IconLogOut, IconPen, IconShield, IconTrash } from '../../ui/icons';
 import { faceIdSupported, forgetFaceId, hasFaceId } from '../faceid';
 import { enableFaceId } from '../saveWallet';
-import { CorruptKeystoreError, WrongPasswordError } from '../keystore';
+import { CorruptKeystoreError, WrongPasswordError, verifyPassword } from '../keystore';
 import { downloadJson, exportFileName } from '../download';
 import { useIWallet } from '../IWalletContext';
 import RequireUnlocked from '../RequireUnlocked';
@@ -33,7 +33,6 @@ function SettingsBody({ address }: { address: string }) {
   const [facePw, setFacePw] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => () => setWords([]), []);
   useEffect(() => {
     let live = true;
     Promise.all([faceIdSupported(), hasFaceId()]).then(([s, h]) => { if (live) { setFaceSupported(s); setFaceOn(h); } }, () => undefined);
@@ -57,8 +56,12 @@ function SettingsBody({ address }: { address: string }) {
     if (!pw || busy) return;
     setBusy(true); setError(null);
     try {
-      const m = await readWords(pw);
-      if (view === 'facepw') { setFacePw(pw); setPw(''); setNote(null); setView('faceready'); } else { setWords(m.split(' ')); setPw(''); setView('words'); }
+      // Enabling Face ID needs only proof of the password, so the words are not decrypted for it.
+      if (view === 'facepw') {
+        if (!keystore) throw new Error('no keystore');
+        await verifyPassword(keystore, pw);
+        setFacePw(pw); setPw(''); setNote(null); setView('faceready');
+      } else { setWords((await readWords(pw)).split(' ')); setPw(''); setView('words'); }
     } catch (err) {
       setError(t(err instanceof WrongPasswordError ? 'iwallet.error.wrongPassword' : err instanceof CorruptKeystoreError ? 'iwallet.unlock.corrupt' : 'iwallet.error.generic'));
     }

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { __setMainnetApiFactoryForTests, getMainnetApi } from './chain';
+import { NetworkChangedError, __setMainnetApiFactoryForTests, getMainnetApi, networkChanged } from './chain';
 import { IWALLET_NETWORK, IWALLET_SIGNED_EXTENSIONS } from '../config/iwallet-network';
 import { CONNECT_GIVE_UP_MS } from '../chain/connections';
 import type { ChainKey } from '../config/network';
@@ -28,7 +28,7 @@ describe('getMainnetApi', () => {
   it('reuses the cached attempt for the same chain', async () => {
     const a = getMainnetApi('assetHub'); const b = getMainnetApi('assetHub');
     expect(attempts).toHaveLength(1);
-    const api = { name: 'ah' };
+    const api = { name: 'ah', genesisHash: { toHex: () => IWALLET_NETWORK.chains.assetHub.genesis } };
     attempts[0].resolve(api);
     await expect(a).resolves.toBe(api);
     await expect(b).resolves.toBe(api);
@@ -46,6 +46,20 @@ describe('getMainnetApi', () => {
     expect(disconnects).toBe(1);
     void getMainnetApi('people').catch(() => {});
     expect(attempts).toHaveLength(2);
+  });
+
+  it('refuses an endpoint whose genesis is not the configured one: evicted, disconnected, flagged', async () => {
+    const p = getMainnetApi('people');
+    attempts[0].resolve({ genesisHash: { toHex: () => IWALLET_NETWORK.chains.relay.genesis } });
+    await expect(p).rejects.toBeInstanceOf(NetworkChangedError);
+    expect(disconnects).toBe(1);
+    expect(networkChanged()).toBe(true);
+    // The next call connects afresh; the right chain clears the notice.
+    const q = getMainnetApi('people');
+    expect(attempts).toHaveLength(2);
+    attempts[1].resolve({ genesisHash: { toHex: () => IWALLET_NETWORK.chains.people.genesis } });
+    await expect(q).resolves.toBeDefined();
+    expect(networkChanged()).toBe(false);
   });
 
   it('gives up after the hard cap', async () => {

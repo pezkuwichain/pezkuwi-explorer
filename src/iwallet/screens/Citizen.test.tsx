@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { decodeAddress, encodeAddress } from '@pezkuwi/util-crypto';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { user } from '../test-user';
 import i18n from '../../i18n';
@@ -31,15 +32,18 @@ vi.mock('../faceid', () => ({
 }));
 vi.mock('../keystore', async (orig) => {
   const real = await orig<typeof import('../keystore')>();
+  const unlock = (_json: unknown, pw: string) => {
+    if (pw !== 'right-pass1') return Promise.reject(new real.WrongPasswordError());
+    const pair = { address: ADDR, lock: vi.fn() };
+    impl.pairs.push(pair);
+    return Promise.resolve(pair);
+  };
   return {
     ...real,
     loadKeystore: () => Promise.resolve({ address: ADDR, encoded: 'enc' }),
-    unlock: (_json: unknown, pw: string) => {
-      if (pw !== 'right-pass1') return Promise.reject(new real.WrongPasswordError());
-      const pair = { address: ADDR, lock: vi.fn() };
-      impl.pairs.push(pair);
-      return Promise.resolve(pair);
-    },
+    unlock,
+    // The context proves the password through the same (mocked) decrypt and locks the pair at once.
+    verifyPassword: (json: unknown, pw: string) => unlock(json, pw).then((p) => { p.lock(); }),
   };
 });
 
@@ -92,7 +96,7 @@ const assetHub = {
   tx: { pezkuwiXcm: { limitedTeleportAssets: tx('pezkuwiXcm.limitedTeleportAssets') } },
   registry: people.registry, on: vi.fn(), off: vi.fn(),
 };
-vi.mock('../chain', () => ({ getMainnetApi: (c: string) => Promise.resolve(c === 'people' ? people : assetHub) }));
+vi.mock('../chain', () => ({ getMainnetApi: (c: string) => Promise.resolve(c === 'people' ? people : assetHub), networkChanged: () => false, subscribeNetworkChanged: () => () => undefined }));
 
 let store: Map<string, unknown>;
 const makeStore = (): KvStore => ({
@@ -135,7 +139,7 @@ const lastPair = () => impl.pairs[impl.pairs.length - 1];
 describe('i-Wallet citizenship', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('tr');
-    localStorage.clear();
+    localStorage.clear(); sessionStorage.clear();
     store = new Map<string, unknown>([['keystore', {}], ['words', {}]]);
     Object.assign(impl, { status: 'NotStarted', nft: null, people: 0n, peopleAfter: [], assetHub: 10n * T, apps: [], script: ['inBlock', 'finalized'], dropAfterSend: false, scans: 0, feeFail: false });
     impl.signed = []; impl.pairs = [];
@@ -229,6 +233,43 @@ describe('i-Wallet citizenship', () => {
     await signWith('right-pass1');
     await screen.findByText('Başvuru gönderildi');
     expect(impl.signed[0].args[1]).toBeNull();
+  });
+
+  it('keeps a ?ref= that arrived on /i-wallet (the short address) for the citizenship form', async () => {
+    impl.people = 2n * T;
+    seedForm(FORM);
+    renderCitizen(`/i-wallet?ref=${BOB}`);
+    await screen.findByLabelText('Parola');
+    expect(sessionStorage.getItem('pezkuwi-explorer:iwallet-ref')).toBe(BOB);
+    cleanup();
+    renderCitizen(); await login();
+    expect(await screen.findByLabelText('Referans adresi (isteğe bağlı)')).toHaveValue(BOB);
+  });
+
+  it('refuses a referrer of another network (mainnet prefix 42 only, like a Send recipient)', async () => {
+    impl.people = 2n * T;
+    seedForm({ ...FORM, referrer: encodeAddress(decodeAddress(BOB), 2) });
+    renderCitizen(); await login();
+    await user.click(await screen.findByRole('checkbox'));
+    expect(screen.getByText(/Bu geçerli bir adres değil/)).toBeInTheDocument();
+    expect(applyBtn()).toBeDisabled();
+  });
+
+  it('a teleport still landing survives leaving the screen: waiting, never the teleport button, until 5 min pass', async () => {
+    seedForm(FORM);
+    const first = renderCitizen(); await login();
+    await user.click(await screen.findByRole('button', { name: /1,5 HEZ taşı/ }));
+    await signWith('right-pass1');
+    await user.click(await screen.findByRole('button', { name: 'Vatandaşlığa dön' }));
+    first.unmount();
+    renderCitizen(); await login();
+    await screen.findByRole('heading', { name: fundTitle });
+    expect(screen.queryByRole('button', { name: /1,5 HEZ taşı/ })).toBeNull();
+    cleanup();
+    // Older than the guard: a teleport that never arrived may be sent again.
+    sessionStorage.setItem(`pezkuwi-explorer:iwallet-teleport:${ADDR}`, String(Date.now() - 5 * 60_000 - 1));
+    renderCitizen(); await login();
+    expect(await screen.findByRole('button', { name: /1,5 HEZ taşı/ })).toBeInTheDocument();
   });
 
   it('does not sign with an incomplete form', async () => {

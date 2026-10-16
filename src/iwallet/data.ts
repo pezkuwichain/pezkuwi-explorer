@@ -51,7 +51,12 @@ export async function loadAssetBalances(address: string, deps: Deps = real): Pro
   }));
 }
 
-export async function loadIWalletBalances(address: string, deps: Deps = real) {
-  const [hez, assets] = await Promise.allSettled([loadHezBalance(address, deps), loadAssetBalances(address, deps)]);
-  return { hez, assets };
+// Spendable HEZ on one chain (free minus the part frozen beyond reserved). Send reads only Asset Hub through this, so
+// a relay or People outage never blocks a transfer.
+export async function chainSpendable(chain: ChainKey, address: string, deps: Deps = real): Promise<bigint> {
+  const api = await deps.getApi(chain);
+  const a = (await withTimeout(api.query.system.account(address), REQUEST_TIMEOUT_MS)) as never as {
+    data: { free: { toBigInt(): bigint }; reserved: { toBigInt(): bigint }; frozen: { toBigInt(): bigint } };
+  };
+  return spendable({ free: a.data.free.toBigInt(), reserved: a.data.reserved.toBigInt(), frozen: a.data.frozen.toBigInt() });
 }

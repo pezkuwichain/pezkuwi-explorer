@@ -3,21 +3,24 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { ApiPromise } from '@pezkuwi/api';
 import PageHeader from '../../ui/PageHeader';
-import { IconCheck, IconCheckCircle, IconClock, IconCross, IconWarning } from '../../ui/icons';
-import { normaliseAddress, shortAddress } from '../../lib/address';
+import { IconCheckCircle, IconClock, IconWarning } from '../../ui/icons';
+import { shortAddress } from '../../lib/address';
 import { formatAmount } from '../../lib/format';
 import { IWALLET_ED, IWALLET_NETWORK } from '../../config/iwallet-network';
 import { getMainnetApi } from '../chain';
 import { hasFaceId } from '../faceid';
 import { estimateFee } from '../tx';
+import { parseRecipient } from '../address';
 import {
-  FUNDING_POLL, REGIONS, assetHubNeed, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, chainSpendable, formProblems,
-  identityHash, kycDeposit, loadForm, loadStatus, needsFunding, parseReferrer, pendingReferrals, saveForm, teleportAmount,
+  FUNDING_POLL, REGIONS, assetHubNeed, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, chainSpendable,
+  clearTeleportSent, formProblems, identityHash, kycDeposit, loadForm, loadStatus, markTeleportSent, needsFunding, parseReferrer,
+  pendingReferrals, rememberedReferrer, saveForm, teleportAmount, teleportGuardActive,
   type CitizenForm, type CitizenStatus, type PendingReferral,
 } from '../citizen';
 import { AuthConfirm } from '../AuthConfirm';
 import { useSignedTx } from '../useSignedTx';
 import CopyAddress from '../CopyAddress';
+import { TxResult, txSettled } from '../TxResult';
 import RequireUnlocked from '../RequireUnlocked';
 import '../iwallet.css';
 
@@ -35,6 +38,8 @@ type Action =
   | { kind: 'teleport'; amount: bigint };
 type Funding = 'idle' | 'waiting' | 'late';
 const ZERO_HASH = `0x${'0'.repeat(64)}`;
+// A referrer is a mainnet account: the same SS58 rule as a Send recipient (checksum + prefix 42), never the Zagros helper.
+const mainnetAddress = (text: string): string | null => { const r = parseRecipient(text); return r.ok ? r.address : null; };
 
 // `cachedReferrals` is the referral scan from earlier in this page view; it is reused instead of scanning again.
 async function load(address: string, cachedReferrals: PendingReferral[] | null): Promise<Loaded> {
@@ -64,8 +69,12 @@ function CitizenBody({ address }: { address: string }) {
   const [face, setFace] = useState(false);
   const [form, setForm] = useState<CitizenForm>(() => {
     const f = loadForm(address);
+    // ?ref= on this screen wins; otherwise the one the short address brought to /i-wallet earlier in this session
+    // fills an empty field.
     const ref = params.get('ref');
-    return ref ? { ...f, referrer: ref } : f;
+    if (ref) return { ...f, referrer: ref };
+    const remembered = rememberedReferrer();
+    return remembered && !f.referrer ? { ...f, referrer: remembered } : f;
   });
   const [saveFailed, setSaveFailed] = useState(false);
   const [touched, setTouched] = useState(false);
@@ -75,7 +84,9 @@ function CitizenBody({ address }: { address: string }) {
   const [fee, setFee] = useState<bigint | null>(null);
   const [feeFailed, setFeeFailed] = useState(false);
   const feeRun = useRef(0);
-  const [funding, setFunding] = useState<Funding>('idle');
+  // A teleport sent earlier in this session (even before leaving this screen or an auto-lock) is still landing:
+  // start by waiting for it, never with the teleport button.
+  const [funding, setFunding] = useState<Funding>(() => (teleportGuardActive(address) ? 'waiting' : 'idle'));
   const signer = useSignedTx();
 
   // Each load cancels the one before it, so an older load can never overwrite newer data.
@@ -124,13 +135,13 @@ function CitizenBody({ address }: { address: string }) {
       chainSpendable('people', address).then((free) => {
         if (!live) return;
         setData((d) => (d && d !== 'failed' ? { ...d, peopleFree: free } : d));
-        if (!needsFunding(free, deposit, applyFee, IWALLET_ED.people)) { clearInterval(timer); setFunding('idle'); }
+        if (!needsFunding(free, deposit, applyFee, IWALLET_ED.people)) { clearInterval(timer); clearTeleportSent(address); setFunding('idle'); }
       }, () => undefined);
     }, FUNDING_POLL.everyMs);
     return () => { live = false; clearInterval(timer); };
   }, [funding, deposit, applyFee, address]);
 
-  const referrer = useMemo(() => parseReferrer(form.referrer, address, normaliseAddress), [form.referrer, address]);
+  const referrer = useMemo(() => parseReferrer(form.referrer, address, mainnetAddress), [form.referrer, address]);
   const problems = formProblems(form);
 
   const txFor = (a: Action, d: Loaded) => {
@@ -168,7 +179,7 @@ function CitizenBody({ address }: { address: string }) {
     if (result === null) return;
     // Unless the teleport is proven failed (ExtrinsicFailed, or refused before it left), it may still land: poll People
     // and keep the teleport button away, so an unknown outcome never invites a second teleport.
-    if (action.kind === 'teleport' && result.kind !== 'failed') setFunding('waiting');
+    if (action.kind === 'teleport' && result.kind !== 'failed') { markTeleportSent(address); setFunding('waiting'); }
     if (action.kind === 'approve' && result.kind !== 'failed') referralCache.current = null;
   };
 
@@ -184,32 +195,14 @@ function CitizenBody({ address }: { address: string }) {
   if (signer.outcome.kind !== 'idle' && action) {
     const o = signer.outcome;
     return (
-      <div className="iw">
-        <PageHeader title={t('iwallet.citizen.title')} />
-        <div className="iw-body iw-result" aria-live="polite">
-          {o.kind === 'pending' && <p className="iw-lead" role="status">{t('iwallet.send.pending')}</p>}
-          {o.kind === 'inBlock' && <p className="iw-lead" role="status">{t('iwallet.send.inBlock')}</p>}
-          {o.kind === 'finalized' && <>
-            <span className="iw-result-icon"><IconCheck size={32} /></span>
-            <h2 className="iw-h1">{t(`iwallet.citizen.done.${action.kind}`)}</h2>
-            <p className="iw-lead">{t('iwallet.send.txId')}</p>
-            <div className="iw-addr iw-addr-full">
-              <bdi dir="ltr" className="iw-addr-text">{o.hash}</bdi>
-              <CopyAddress address={o.hash} label={t('iwallet.send.copyTxId')} />
-            </div>
-          </>}
-          {o.kind === 'failed' && <>
-            <span className="iw-result-icon bad"><IconCross size={32} /></span>
-            <h2 className="iw-h1">{t('iwallet.citizen.failedTitle')}</h2>
-            <p className="iw-error" role="alert">{o.message}</p>
-          </>}
-          {o.kind === 'slow' && <p className="iw-note" role="status">{t('iwallet.send.slow')}</p>}
-          {o.kind === 'interrupted' && <p className="iw-note" role="alert">{t('iwallet.citizen.interrupted')}</p>}
-          {o.kind !== 'pending' && o.kind !== 'inBlock' && (
-            <button type="button" className="iw-primary" onClick={backToMain}>{t('iwallet.citizen.back')}</button>
-          )}
-        </div>
-      </div>
+      <TxResult
+        title={t('iwallet.citizen.title')}
+        outcome={o}
+        doneTitle={t(`iwallet.citizen.done.${action.kind}`)}
+        failedTitle={t('iwallet.citizen.failedTitle')}
+        interrupted={t('iwallet.citizen.interrupted')}
+        actions={txSettled(o) && <button type="button" className="iw-primary" onClick={backToMain}>{t('iwallet.citizen.back')}</button>}
+      />
     );
   }
 
@@ -309,7 +302,9 @@ function CitizenBody({ address }: { address: string }) {
                 <p className="iw-note" role="status">{t('iwallet.citizen.fund.late')}</p>
                 <button type="button" className="iw-secondary" onClick={() => setFunding('waiting')}>{t('iwallet.citizen.fund.check')}</button>
               </>}
-              {funding === 'idle' && <>
+              {/* The teleport button only when no teleport of this session may still be landing (the guard lapses after
+                  TELEPORT_GUARD_MS, so one that truly never arrived can be sent again). */}
+              {(funding === 'idle' || (funding === 'late' && !teleportGuardActive(address))) && <>
                 {data.ahFree < ahNeed && <p className="iw-error" role="alert">{t('iwallet.citizen.fund.noHez', { need: hez(ahNeed), have: hez(data.ahFree) })}</p>}
                 <button type="button" className="iw-primary" disabled={data.ahFree < ahNeed} onClick={() => review({ kind: 'teleport', amount })}>
                   {t('iwallet.citizen.fund.cta', { amount: hez(amount) })}

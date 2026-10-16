@@ -6,7 +6,7 @@ import { base64Decode } from '@pezkuwi/util-crypto';
 import type { KvStore } from './idb';
 import {
   CorruptKeystoreError, StorageUnavailableError, WeakPasswordError, WrongPasswordError, createKeystore, deleteKeystore, isValidMnemonic, loadKeystore, loadWords, newMnemonic,
-  normaliseMnemonic, passwordStrength, quizIndices, quizOptions, saveKeystore, saveWalletAtomic, saveWords, unlock,
+  normaliseMnemonic, passwordStrength, quizIndices, quizOptions, saveWalletAtomic, unlock, verifyPassword,
 } from './keystore';
 
 const mapStore = (): KvStore & { data: Map<string, unknown> } => {
@@ -69,7 +69,7 @@ describe('keystore', () => {
     const { address, json } = await createKeystore(newMnemonic(), PW);
     expect(json.meta.name).toBe('i-Wallet');
     expect(json.encoding.type).toEqual(expect.arrayContaining(['scrypt', 'xsalsa20-poly1305']));
-    expect(await saveKeystore(json, store)).toBe(true);
+    expect(await saveWalletAtomic(json, newMnemonic(), PW, false, store)).toBe(true);
     const loaded = await loadKeystore(store);
     expect(loaded).not.toBeNull();
     const pair = await unlock(loaded!, PW);
@@ -103,7 +103,7 @@ describe('keystore', () => {
     await expect(createKeystore(m, '')).rejects.toBeInstanceOf(WeakPasswordError);
     await expect(createKeystore(m, 'short')).rejects.toBeInstanceOf(WeakPasswordError);
     const store = mapStore();
-    await expect(saveWords(m, '', store)).rejects.toBeInstanceOf(WeakPasswordError);
+    await expect(saveWalletAtomic({} as never, m, '', false, store)).rejects.toBeInstanceOf(WeakPasswordError);
     expect(store.data.size).toBe(0);
     // A keystore / words blob that is not scrypt + xsalsa20-poly1305 is never opened.
     const { json } = await createKeystore(m, PW);
@@ -147,10 +147,13 @@ describe('keystore', () => {
     expect(a.address).toBe(b.address);
     expect(JSON.stringify(a.json)).not.toContain(m.split(' ')[0] + ' ' + m.split(' ')[1]);
   });
-  it('saveKeystore returns false when the store throws', async () => {
+  it('verifyPassword accepts the right password and locks what it decrypted; a wrong one throws', async () => {
     const { json } = await createKeystore(newMnemonic(), PW);
-    const bad: KvStore = { get: async () => undefined, set: async () => { throw new Error('quota'); }, delete: async () => undefined, deleteMany: async () => undefined, setMany: async () => undefined };
-    expect(await saveKeystore(json, bad)).toBe(false);
+    const spy = vi.spyOn(Keyring.prototype, 'createFromJson');
+    await expect(verifyPassword(json, PW)).resolves.toBeUndefined();
+    expect((spy.mock.results[0].value as { isLocked: boolean }).isLocked).toBe(true);
+    spy.mockRestore();
+    await expect(verifyPassword(json, 'wrong-password-1')).rejects.toBeInstanceOf(WrongPasswordError);
   });
   it('loadKeystore returns null only for no entry; a storage failure throws', async () => {
     expect(await loadKeystore(mapStore())).toBeNull();
@@ -163,20 +166,16 @@ describe('encrypted words', () => {
   it('round-trips under the password and fails under a wrong one', async () => {
     const store = mapStore();
     const m = newMnemonic();
-    expect(await saveWords(m, PW, store)).toBe(true);
+    const { json } = await createKeystore(m, PW);
+    expect(await saveWalletAtomic(json, m, PW, false, store)).toBe(true);
     expect(JSON.stringify(store.data.get('words'))).not.toContain(m.split(' ')[0] + ' ');
     expect(await loadWords(PW, store)).toBe(m);
     await expect(loadWords('nope nope nope', store)).rejects.toBeInstanceOf(WrongPasswordError);
   });
-  it('saveWords returns false when the store throws', async () => {
-    const bad: KvStore = { get: async () => undefined, set: async () => { throw new Error('x'); }, delete: async () => undefined, deleteMany: async () => undefined, setMany: async () => undefined };
-    expect(await saveWords(newMnemonic(), PW, bad)).toBe(false);
-  });
   it('deleteKeystore removes keystore and words', async () => {
     const store = mapStore();
     const m = newMnemonic();
-    await saveKeystore((await createKeystore(m, PW)).json, store);
-    await saveWords(m, PW, store);
+    await saveWalletAtomic((await createKeystore(m, PW)).json, m, PW, false, store);
     store.data.set('faceid', { wrapped: 'x' });
     const many = vi.spyOn(store, 'deleteMany');
     await deleteKeystore(store);

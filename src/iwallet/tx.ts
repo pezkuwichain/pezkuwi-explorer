@@ -51,7 +51,8 @@ export type SubmitEvent =
   | { type: 'finalized'; blockHash: string; extrinsicHash: string }
   | { type: 'failed'; dispatchError: DispatchError }
   | { type: 'dropped' }
-  // Finalized, but system.ExtrinsicSuccess could not be found in this extrinsic's events: the result is unknown.
+  // The result is unknown: finalized without system.ExtrinsicSuccess in this extrinsic's events, or dropped by the
+  // node's pool (possibly after it was gossiped or seen in a block).
   | { type: 'unknown' }
   // The node gave up waiting for finality; the extrinsic may still be finalized later.
   | { type: 'slow'; inBlock: boolean };
@@ -95,7 +96,12 @@ export async function submit(tx: Tx, pair: KeyringPair, onStatus: (e: SubmitEven
         else onStatus({ type: 'unknown' });
         finish();
       } else if (s.isFinalityTimeout) { onStatus({ type: 'slow', inBlock: seenInBlock }); finish(); }
-      else if (s.isDropped || s.isInvalid || s.isUsurped) { onStatus({ type: 'dropped' }); finish(); }
+      else if (s.isDropped || s.isInvalid || s.isUsurped) {
+        // Only Invalid / Usurped before any block prove nothing will be included. Dropped means just that this node's
+        // pool let it go (it may already have been gossiped), and after a block any of the three leaves it unknown.
+        onStatus(seenInBlock || s.isDropped ? { type: 'unknown' } : { type: 'dropped' });
+        finish();
+      }
     };
     onStatus({ type: 'submitted' });
     tx.send(handle).then(

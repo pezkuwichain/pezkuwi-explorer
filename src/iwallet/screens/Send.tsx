@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { ApiPromise } from '@pezkuwi/api';
 import PageHeader from '../../ui/PageHeader';
-import { IconCheck, IconCross, IconFaceId, IconScan, IconWarning } from '../../ui/icons';
+import { IconFaceId, IconScan, IconWarning } from '../../ui/icons';
 import { scanQr } from '../../account/connectors/qr';
 import { shortAddress } from '../../lib/address';
 import { formatAmount } from '../../lib/format';
 import { IWALLET_ED } from '../../config/iwallet-network';
 import { getMainnetApi } from '../chain';
-import { loadAssetBalances, loadHezBalance } from '../data';
+import { chainSpendable, loadAssetBalances } from '../data';
 import { hasFaceId } from '../faceid';
 import { parseAmount } from '../amount';
 import { parseRecipient } from '../address';
@@ -18,7 +18,7 @@ import {
 } from '../tx';
 import { useSignedTx } from '../useSignedTx';
 import { AuthConfirm } from '../AuthConfirm';
-import CopyAddress from '../CopyAddress';
+import { TxResult, txSettled } from '../TxResult';
 import RequireUnlocked from '../RequireUnlocked';
 import '../iwallet.css';
 
@@ -50,26 +50,30 @@ function SendBody({ address }: { address: string }) {
   const [scanError, setScanError] = useState(false);
   const [face, setFace] = useState(false);
   const [blockNo, setBlockNo] = useState<{ hash: string; n: number } | null>(null);
+  const [balanceRun, setBalanceRun] = useState(0);
 
   const info = tokenInfo(token);
   const recipient = useMemo(() => parseRecipient(to), [to]);
   const toNorm = recipient.ok ? recipient.address : null;
   const amount = useMemo(() => parseAmount(amountText, info.decimals), [amountText, info.decimals]);
 
-  // The mainnet Asset Hub connection and the balances, loaded once.
+  // The mainnet Asset Hub connection, once.
   useEffect(() => {
     let live = true;
     getMainnetApi('assetHub').then((a) => { if (live) setApi(a); }, () => undefined);
-    Promise.all([loadHezBalance(address), loadAssetBalances(address)]).then(
-      ([h, a]) => {
-        if (!live) return;
-        setBalances({ hez: h.assetHubSpendable, assets: Object.fromEntries(a.map((x) => [x.id, x.amount])) });
-      },
-      () => { if (live) setBalances('failed'); },
-    );
     hasFaceId().then((v) => { if (live) setFace(v); }, () => undefined);
     return () => { live = false; };
   }, [address]);
+  // Only what a transfer needs, all on Asset Hub: spendable HEZ and the asset balances. The relay and People are not
+  // read, so their outage never blocks a send. Read again after every send (balanceRun).
+  useEffect(() => {
+    let live = true;
+    Promise.all([chainSpendable('assetHub', address), loadAssetBalances(address)]).then(
+      ([hez, a]) => { if (live) setBalances({ hez, assets: Object.fromEntries(a.map((x) => [x.id, x.amount])) }); },
+      () => { if (live) setBalances('failed'); },
+    );
+    return () => { live = false; };
+  }, [address, balanceRun]);
 
   const hezSpendable = balances && balances !== 'failed' ? balances.hez : null;
   const balance = balances && balances !== 'failed'
@@ -160,7 +164,10 @@ function SendBody({ address }: { address: string }) {
   const review = (e: FormEvent) => { e.preventDefault(); if (canReview) { signer.setAuthError(null); setPhase('confirm'); } };
   const doSend = (password: string) => {
     if (!api || toNorm === null || amount === null) return;
-    void signer.run(api, () => buildTransfer(api, token, toNorm, amount), password);
+    void signer.run(api, () => buildTransfer(api, token, toNorm, amount), password).then((o) => {
+      // The old "Available" and Max are stale once anything may have left: read them again.
+      if (o !== null) { setBalances(null); setBalanceRun((n) => n + 1); }
+    });
   };
   const reset = () => {
     signer.reset(); setPhase('form'); setTo(''); setAmountText(''); setAck(false); setMaxBusy(false); setScanError(false); setScanning(false);
@@ -168,36 +175,22 @@ function SendBody({ address }: { address: string }) {
 
   if (outcome.kind !== 'idle') {
     return (
-      <div className="iw">
-        <PageHeader title={t('iwallet.send.title', { token })} />
-        <div className="iw-body iw-result" aria-live="polite">
-          {outcome.kind === 'pending' && <p className="iw-lead" role="status">{t('iwallet.send.pending')}</p>}
-          {outcome.kind === 'inBlock' && <p className="iw-lead" role="status">{t('iwallet.send.inBlock')}</p>}
-          {outcome.kind === 'slow' && <p className="iw-note" role="status">{t('iwallet.send.slow')}</p>}
-          {outcome.kind === 'finalized' && <>
-            <span className="iw-result-icon"><IconCheck size={32} /></span>
-            <h2 className="iw-h1">{t('iwallet.send.doneTitle')}</h2>
-            <p className="iw-lead">{amount !== null ? money(amount) : ''} → <bdi dir="ltr">{shortAddress(toNorm ?? '')}</bdi></p>
-            {blockNo?.hash === outcome.blockHash && <p className="iw-lead">{t('iwallet.send.recordNo')}: <bdi dir="ltr">{blockNo.n}</bdi></p>}
-            <p className="iw-lead">{t('iwallet.send.txId')}</p>
-            <div className="iw-addr iw-addr-full">
-              <bdi dir="ltr" className="iw-addr-text">{outcome.hash}</bdi>
-              <CopyAddress address={outcome.hash} label={t('iwallet.send.copyTxId')} />
-            </div>
-          </>}
-          {outcome.kind === 'failed' && <>
-            <span className="iw-result-icon bad"><IconCross size={32} /></span>
-            <h2 className="iw-h1">{t('iwallet.send.failedTitle')}</h2>
-            <p className="iw-error" role="alert">{outcome.message}</p>
-          </>}
-          {outcome.kind === 'interrupted' && <p className="iw-note" role="alert">{t('iwallet.send.interrupted')}</p>}
+      <TxResult
+        title={t('iwallet.send.title', { token })}
+        outcome={outcome}
+        doneTitle={t('iwallet.send.doneTitle')}
+        failedTitle={t('iwallet.send.failedTitle')}
+        interrupted={t('iwallet.send.interrupted')}
+        detail={outcome.kind === 'finalized' && <>
+          <p className="iw-lead">{amount !== null ? money(amount) : ''} → <bdi dir="ltr">{shortAddress(toNorm ?? '')}</bdi></p>
+          {blockNo?.hash === outcome.blockHash && <p className="iw-lead">{t('iwallet.send.recordNo')}: <bdi dir="ltr">{blockNo.n}</bdi></p>}
+        </>}
+        actions={<>
           {/* Leaving does not cancel a transfer that is already on its way, so Done is always offered. */}
           <button type="button" className="iw-primary" onClick={() => nav('/i-wallet')}>{t('iwallet.send.done')}</button>
-          {outcome.kind !== 'pending' && outcome.kind !== 'inBlock' && (
-            <button type="button" className="iw-secondary" onClick={reset}>{t('iwallet.send.another')}</button>
-          )}
-        </div>
-      </div>
+          {txSettled(outcome) && <button type="button" className="iw-secondary" onClick={reset}>{t('iwallet.send.another')}</button>}
+        </>}
+      />
     );
   }
 
@@ -208,6 +201,7 @@ function SendBody({ address }: { address: string }) {
         <AuthConfirm
           summary={(
             <dl className="iw-summary">
+              <dt>{t('iwallet.citizen.row.chain')}</dt><dd>{t('iwallet.citizen.chain.assetHub')}</dd>
               <dt>{t('iwallet.send.to')}</dt><dd><bdi dir="ltr">{toNorm}</bdi></dd>
               <dt>{t('iwallet.send.amount')}</dt><dd><bdi dir="ltr">{amount !== null ? money(amount) : ''}</bdi></dd>
               <dt>{t('iwallet.send.feeLabel')}</dt><dd><bdi dir="ltr">{fee !== null ? money(fee, 'HEZ') : '—'}</bdi></dd>

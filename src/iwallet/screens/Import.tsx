@@ -44,7 +44,7 @@ export default function Import() {
       const saved = await saveWallet(words.current, password, { replacing });
       words.current = '';
       setDone(true);
-      setCreated(saved.json, saved.pair);
+      setCreated(saved.json);
       if (faceId) { setFacePw(password); setBusy(false); } else navigate('/i-wallet', { replace: true });
     } catch (e) {
       setError(t(e instanceof NotSavedError ? 'iwallet.error.notSaved' : 'iwallet.error.generic'));

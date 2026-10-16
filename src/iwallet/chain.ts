@@ -17,9 +17,28 @@ const realFactory = (chain: ChainKey): Attempt => {
 let factory: (chain: ChainKey) => Attempt = realFactory;
 const cache = new Map<ChainKey, Promise<ApiPromise>>();
 
+// The endpoint answered with a chain other than the configured one (a misrouted endpoint, or the genesis reset before
+// this build carries the new hashes). Nothing is read from or signed against it.
+export class NetworkChangedError extends Error {
+  readonly chain: ChainKey;
+  constructor(chain: ChainKey) { super(`unexpected genesis on ${chain}`); this.name = 'NetworkChangedError'; this.chain = chain; }
+}
+
+// Chains whose last connection answered with an unexpected genesis, for the "network changed" notice.
+const changed = new Set<ChainKey>();
+const listeners = new Set<() => void>();
+const notify = () => { snapshot = changed.size > 0; listeners.forEach((l) => l()); };
+let snapshot = false;
+export const networkChanged = (): boolean => snapshot;
+export function subscribeNetworkChanged(l: () => void): () => void {
+  listeners.add(l);
+  return () => { listeners.delete(l); };
+}
+
 export function __setMainnetApiFactoryForTests(f?: (chain: ChainKey) => Attempt) {
   factory = f ?? realFactory;
   cache.clear();
+  changed.clear(); notify();
 }
 
 function connect(chain: ChainKey): Promise<ApiPromise> {
@@ -27,7 +46,17 @@ function connect(chain: ChainKey): Promise<ApiPromise> {
   const evict = () => { if (cache.get(chain) === p) cache.delete(chain); disconnect(); };
   const giveUp = setTimeout(evict, CONNECT_GIVE_UP_MS);
   const p: Promise<ApiPromise> = api.then(
-    (a) => { clearTimeout(giveUp); return a; },
+    (a) => {
+      clearTimeout(giveUp);
+      // Fail closed: an endpoint serving another chain is unavailable, never a chain to sign on.
+      if (a.genesisHash.toHex() !== IWALLET_NETWORK.chains[chain].genesis) {
+        evict();
+        changed.add(chain); notify();
+        throw new NetworkChangedError(chain);
+      }
+      if (changed.delete(chain)) notify();
+      return a;
+    },
     (e: unknown) => { clearTimeout(giveUp); evict(); throw e; },
   );
   p.catch(() => {}); // the rejection is delivered to each waiter; this only marks it handled

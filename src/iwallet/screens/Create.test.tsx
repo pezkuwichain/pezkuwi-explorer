@@ -72,6 +72,19 @@ describe('i-Wallet create', () => {
     expect(next).toBeEnabled();
   });
 
+  it('takes the words off the screen while the page is hidden (app switcher snapshot) and shows them again on return', async () => {
+    renderCreate();
+    await screen.findByRole('button', { name: 'Devam' });
+    const setHidden = (v: boolean) => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => v });
+      act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    };
+    setHidden(true);
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+    setHidden(false);
+    expect(screen.getAllByRole('listitem')).toHaveLength(12);
+  });
+
   it('blocks a wrong quiz word, shows the error and lets the user change the pick', async () => {
     const u = user;
     renderCreate();

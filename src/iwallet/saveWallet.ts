@@ -1,22 +1,22 @@
 // Saves a new or imported wallet in one all-or-nothing step (spec §4): the keystore, the encrypted words and, on a
 // replace, the removal of the old Face ID record land in a single IndexedDB transaction. A failure changes nothing,
 // so an existing wallet is never damaged. Used by the create and import screens.
-import type { KeyringPair, KeyringPair$Json } from '@pezkuwi/keyring/types';
-import { createKeystore, requestPersistence, saveWalletAtomic, unlock } from './keystore';
+import type { KeyringPair$Json } from '@pezkuwi/keyring/types';
+import { createKeystore, requestPersistence, saveWalletAtomic } from './keystore';
 import { enrolFaceId } from './faceid';
 
 export class NotSavedError extends Error {
   constructor() { super('The wallet could not be saved'); this.name = 'NotSavedError'; }
 }
 
-export interface SavedWallet { json: KeyringPair$Json; pair: KeyringPair }
+export interface SavedWallet { json: KeyringPair$Json }
 
 export async function saveWallet(mnemonic: string, password: string, opts: { replacing: boolean }): Promise<SavedWallet> {
   const { json } = await createKeystore(mnemonic, password);
   if (!(await saveWalletAtomic(json, mnemonic, password, opts.replacing))) throw new NotSavedError();
   await requestPersistence();
-  const pair = await unlock(json, password);
-  return { json, pair };
+  // No decrypted pair comes back: the wallet opens unlocked, and each signature decrypts its own pair.
+  return { json };
 }
 
 export type FaceIdNote = 'iwallet.faceid.cancelled' | 'iwallet.faceid.unavailable' | 'iwallet.faceid.storage';

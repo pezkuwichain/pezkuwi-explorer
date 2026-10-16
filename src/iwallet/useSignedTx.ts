@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { ApiPromise } from '@pezkuwi/api';
 import type { SubmittableExtrinsic } from '@pezkuwi/api/types';
 import { CorruptKeystoreError, WrongPasswordError, unlock as decrypt } from './keystore';
-import { useIWallet } from './IWalletContext';
+import { useHoldOpen, useIWallet } from './IWalletContext';
 import { friendlyError, isNodeRefusal, submit, type SubmitEvent } from './tx';
 
 // The signing step shared by the citizenship actions, with the same rule as Send (Task 7): each action decrypts a
@@ -28,6 +28,9 @@ export function useSignedTx() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<TxOutcome>({ kind: 'idle' });
   const busyRef = useRef(false);
+  // From the first decrypt to leaving the result, an auto-lock must not swap this screen for the unlock form: the
+  // attempt carries on regardless, and its outcome (no secret in it) is what tells the person whether money left.
+  useHoldOpen(busy || outcome.kind !== 'idle');
 
   // Resolves with the final outcome so the caller can follow up (reload, start polling); null when the password failed.
   const run = useCallback(async (api: ApiPromise, build: () => Tx, password: string): Promise<TxOutcome | null> => {

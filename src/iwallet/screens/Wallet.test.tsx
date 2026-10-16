@@ -27,6 +27,7 @@ vi.mock('../keystore', async (orig) => ({
   loadKeystore: () => Promise.resolve({ address: ADDR, encoded: 'enc' }),
   loadWords: (...a: unknown[]) => impl.words(...a),
   unlock: () => Promise.resolve({ address: ADDR, lock() {} }),
+  verifyPassword: () => Promise.resolve(),
 }));
 
 const T = 10n ** 12n;

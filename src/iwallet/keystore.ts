@@ -102,17 +102,16 @@ export async function unlock(json: KeyringPair$Json, password: string): Promise<
   return pair;
 }
 
+// Proves the password opens the keystore without keeping the secret: the decrypted pair is locked at once.
+// Throws WrongPasswordError / CorruptKeystoreError like unlock.
+export async function verifyPassword(json: KeyringPair$Json, password: string): Promise<void> {
+  const pair = await unlock(json, password);
+  try { pair.lock(); } catch { /* already locked */ }
+}
+
 async function encryptWords(mnemonic: string, password: string): Promise<unknown> {
   await waitReady();
   return jsonEncrypt(stringToU8a(normaliseMnemonic(mnemonic)), WORDS_CONTENT, password);
-}
-
-export async function saveWords(mnemonic: string, password: string, store: KvStore = indexedDbStore): Promise<boolean> {
-  assertStrong(password);
-  try {
-    await store.set(WORDS_KEY, await encryptWords(mnemonic, password));
-    return true;
-  } catch { return false; }
 }
 
 // Writes the keystore and the encrypted words in ONE transaction (all or nothing). With `replace` the Face ID
@@ -137,10 +136,6 @@ export async function loadWords(password: string, store: KvStore = indexedDbStor
   try { return u8aToString(jsonDecrypt(enc as EncryptedJson, password)); } catch (e) {
     throw isWrongPassword(e) ? new WrongPasswordError() : new CorruptKeystoreError();
   }
-}
-
-export async function saveKeystore(json: KeyringPair$Json, store: KvStore = indexedDbStore): Promise<boolean> {
-  try { await store.set(KEYSTORE_KEY, json); return true; } catch { return false; }
 }
 
 // null only when there is no wallet; a storage failure throws StorageUnavailableError so the UI

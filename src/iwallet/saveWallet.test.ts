@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const m = vi.hoisted(() => ({
-  createKeystore: vi.fn(), saveWalletAtomic: vi.fn(), unlock: vi.fn(), requestPersistence: vi.fn(), enrolFaceId: vi.fn(),
+  createKeystore: vi.fn(), saveWalletAtomic: vi.fn(), requestPersistence: vi.fn(), enrolFaceId: vi.fn(),
 }));
 vi.mock('./keystore', () => ({
-  createKeystore: m.createKeystore, saveWalletAtomic: m.saveWalletAtomic, unlock: m.unlock, requestPersistence: m.requestPersistence,
+  createKeystore: m.createKeystore, saveWalletAtomic: m.saveWalletAtomic, requestPersistence: m.requestPersistence,
 }));
 vi.mock('./faceid', () => ({ enrolFaceId: m.enrolFaceId }));
 import { NotSavedError, enableFaceId, saveWallet } from './saveWallet';
@@ -15,14 +15,13 @@ describe('saveWallet', () => {
     m.createKeystore.mockResolvedValue({ address: 'a', json: { address: 'a' } });
     m.saveWalletAtomic.mockResolvedValue(true);
     m.requestPersistence.mockResolvedValue(true);
-    m.unlock.mockResolvedValue({ pair: true });
   });
 
-  it('saves keystore and words in one call, then asks for persistence and unlocks', async () => {
+  it('saves keystore and words in one call, then asks for persistence; no decrypted pair is returned', async () => {
     const r = await saveWallet('w w', 'pw123456', { replacing: false });
     expect(m.saveWalletAtomic).toHaveBeenCalledWith({ address: 'a' }, 'w w', 'pw123456', false);
     expect(m.requestPersistence).toHaveBeenCalled();
-    expect(r.pair).toEqual({ pair: true });
+    expect(r).toEqual({ json: { address: 'a' } });
   });
 
   it('passes the replace flag so the old Face ID record goes in the same transaction', async () => {
@@ -34,7 +33,6 @@ describe('saveWallet', () => {
     m.saveWalletAtomic.mockResolvedValue(false);
     await expect(saveWallet('w w', 'pw123456', { replacing: true })).rejects.toBeInstanceOf(NotSavedError);
     expect(m.requestPersistence).not.toHaveBeenCalled();
-    expect(m.unlock).not.toHaveBeenCalled();
   });
 });
 

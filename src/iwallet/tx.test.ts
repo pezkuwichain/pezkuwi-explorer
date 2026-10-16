@@ -173,6 +173,27 @@ describe('submit', () => {
     await submit(tx as never, pairStub(), (e) => seen.push(e));
     expect(seen.at(-1)).toEqual({ type: 'slow', inBlock: true });
   });
+  // "Nothing was sent" only when it is proven: Invalid / Usurped before any block. A drop, or anything after a block,
+  // may still complete.
+  it('maps pool exits: dropped and post-block exits are unknown, invalid before a block is dropped', async () => {
+    const run = async (inBlockFirst: boolean, flag: 'isDropped' | 'isInvalid' | 'isUsurped') => {
+      const tx = {
+        signAsync: () => Promise.resolve(),
+        send: (cb: (r: unknown) => void) => {
+          if (inBlockFirst) cb(res({ isInBlock: true, asInBlock: { toHex: () => '0xb1' } }));
+          cb(res({ [flag]: true }));
+          return Promise.resolve(() => undefined);
+        },
+      };
+      const seen: SubmitEvent[] = [];
+      await submit(tx as never, pairStub(), (e) => seen.push(e));
+      return seen.at(-1);
+    };
+    for (const flag of ['isDropped', 'isInvalid', 'isUsurped'] as const) expect(await run(true, flag)).toEqual({ type: 'unknown' });
+    expect(await run(false, 'isDropped')).toEqual({ type: 'unknown' });
+    expect(await run(false, 'isInvalid')).toEqual({ type: 'dropped' });
+    expect(await run(false, 'isUsurped')).toEqual({ type: 'dropped' });
+  });
 });
 
 describe('submit stop signal', () => {

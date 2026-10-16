@@ -17,11 +17,12 @@ const impl = vi.hoisted(() => ({
   script: [] as string[], sendRejects: false, faceOn: false, face: null as string | null,
   signed: [] as Array<{ name: string; args: unknown[] }>, pairs: [] as Array<{ lock: ReturnType<typeof vi.fn> }>, unlockPw: [] as string[],
   scanned: null as string | null, scanFails: false,
-  feeFn: null as null | ((amount: bigint) => bigint), feeGate: null as null | Promise<void>, unsubs: 0, rejectWith: null as unknown,
+  feeFn: null as null | ((amount: bigint) => bigint), feeGate: null as null | Promise<void>, unsubs: 0, rejectWith: null as unknown, balanceReads: [] as string[],
 }));
 
 vi.mock('../data', () => ({
-  loadHezBalance: () => Promise.resolve({ total: impl.hezSpendable, perChain: { relay: 0n, assetHub: impl.hezSpendable, people: 0n }, assetHubSpendable: impl.hezSpendable }),
+  // Send reads Asset Hub only; a relay / People reader here would be a regression.
+  chainSpendable: (chain: string) => { impl.balanceReads.push(chain); return Promise.resolve(impl.hezSpendable); },
   loadAssetBalances: () => Promise.resolve([
     { id: 1, symbol: 'PEZ', decimals: 12, amount: impl.assets[1] ?? 0n }, { id: 1000, symbol: 'USDT', decimals: 6, amount: impl.assets[1000] ?? 0n },
   ]),
@@ -35,16 +36,19 @@ vi.mock('../../account/connectors/qr', () => ({
 }));
 vi.mock('../keystore', async (orig) => {
   const real = await orig<typeof import('../keystore')>();
+  const unlock = (_json: unknown, pw: string) => {
+    impl.unlockPw.push(pw);
+    if (pw !== 'right-pass1') return Promise.reject(new real.WrongPasswordError());
+    const pair = { address: ADDR, lock: vi.fn() };
+    impl.pairs.push(pair);
+    return Promise.resolve(pair);
+  };
   return {
     ...real,
     loadKeystore: () => Promise.resolve({ address: ADDR, encoded: 'enc' }),
-    unlock: (_json: unknown, pw: string) => {
-      impl.unlockPw.push(pw);
-      if (pw !== 'right-pass1') return Promise.reject(new real.WrongPasswordError());
-      const pair = { address: ADDR, lock: vi.fn() };
-      impl.pairs.push(pair);
-      return Promise.resolve(pair);
-    },
+    unlock,
+    // The context proves the password through the same (mocked) decrypt and locks the pair at once.
+    verifyPassword: (json: unknown, pw: string) => unlock(json, pw).then((p) => { p.lock(); }),
   };
 });
 
@@ -55,6 +59,7 @@ const result = (kind: string) => {
   if (kind === 'timeout') return { ...base, status: { ...base.status, isFinalityTimeout: true } };
   if (kind === 'finalizedNoEvents') return { ...base, events: [], internalError: new Error('events'), status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb2' } } };
   if (kind === 'dropped') return { ...base, status: { ...base.status, isDropped: true } };
+  if (kind === 'invalid') return { ...base, status: { ...base.status, isInvalid: true } };
   return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } }, dispatchError: { isModule: kind === 'failed', asModule: {} } };
 };
 const mkTx = (name: string, args: unknown[]) => ({
@@ -79,7 +84,7 @@ const stubApi = {
   registry: { findMetaError: () => ({ section: 'balances', name: 'InsufficientBalance' }) },
   on: vi.fn(), off: vi.fn(),
 };
-vi.mock('../chain', () => ({ getMainnetApi: () => Promise.resolve(stubApi) }));
+vi.mock('../chain', () => ({ getMainnetApi: () => Promise.resolve(stubApi), networkChanged: () => false, subscribeNetworkChanged: () => () => undefined }));
 
 let store: Map<string, unknown>;
 const makeStore = (): KvStore => ({
@@ -132,7 +137,7 @@ describe('i-Wallet send', () => {
     await i18n.changeLanguage('tr');
     store = new Map<string, unknown>([['keystore', {}], ['words', {}]]);
     Object.assign(impl, { hezSpendable: 5000n * T, assets: { 1: 20n * T, 1000: 9_000_000_000n }, fee: 2_000_000_000n, script: ['inBlock', 'finalized'], sendRejects: false, faceOn: false, face: null, scanned: null, scanFails: false, feeFn: null, feeGate: null, unsubs: 0, rejectWith: null });
-    impl.signed = []; impl.pairs = []; impl.unlockPw = [];
+    impl.signed = []; impl.pairs = []; impl.unlockPw = []; impl.balanceReads = [];
   });
 
   it('gates HEZ above 1000 behind the orange alert and its checkbox, and only then enables confirm', async () => {
@@ -367,12 +372,61 @@ describe('i-Wallet send', () => {
     await waitFor(() => expect(impl.unsubs).toBe(1));
   });
 
-  it('reports a transaction the network dropped as not sent', async () => {
-    impl.script = ['dropped'];
+  it('reports a transaction the pool refused as invalid (before any block) as not sent', async () => {
+    impl.script = ['invalid'];
     renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
     expect(await screen.findByText(/Hiçbir şey gönderilmedi/)).toBeInTheDocument();
+  });
+
+  it('never says "nothing was sent" for a drop, or for any pool exit after a block: it may still complete', async () => {
+    for (const script of [['dropped'], ['inBlock', 'dropped'], ['inBlock', 'invalid']]) {
+      impl.script = script;
+      const { unmount } = renderSend(); await login();
+      await fill(BOB, '1');
+      await confirmWith('right-pass1');
+      expect(await screen.findByText(/yine de tamamlanabilir/)).toBeInTheDocument();
+      expect(screen.queryByText(/Hiçbir şey gönderilmedi/)).toBeNull();
+      unmount();
+    }
+  });
+
+  it('reads only Asset Hub balances, and reads them again after a send', async () => {
+    renderSend(); await login();
+    expect(impl.balanceReads).toEqual(['assetHub']);
+    await fill(BOB, '1');
+    impl.hezSpendable = 4000n * T; // what the chain holds after the transfer
+    await confirmWith('right-pass1');
+    await screen.findByText('Gönderildi');
+    await waitFor(() => expect(impl.balanceReads).toEqual(['assetHub', 'assetHub']));
+    await user.click(screen.getByRole('button', { name: 'Bir gönderim daha' }));
+    expect(await screen.findByText(/Kullanılabilir: 4\.000/)).toBeInTheDocument();
+  });
+
+  it('shows the chain on the confirm screen', async () => {
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await user.click(review());
+    expect(await screen.findByText('Pezkuwi Asset Hub')).toBeInTheDocument();
+  });
+
+  it('an auto-lock during the send keeps the result on screen; leaving it shows the lock', async () => {
+    impl.script = ['inBlock'];
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    await screen.findByText(/Ağ tarafından kabul edildi/);
+    // The wallet locks (5 idle minutes, seen on the wall clock when the window regains focus).
+    const now = Date.now();
+    const spy = vi.spyOn(Date, 'now').mockImplementation(() => now + 5 * 60_000 + 1);
+    fireEvent(window, new Event('focus'));
+    spy.mockRestore();
+    // Still the result, not the unlock form.
+    expect(screen.getByText(/Ağ tarafından kabul edildi/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Kilidi aç' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Bitti' }));
+    expect(await screen.findByRole('button', { name: 'Kilidi aç' })).toBeInTheDocument();
   });
 
   it('Max prices the call at the balance-sized amount and keeps a margin, so a fee that grows with the amount never overshoots', async () => {

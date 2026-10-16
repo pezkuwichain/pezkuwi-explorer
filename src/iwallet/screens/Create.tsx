@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconBack } from '../../ui/icons';
@@ -28,6 +29,14 @@ export default function Create() {
   const [facePw, setFacePw] = useState<string | null>(null);
   const clearFacePw = useCallback(() => setFacePw(null), []);
   const [done, setDone] = useState(false);
+  // The words leave the screen while the page is hidden (the iOS app switcher keeps a snapshot); they come back on
+  // return. flushSync so the blank list is painted before the browser takes that snapshot.
+  const [concealed, setConcealed] = useState(() => typeof document !== 'undefined' && document.hidden);
+  useEffect(() => {
+    const onVis = () => flushSync(() => setConcealed(document.hidden));
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
   const indices = useMemo(() => quizIndices(), []);
   const options = useMemo(() => indices.map((i) => quizOptions(words, i)), [indices, words]);
 
@@ -49,7 +58,7 @@ export default function Create() {
       const saved = await saveWallet(words.join(' '), password, { replacing: false });
       setWords([]);
       setDone(true);
-      setCreated(saved.json, saved.pair);
+      setCreated(saved.json);
       if (faceId) { setFacePw(password); setBusy(false); } else navigate('/i-wallet', { replace: true });
     } catch (e) {
       setError(t(e instanceof NotSavedError ? 'iwallet.error.notSaved' : 'iwallet.error.generic'));
@@ -77,7 +86,7 @@ export default function Create() {
             <h1 className="iw-h1">{t('iwallet.words.title')}</h1>
             <p className="iw-lead">{t('iwallet.words.body')}</p>
             <ol className="iw-words" aria-label={t('iwallet.words.list')}>
-              {words.map((w, i) => <li key={i}><span className="iw-n">{i + 1}</span><span>{w}</span></li>)}
+              {!concealed && words.map((w, i) => <li key={i}><span className="iw-n">{i + 1}</span><span>{w}</span></li>)}
             </ol>
             <div className="iw-redwarn" role="note">
               <strong>{t('iwallet.words.warnTitle')}</strong> {t('iwallet.words.warnBody')}

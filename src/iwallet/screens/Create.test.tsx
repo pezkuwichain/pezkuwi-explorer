@@ -104,6 +104,16 @@ describe('i-Wallet create', () => {
     expect(screen.getByRole('button', { name: 'Doğrula' })).toBeEnabled();
   });
 
+  it('says at the password step, under the create button, that continuing accepts the terms and privacy notice', async () => {
+    renderCreate();
+    await toPasswordStep();
+    const line = (await screen.findByText(/Devam ederek/)).closest('p')!;
+    expect(line.querySelector('a[href="/terms"]')).toHaveTextContent('Kullanım koşullarını');
+    expect(line.querySelector('a[href="/privacy"]')).toHaveTextContent('Gizlilik bildirimini');
+    const submit = screen.getByRole('button', { name: 'Cüzdanı oluştur' });
+    expect(submit.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('blocks Create for a short password or a mismatch', async () => {
     renderCreate();
     const u = await toPasswordStep();

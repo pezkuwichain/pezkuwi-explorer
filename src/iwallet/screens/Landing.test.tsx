@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import i18n, { setLanguage } from '../../i18n';
 import { PLAY_STORE } from '../../account/AccountContext';
@@ -29,6 +29,29 @@ describe('i-Wallet landing', () => {
     expect(screen.getByRole('link', { name: "i-Wallet'ini al" })).toHaveAttribute('href', '/i-wallet/create');
     expect(screen.getByRole('link', { name: /Zaten cüzdanım var/ })).toHaveAttribute('href', '/i-wallet/import');
     expect(screen.getByText('Pezkuwi ana ağ')).toBeInTheDocument();
+  });
+
+  it('says under the calls to action that continuing accepts the terms and privacy notice, and carries the footer', async () => {
+    renderTab();
+    const line = (await screen.findByText(/Devam ederek/)).closest('p')!;
+    expect(line.closest('.iw-hero')).not.toBeNull();
+    expect(line).toHaveTextContent('Devam ederek Kullanım koşullarını ve Gizlilik bildirimini kabul etmiş olursun.');
+    expect(within(line).getByRole('link', { name: 'Kullanım koşullarını' })).toHaveAttribute('href', '/terms');
+    expect(within(line).getByRole('link', { name: 'Gizlilik bildirimini' })).toHaveAttribute('href', '/privacy');
+    const foot = screen.getByRole('contentinfo');
+    expect(within(foot).getByRole('link', { name: 'Gizlilik' })).toHaveAttribute('href', '/privacy');
+    expect(within(foot).getByRole('link', { name: 'YouTube' })).toHaveAttribute('href', 'https://www.youtube.com/@dijitalkurdistan');
+  });
+
+  it('has the consent line in all six languages', async () => {
+    for (const lang of ['kmr', 'ckb', 'tr', 'en', 'fa', 'ar'] as const) {
+      setLanguage(lang);
+      const { unmount } = renderTab();
+      const line = await waitFor(() => { const p = document.querySelector('.accept-line'); expect(p).not.toBeNull(); return p as HTMLElement; });
+      expect([...line.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['/terms', '/privacy']);
+      unmount();
+    }
+    setLanguage('kmr');
   });
 
   it('hides the create and import paths when storage is unavailable', async () => {

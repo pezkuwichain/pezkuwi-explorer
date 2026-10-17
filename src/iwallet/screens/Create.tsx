@@ -8,6 +8,7 @@ import { NotSavedError, saveWallet } from '../saveWallet';
 import WalletReady from './WalletReady';
 import { useIWallet } from '../IWalletContext';
 import PasswordStep, { type PasswordResult } from './PasswordStep';
+import { AcceptLine } from '../../ui/SiteFooter';
 import '../iwallet.css';
 
 type Step = 1 | 2 | 3;
@@ -130,6 +131,7 @@ export default function Create() {
               submitLabel={t(busy ? 'iwallet.create.working' : 'iwallet.create.submit')}
               busy={busy} error={error} onSubmit={create}
             />
+            <AcceptLine />
           </>
         )}
       </div>

@@ -35,6 +35,25 @@
 .experts { text-align: center; font-size: 13px; color: var(--muted); padding: 8px 20px 12px; }
 .experts a { color: var(--muted); display: inline-block; padding-block: 12px; text-decoration: none; }
 .experts a bdi { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+/* SiteFooter: the experts link, then the privacy / terms links, then the social icons; every target is 44 px. It is
+   in the page flow, so the page's own padding (var(--tabbar)) keeps it clear of the fixed tab bar. */
+.site-foot { display: flex; flex-direction: column; align-items: center; gap: 2px; border-block-start: 1px solid var(--divider); margin-block-start: 12px; }
+.foot-legal { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 4px; }
+.experts .foot-legal a {
+  display: inline-flex; align-items: center; min-block-size: var(--tap); min-inline-size: var(--tap); padding: 0 12px; box-sizing: border-box;
+  justify-content: center; color: var(--muted-strong); font-weight: 600; font-size: 14px; text-decoration: underline; text-underline-offset: 3px;
+}
+.foot-social { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.experts .foot-social a {
+  display: inline-flex; align-items: center; justify-content: center; inline-size: var(--tap); block-size: var(--tap); padding: 0;
+  border-radius: 999px; color: var(--muted-strong);
+}
+.experts .foot-social a:hover { color: var(--text-strong); background: var(--surface); }
+.experts a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 10px; }
+.experts .foot-social a:focus-visible { border-radius: 999px; }
+/* The i-Wallet's consent line under its create / import buttons. */
+.accept-line { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); text-align: center; }
+.accept-line a { color: var(--link); text-decoration: underline; text-underline-offset: 3px; display: inline-block; padding-block: 6px; }
 
 .tabbar {
   position: fixed; inset-block-end: 0; inset-inline: 0; margin-inline: auto; max-inline-size: 480px; z-index: 10;

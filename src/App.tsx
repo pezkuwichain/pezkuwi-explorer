@@ -17,6 +17,7 @@ import Receive from './iwallet/screens/Receive';
 import Send from './iwallet/screens/Send';
 import Settings from './iwallet/screens/Settings';
 import Citizen from './iwallet/screens/Citizen';
+import LegalPage from './legal/LazyLegalPage';
 
 // Each later screen task adds its own route here.
 export default function App() {
@@ -33,6 +34,8 @@ export default function App() {
               <Route path="payment" element={<PaymentStatus />} />
               <Route path="citizenship" element={<Citizenship />} />
               <Route path="network" element={<Network />} />
+              <Route path="privacy" element={<LegalPage kind="privacy" />} />
+              <Route path="terms" element={<LegalPage kind="terms" />} />
               <Route path="i-wallet" element={<IWalletShell />}>
                 <Route index element={<IWalletIndex />} />
                 <Route path="create" element={<Create />} />

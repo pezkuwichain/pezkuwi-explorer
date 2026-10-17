@@ -223,3 +223,7 @@ button.iw-pick { cursor: pointer; }
   justify-content: center; background: var(--surface-sunk); color: var(--info-icon);
 }
 .iw-install-note { margin: 0; padding: 12px; border-radius: 14px; background: var(--zer-soft); border: 1px solid var(--zer-line); color: var(--text); font-size: 13.5px; line-height: 1.45; }
+
+/* The consent line inside the hero card takes the card's own colours. */
+.iw-hero .accept-line { color: var(--hero-soft); }
+.iw-hero .accept-line a { color: var(--hero-text); }

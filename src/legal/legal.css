@@ -1,0 +1,16 @@
+/* The privacy and terms pages (LegalPage): long text at a readable measure, theme tokens only. */
+.legal {
+  max-inline-size: 65ch; box-sizing: border-box; padding: 4px 20px 28px;
+  font-size: 16px; line-height: 1.6; color: var(--text); overflow-wrap: anywhere;
+}
+.legal-scope { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 15px; color: var(--muted-strong); }
+.legal-updated { margin: 2px 0 14px; font-size: 13px; color: var(--muted); }
+.legal p { margin: 0 0 12px; }
+.legal h2 {
+  margin: 22px 0 8px; font-family: var(--font-display); font-size: 18px; font-weight: 700; line-height: 1.3; color: var(--text-strong);
+}
+.legal ul { margin: 0 0 12px; padding-inline-start: 22px; }
+.legal li { margin-block-end: 6px; }
+.legal li::marker { color: var(--muted); }
+.legal a { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+.legal a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }

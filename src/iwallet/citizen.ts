@@ -9,6 +9,9 @@ import type { ChainKey } from '../config/network';
 import { IWALLET_NETWORK } from '../config/iwallet-network';
 import { REQUEST_TIMEOUT_MS } from '../chain/connections';
 import { PREFIX, storage } from '../lib/storage';
+import { clearAllForms, clearForm, clearTeleportSent, formKey, teleportKey } from './personal-store';
+
+export { clearAllForms, clearForm, clearTeleportSent, formKey };
 import { withTimeout } from '../lib/timeout';
 import { getMainnetApi } from './chain';
 import { chainSpendable } from './data';
@@ -47,8 +50,8 @@ export function formProblems(form: CitizenForm): FormProblem[] {
   return form.fullName.trim() ? [] : ['fullName'];
 }
 
-// Personal data is kept only in this browser's localStorage (via src/lib/storage.ts), keyed by the wallet address.
-export const formKey = (address: string) => `iwallet-citizen:${address}`;
+// Personal data is kept only in this browser's localStorage (via src/lib/storage.ts), keyed by the wallet address
+// (formKey, clearForm, clearAllForms live in personal-store.ts).
 const FORM_KEYS = ['fullName', 'referrer', 'salt'];
 // Always returns a form with a salt. A new form's salt is kept in memory until the first save (nothing is written for
 // someone who never types). A stored form that lacks a salt, or that still holds the long form saved before
@@ -70,17 +73,6 @@ export function loadForm(address: string): CitizenForm {
 }
 export const saveForm = (address: string, form: CitizenForm): boolean =>
   storage.set(formKey(address), JSON.stringify({ fullName: form.fullName, referrer: form.referrer, salt: form.salt }));
-export const clearForm = (address: string): void => storage.remove(formKey(address));
-// "Delete from device" promises a clean device: every saved citizenship form goes, whatever wallet it belonged to.
-export function clearAllForms(): void {
-  const prefix = PREFIX + formKey('');
-  try {
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const k = localStorage.key(i);
-      if (k?.startsWith(prefix)) localStorage.removeItem(k);
-    }
-  } catch { /* storage unavailable: nothing was kept */ }
-}
 
 // The short address (cuzdan.pex.network/?ref=X) lands on /i-wallet, not on the citizenship screen: the shell keeps
 // the referrer for this browser session so the citizenship form still finds it after create / unlock / home.
@@ -298,7 +290,6 @@ export const FUNDING_POLL = { everyMs: 6_000, forMs: 120_000 };
 // (or an auto-lock) cannot bring the teleport button back and invite a second one. For this long after sending, the
 // screen offers only "check again"; after it, a teleport that never arrived can be sent again.
 export const TELEPORT_GUARD_MS = 5 * 60_000;
-const teleportKey = (address: string) => `${PREFIX}iwallet-teleport:${address}`;
 export function teleportSentAt(address: string): number | null {
   try {
     const n = Number(sessionStorage.getItem(teleportKey(address)) ?? NaN);
@@ -307,9 +298,6 @@ export function teleportSentAt(address: string): number | null {
 }
 export function markTeleportSent(address: string, at: number = Date.now()): void {
   try { sessionStorage.setItem(teleportKey(address), String(at)); } catch { /* the in-page guard still holds */ }
-}
-export function clearTeleportSent(address: string): void {
-  try { sessionStorage.removeItem(teleportKey(address)); } catch { /* nothing to remove */ }
 }
 export function teleportGuardActive(address: string, now: number = Date.now()): boolean {
   const at = teleportSentAt(address);

@@ -104,6 +104,21 @@ describe('i-Wallet create', () => {
     expect(screen.getByRole('button', { name: 'Doğrula' })).toBeEnabled();
   });
 
+  it('says at the password step, under the create button, that continuing accepts the terms and privacy notice, in a new tab', async () => {
+    renderCreate();
+    await toPasswordStep();
+    const line = (await screen.findByText(/Devam ederek/)).closest('p')!;
+    expect(line.querySelector('a[href="/terms"]')).toHaveTextContent('Kullanım koşullarını');
+    expect(line.querySelector('a[href="/privacy"]')).toHaveTextContent('Gizlilik bildirimini');
+    // The new words live only in this screen: the pages open in a new tab, never in place of it.
+    for (const a of line.querySelectorAll('a')) {
+      expect(a).toHaveAttribute('target', '_blank');
+      expect(a).toHaveAttribute('rel', 'noopener noreferrer');
+    }
+    const submit = screen.getByRole('button', { name: 'Cüzdanı oluştur' });
+    expect(submit.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('blocks Create for a short password or a mismatch', async () => {
     renderCreate();
     const u = await toPasswordStep();

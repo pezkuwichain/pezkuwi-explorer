@@ -3,18 +3,25 @@
 // fresh pair of its own (useSignedTx). "Unlocked" therefore means "may show the wallet", never "holds the secret".
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { KeyringPair$Json } from '@pezkuwi/keyring/types';
-import { deleteKeystore, loadKeystore, openWords, readSealedWords, verifyPassword } from './keystore';
 import { withKeyProgress } from './progress';
-import { unlockWithFaceId } from './faceid';
 import { indexedDbStore, type KvStore } from './idb';
-import { clearAllForms, clearForm, clearTeleportSent } from './citizen';
+import { clearAllForms, clearForm, clearTeleportSent } from './personal-store';
 
-export type IWalletState = 'idle' | 'loading' | 'none' | 'locked' | 'unlocked' | 'unavailable';
+// The provider is always mounted (App.tsx) but the keyring, the crypto WASM and Face ID load only when a wallet call
+// needs them, together with the i-Wallet screens; the explorer's own screens never load them.
+const keystore = () => import('./keystore');
+const faceid = () => import('./faceid');
+
+// 'loadFailed': the wallet's own code (loaded on demand) did not arrive, e.g. offline in a tab older than a deploy; it is
+// not a storage problem, and retryLoad() tries again.
+export type IWalletState = 'idle' | 'loading' | 'none' | 'locked' | 'unlocked' | 'unavailable' | 'loadFailed';
 
 export interface IWalletValue {
   state: IWalletState;
   /** Starts reading the stored keystore (once). Nothing touches IndexedDB before this is called. */
   ensureLoaded(): void;
+  /** After 'loadFailed': imports the wallet code again and reads the stored keystore. */
+  retryLoad(): void;
   address: string | null;
   /** The stored encrypted keystore (public JSON, safe to export). */
   keystore: KeyringPair$Json | null;
@@ -40,7 +47,11 @@ export const HIDDEN_LOCK_MS = 60_000;
 
 const Ctx = createContext<IWalletValue | null>(null);
 
-export function IWalletProvider({ children, store = indexedDbStore }: { children: ReactNode; store?: KvStore }) {
+export function IWalletProvider({ children, store = indexedDbStore, loadCode = keystore }: {
+  children: ReactNode; store?: KvStore;
+  /** The on-demand keystore module (tests pass a failing one). */
+  loadCode?: typeof keystore;
+}) {
   const [state, setState] = useState<IWalletState>('idle');
   const [json, setJson] = useState<KeyringPair$Json | null>(null);
   const jsonRef = useRef<KeyringPair$Json | null>(null);
@@ -54,18 +65,24 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
     if (started.current) return;
     started.current = true;
     setState('loading');
-    loadKeystore(store).then(
-      (j) => {
-        if (!live.current) return;
-        jsonRef.current = j; setJson(j); setState(j ? 'locked' : 'none');
-      },
-      () => { if (live.current) setState('unavailable'); },
+    loadCode().then(
+      (k) => k.loadKeystore(store).then(
+        (j) => {
+          if (!live.current) return;
+          jsonRef.current = j; setJson(j); setState(j ? 'locked' : 'none');
+        },
+        () => { if (live.current) setState('unavailable'); },
+      ),
+      // The code itself did not load: say so and allow another try (not "this browser cannot store a wallet").
+      () => { started.current = false; if (live.current) setState('loadFailed'); },
     );
-  }, [store]);
+  }, [store, loadCode]);
+  const retryLoad = useCallback(() => { if (!started.current) ensureLoaded(); }, [ensureLoaded]);
 
   const unlock = useCallback(async (password: string) => {
     const j = jsonRef.current;
     if (!j) return;
+    const { verifyPassword } = await keystore();
     await withKeyProgress('open', () => verifyPassword(j, password));
     setState('unlocked');
   }, []);
@@ -73,14 +90,16 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
   const unlockFaceId = useCallback(async () => {
     const j = jsonRef.current;
     if (!j) return;
-    const pw = await unlockWithFaceId(store);
+    const pw = await (await faceid()).unlockWithFaceId(store);
     if (pw === null) return;
+    const { verifyPassword } = await keystore();
     await withKeyProgress('open', () => verifyPassword(j, pw));
     setState('unlocked');
   }, [store]);
 
   // The stored words are read first, outside the overlay (IndexedDB), then opened with the password under it.
   const readWords = useCallback(async (password: string) => {
+    const { openWords, readSealedWords } = await keystore();
     const sealed = await readSealedWords(store);
     return withKeyProgress('open', () => openWords(sealed, password));
   }, [store]);
@@ -97,7 +116,7 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
   }, []);
 
   const remove = useCallback(async () => {
-    await deleteKeystore(store);
+    await (await keystore()).deleteKeystore(store);
     const old = jsonRef.current;
     clearAllForms();
     if (old) clearTeleportSent(old.address);
@@ -153,9 +172,9 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
 
   const holdOpen = holds > 0;
   const value = useMemo<IWalletValue>(() => ({
-    state, ensureLoaded, address: json?.address ?? null, keystore: json, readWords, unlock, unlockFaceId, lock, setCreated, remove,
+    state, ensureLoaded, retryLoad, address: json?.address ?? null, keystore: json, readWords, unlock, unlockFaceId, lock, setCreated, remove,
     holdOpen, setHold,
-  }), [state, ensureLoaded, json, readWords, unlock, unlockFaceId, lock, setCreated, remove, holdOpen, setHold]);
+  }), [state, ensureLoaded, retryLoad, json, readWords, unlock, unlockFaceId, lock, setCreated, remove, holdOpen, setHold]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

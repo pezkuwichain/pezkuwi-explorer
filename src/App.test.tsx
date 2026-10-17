@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import i18n from './i18n';
 import App from './App';
 import * as keystore from './iwallet/keystore';
@@ -15,11 +15,23 @@ describe('App routes', () => {
     render(<App />);
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
   });
+  it.each([['/privacy', 'Privacy'], ['/terms', 'Terms of use']])('%s renders inside the layout, with the tab bar and the footer', async (path, title) => {
+    const spy = vi.spyOn(keystore, 'loadKeystore');
+    window.history.pushState({}, '', path);
+    render(<App />);
+    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Sections' })).toBeInTheDocument();
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'privacy@pezkuwichain.io' })[0]).toHaveAttribute('href', 'mailto:privacy@pezkuwichain.io');
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
   it('never reads the wallet store on a non-wallet route', async () => {
     const spy = vi.spyOn(keystore, 'loadKeystore');
     window.history.pushState({}, '', '/');
     render(<App />);
-    await screen.findByRole('navigation');
+    // The tab bar (the footer has its own, named navigation too).
+    await screen.findByRole('navigation', { name: 'Sections' });
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
@@ -27,8 +39,9 @@ describe('App routes', () => {
     const spy = vi.spyOn(keystore, 'loadKeystore').mockResolvedValue(null);
     window.history.pushState({}, '', '/i-wallet');
     render(<App />);
-    await screen.findByRole('link', { name: /i-Wallet/ });
-    expect(spy).toHaveBeenCalledTimes(1);
+    // The i-Wallet loads on demand: its landing arrives, and the store is read once.
+    expect(await screen.findByRole('link', { name: 'Get an i-Wallet' }, { timeout: 5000 })).toHaveAttribute('href', '/i-wallet/create');
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
     spy.mockRestore();
   });
 });

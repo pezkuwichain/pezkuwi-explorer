@@ -83,3 +83,15 @@ export const IconShare = (p: P) => (
   <Svg {...p}><path d="M12 3v12" /><path d="M8 7l4-4 4 4" /><path d="M8 10H7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1" /></Svg>
 );
 export const IconAddSquare = (p: P) => <Svg {...p}><rect x="3" y="3" width="18" height="18" rx="4" /><path d="M12 8v8" /><path d="M8 12h8" /></Svg>;
+// The footer's social links (SiteFooter), drawn in the same outline style; no brand fill, no remote image.
+export const IconYouTube = (p: P) => (
+  <Svg {...p}><path d="M2.5 17a24 24 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.6 49.6 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24 24 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.6 49.6 0 0 1-16.2 0A2 2 0 0 1 2.5 17" /><path d="M10 15l5-3-5-3z" /></Svg>
+);
+export const IconX = (p: P) => <Svg {...p}><path d="M4 4h4.5L20 20h-4.5z" /><path d="M20 4l-6.8 7.4" /><path d="M10.8 12.6 4 20" /></Svg>;
+export const IconInstagram = (p: P) => (
+  <Svg {...p}><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><path d="M17.5 6.5h.01" /></Svg>
+);
+export const IconFacebook = (p: P) => <Svg {...p}><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></Svg>;
+export const IconTelegram = (p: P) => (
+  <Svg {...p}><path d="M21.2 4.3 2.9 11.4c-.9.4-.9 1.6.1 1.9l4.4 1.4 1.7 5.4c.2.7 1.1.9 1.6.4l2.5-2.4 4.6 3.4c.6.4 1.4.1 1.6-.6L22.5 5.6c.2-.9-.6-1.6-1.3-1.3z" /><path d="M7.4 14.7 18 8l-7.6 7.3" /></Svg>
+);

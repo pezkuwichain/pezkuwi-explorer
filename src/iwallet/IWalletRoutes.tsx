@@ -1,7 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { Outlet, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import PageHeader from '../ui/PageHeader';
 import { useIWallet } from './IWalletContext';
 import { networkChanged, subscribeNetworkChanged } from './chain';
 import { rememberReferrer } from './citizen';
@@ -10,23 +9,35 @@ import { ProgressOverlay } from '../ui/ProgressOverlay';
 import Landing from './screens/Landing';
 import Unlock from './screens/Unlock';
 import Home from './screens/Home';
+import PageHeader from '../ui/PageHeader';
+import IWalletLoading from './IWalletLoading';
 
 const WORK_MESSAGE: Record<KeyWork, string> = { open: 'iwallet.unlocking', save: 'iwallet.saving', sign: 'iwallet.signing' };
+
+// The wallet's code (keystore, loaded on demand) did not arrive. Not a storage problem: try again.
+function LoadFailed() {
+  const { t } = useTranslation();
+  const { retryLoad } = useIWallet();
+  return (
+    <div className="iw">
+      <PageHeader title={t('iwallet.title')} />
+      <div className="iw-body">
+        <p className="iw-error" role="alert">{t('iwallet.loadFailed.body')}</p>
+        <button type="button" className="iw-primary" onClick={retryLoad}>{t('iwallet.loadFailed.retry')}</button>
+      </div>
+    </div>
+  );
+}
 
 // The index of /i-wallet switches on the wallet state; create, import, send, receive, citizen and settings
 // are added as sibling children by later tasks.
 export function IWalletIndex() {
-  const { t } = useTranslation();
   const { state, address } = useIWallet();
   if (state === 'idle' || state === 'loading') {
     // Same outer layout as the screens, so nothing jumps when the state resolves.
-    return (
-      <div className="iw">
-        <PageHeader title={t('iwallet.title')} />
-        <div className="iw-body"><p className="card-note" role="status">{t('state.loading')}</p></div>
-      </div>
-    );
+    return <IWalletLoading />;
   }
+  if (state === 'loadFailed') return <LoadFailed />;
   if (state === 'none' || state === 'unavailable') return <Landing />;
   if (state === 'locked') return <Unlock />;
   return address ? <Home address={address} /> : null;

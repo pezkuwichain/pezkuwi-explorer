@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { shortAddress } from '../lib/address';
 import { formatAmount } from '../lib/format';
 import LanguagePicker from './LanguagePicker';
@@ -8,6 +8,7 @@ import { NetworkChip } from './NetworkChip';
 import TabBar from './TabBar';
 import { DesktopShell } from './DesktopShell';
 import { ErrorBoundary } from './ErrorBoundary';
+import SiteFooter from './SiteFooter';
 import './layout.css';
 
 export const Addr = ({ value }: { value: string }) => <bdi dir="ltr" title={value}>{shortAddress(value)}</bdi>;
@@ -20,6 +21,8 @@ export function Amount({ value, decimals, symbol }: { value: bigint; decimals: n
 export default function Layout() {
   const { pathname } = useLocation();
   const home = pathname === '/';
+  // The i-Wallet places the footer itself, on its landing only: never under the wallet's signing screens.
+  const iWallet = pathname === '/i-wallet' || pathname.startsWith('/i-wallet/');
   return (
     <DesktopShell>
     <div className={`page${home ? ' page-home' : ''}`}>
@@ -34,7 +37,7 @@ export default function Layout() {
         </header>
       )}
       <main><ErrorBoundary key={pathname}><Outlet /></ErrorBoundary></main>
-      {home && <footer className="experts"><a href="https://apps.pezkuwichain.io" rel="noopener"><Trans i18nKey="app.experts" components={{ domain: <bdi dir="ltr" /> }} /></a></footer>}
+      {!iWallet && <SiteFooter />}
       <TabBar />
     </div>
     </DesktopShell>

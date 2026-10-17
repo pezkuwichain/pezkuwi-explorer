@@ -14,7 +14,7 @@ vi.mock('../data/citizenship', () => ({ loadCitizenship: () => Promise.resolve({
 describe('citizen card on mainnet', () => {
   it('reads PEZKUWICHAIN on the front and the localised mainnet name on the back', async () => {
     expect(NETWORK_ID).toBe('mainnet');
-    for (const [lang, label] of [['en', 'Mainnet'], ['tr', 'Ana ağ'], ['kmr', 'Tora sereke']] as const) {
+    for (const [lang, label] of [['en', 'Mainnet (Pezkuwi)'], ['tr', 'Ana ağ (Pezkuwi)'], ['kmr', 'Tora sereke (Pezkuwi)']] as const) {
       await i18n.changeLanguage(lang);
       storage.set('account', ALICE);
       const r = render(<MemoryRouter><AccountProvider><Citizenship /></AccountProvider></MemoryRouter>);

@@ -150,15 +150,15 @@ describe('Network', () => {
     it('shows both networks at the top, the one being read checked (a first visit reads mainnet)', () => {
       renderIt();
       const radios = within(group()).getAllByRole('radio');
-      expect(radios.map((r) => r.textContent)).toEqual(['Mainnet', 'Testnet (Zagros)']);
-      expect(within(group()).getByRole('radio', { name: 'Mainnet' })).toHaveAttribute('aria-checked', 'true');
+      expect(radios.map((r) => r.textContent)).toEqual(['Mainnet (Pezkuwi)', 'Testnet (Zagros)']);
+      expect(within(group()).getByRole('radio', { name: 'Mainnet (Pezkuwi)' })).toHaveAttribute('aria-checked', 'true');
       expect(within(group()).getByRole('radio', { name: 'Testnet (Zagros)' })).toHaveAttribute('aria-checked', 'false');
       // First thing in the screen, above the live light.
       expect(document.querySelector('.screen.network')!.firstElementChild).toBe(group());
     });
     it('choosing the network already read does nothing', () => {
       renderIt();
-      fireEvent.click(within(group()).getByRole('radio', { name: 'Mainnet' }));
+      fireEvent.click(within(group()).getByRole('radio', { name: 'Mainnet (Pezkuwi)' }));
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(sw.events).toEqual([]);
     });
@@ -244,34 +244,34 @@ describe('Network', () => {
     const radio = (name: string) => within(group()).getByRole('radio', { name });
     it('one tab stop: only the checked radio is in the tab order', () => {
       renderIt();
-      expect(radio('Mainnet')).toHaveAttribute('tabindex', '0');
+      expect(radio('Mainnet (Pezkuwi)')).toHaveAttribute('tabindex', '0');
       expect(radio('Testnet (Zagros)')).toHaveAttribute('tabindex', '-1');
     });
     it.each(['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'End'])('%s moves to the other network and asks to switch', (key) => {
       renderIt();
-      radio('Mainnet').focus();
-      fireEvent.keyDown(radio('Mainnet'), { key });
+      radio('Mainnet (Pezkuwi)').focus();
+      fireEvent.keyDown(radio('Mainnet (Pezkuwi)'), { key });
       expect(radio('Testnet (Zagros)')).toHaveFocus();
       expect(screen.getByRole('dialog', { name: 'Change the network?' })).toBeInTheDocument();
     });
     it('Home stays on the first (current) network: no question', () => {
       renderIt();
-      radio('Mainnet').focus();
-      fireEvent.keyDown(radio('Mainnet'), { key: 'Home' });
-      expect(radio('Mainnet')).toHaveFocus();
+      radio('Mainnet (Pezkuwi)').focus();
+      fireEvent.keyDown(radio('Mainnet (Pezkuwi)'), { key: 'Home' });
+      expect(radio('Mainnet (Pezkuwi)')).toHaveFocus();
       expect(screen.queryByRole('dialog')).toBeNull();
     });
     it('other keys do nothing', () => {
       renderIt();
-      fireEvent.keyDown(radio('Mainnet'), { key: 'a' });
+      fireEvent.keyDown(radio('Mainnet (Pezkuwi)'), { key: 'a' });
       expect(screen.queryByRole('dialog')).toBeNull();
     });
     it('right to left: ArrowLeft moves forward', () => {
       document.documentElement.dir = 'rtl';
       try {
         renderIt();
-        radio('Mainnet').focus();
-        fireEvent.keyDown(radio('Mainnet'), { key: 'ArrowLeft' });
+        radio('Mainnet (Pezkuwi)').focus();
+        fireEvent.keyDown(radio('Mainnet (Pezkuwi)'), { key: 'ArrowLeft' });
         expect(radio('Testnet (Zagros)')).toHaveFocus();
       } finally { document.documentElement.dir = 'ltr'; }
     });

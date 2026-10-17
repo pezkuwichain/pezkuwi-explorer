@@ -1,3 +1,4 @@
+import { formatCitizenUid } from '../../citizen/citizenUid';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -376,6 +377,7 @@ function CitizenBody({ address }: { address: string }) {
             <h2 className="iw-h1">{t('iwallet.citizen.citizen.title')}</h2>
             {form.fullName.trim() && <p className="iw-lead">{form.fullName}</p>}
             {status.nftId !== null && <p className="iw-lead">{t('iwallet.citizen.citizen.nft', { id: status.nftId.toString() })}</p>}
+            {status.nftId !== null && <p className="iw-lead"><span>{t('cid.number')}</span> <bdi dir="ltr" className="mono">{formatCitizenUid(address, status.nftId)}</bdi></p>}
           </section>
         )}
         {stage === 'approvedNoNft' && <p className="iw-note" role="status">{t('iwallet.citizen.approvedNoNft')}</p>}
@@ -428,7 +430,7 @@ function MyReferrals({ list, address, onApprove, onRetry }: {
               </div>
               {/* approve_referral accepts only an open application that names this account and reads PendingReferral. */}
               {r.state === 'waiting' && (
-                <button type="button" className="iw-max" onClick={() => onApprove(r.address)}
+                <button type="button" className="iw-ref-approve" onClick={() => onApprove(r.address)}
                   aria-label={t('iwallet.citizen.refs.approveFor', { address: r.address })}>
                   {t('iwallet.citizen.refs.approve')}
                 </button>

@@ -120,7 +120,7 @@ export type CitizenStatus = { kyc: KycStatus; nftId: bigint | null };
 // Why these two and not the spec's applications / userTikis: kycStatuses is the pallet's own state machine and holds all
 // five states; applications holds only { identityHash, referrer } (it is read for the referral list, not for status).
 // citizenNft is the Welati Tiki NFT id this screen shows; userTikis lists roles and says nothing an applicant needs here.
-// The explorer's Zagros citizenship card (src/data/citizenship.ts) reads the same two (plus roles and trust for display).
+// The explorer's citizenship card (src/data/citizenship.ts) reads the same two (plus roles and trust for display).
 export async function loadStatus(address: string, deps: Deps = real): Promise<CitizenStatus> {
   const api = await deps.getApi('people');
   const q = api.query as never as {

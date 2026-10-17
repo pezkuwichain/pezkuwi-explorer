@@ -1,5 +1,6 @@
 import { ApiPromise, WsProvider } from '@pezkuwi/api';
 import { NETWORK, type ChainKey } from '../config/network';
+// NETWORK is fixed for the page's life: switching networks reloads the page, so this cache never mixes networks.
 import { withTimeout } from '../lib/timeout';
 
 // How long a screen waits before showing "could not load" and a Retry button.

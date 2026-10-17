@@ -19,7 +19,11 @@ async function pasteAndOpen(page: Page, address: string) {
   await expect(page.getByText(/\bHEZ\b/).first()).toBeVisible({ timeout: 30_000 });
 }
 
-test.beforeEach(({ page }) => useLanguage(page, 'en'));
+// SMOKE_ADDRESS is a Zagros account and the checks below read Zagros, so the page is pinned to it (a first visit
+// would read mainnet, src/config/network.ts).
+const useZagros = (page: Page) => page.addInitScript(() => localStorage.setItem('pezkuwi-explorer:network', 'zagros'));
+
+test.beforeEach(async ({ page }) => { await useLanguage(page, 'en'); await useZagros(page); });
 
 test('home shows the four tiles, the way in, the tabs and the experts link, and the network light resolves', async ({ page }) => {
   await page.goto('/');
@@ -35,6 +39,19 @@ test('home shows the four tiles, the way in, the tabs and the experts link, and 
   await expect(page.locator('footer.experts').getByRole('link', { name: /For experts/ })).toBeVisible();
   await expect(page.locator('.desk-experts')).toBeVisible();
   const light = page.getByRole('status');
+  await expect(light).not.toHaveText(/Checking/, { timeout: 30_000 });
+  await expect(light).toHaveText(/The network is working/);
+  // The pin took: this page reads Zagros (so every check here is about Zagros).
+  await expect(page.locator('header.brand .net-chip-zagros')).toHaveText('Testnet (Zagros)');
+});
+
+test('a first visit reads mainnet and the live mainnet network answers', async ({ page }) => {
+  // Runs after the Zagros pin of beforeEach: removes it again, as on a first visit.
+  await page.addInitScript(() => localStorage.removeItem('pezkuwi-explorer:network'));
+  await page.goto('/network');
+  await expect(page.locator('.page-header .net-chip-mainnet')).toHaveText('Mainnet');
+  await expect(page.getByRole('radio', { name: 'Mainnet' })).toHaveAttribute('aria-checked', 'true');
+  const light = page.locator('section.live');
   await expect(light).not.toHaveText(/Checking/, { timeout: 30_000 });
   await expect(light).toHaveText(/The network is working/);
 });

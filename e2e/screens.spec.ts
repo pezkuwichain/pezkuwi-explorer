@@ -27,12 +27,14 @@ const ACTIVITY = [
 ];
 const PAYMENT = [node('900-2-from', ago(2 * 3600), { from: ALICE, to: BOB, amount: '2000000000000', fee: '1200000000', success: true })];
 
-async function setUp(page: Page, opts: { account: boolean; lang?: string }) {
-  await page.addInitScript(([account, me, lang]) => {
+// Zagros unless a test asks for mainnet: the fixtures and ME are Zagros (a first visit would read mainnet).
+async function setUp(page: Page, opts: { account: boolean; lang?: string; network?: 'zagros' | 'mainnet' }) {
+  await page.addInitScript(([account, me, lang, network]) => {
     localStorage.setItem('pezkuwi-explorer:lang', lang);
+    localStorage.setItem('pezkuwi-explorer:network', network);
     if (account) localStorage.setItem('pezkuwi-explorer:account', me);
     else localStorage.removeItem('pezkuwi-explorer:account');
-  }, [opts.account, ME, opts.lang ?? 'kmr'] as const);
+  }, [opts.account, ME, opts.lang ?? 'kmr', opts.network ?? 'zagros'] as const);
   await page.route(HISTORY, async (route) => {
     const q = JSON.parse(route.request().postData() ?? '{}').query as string;
     const nodes = q.includes('extrinsicHash:{') ? PAYMENT : ACTIVITY;
@@ -143,6 +145,26 @@ for (const scheme of ['dark', 'light'] as const) {
       await page.goto('/network');
       await settled(page);
       await shot(page, 'network', scheme);
+      expect(blocked).toEqual([]);
+    });
+
+    test('network on mainnet, and the confirm before switching to the testnet', async ({ page }) => {
+      const blocked = await setUp(page, { account: false, network: 'mainnet' });
+      await page.goto('/network');
+      await settled(page);
+      await expect(page.locator('.page-header .net-chip-mainnet')).toBeVisible();
+      await shot(page, 'network-mainnet', scheme);
+      await page.getByRole('radio', { name: /Zagros/ }).click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await shot(page, 'network-switch-confirm', scheme);
+      expect(blocked).toEqual([]);
+    });
+
+    test('home on mainnet: the network chip in the brand header', async ({ page }) => {
+      const blocked = await setUp(page, { account: false, network: 'mainnet' });
+      await page.goto('/');
+      await settled(page);
+      await shot(page, 'home-mainnet', scheme);
       expect(blocked).toEqual([]);
     });
 

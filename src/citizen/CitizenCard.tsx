@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Stage } from '../data/citizenship';
-import { NETWORK } from '../config/network';
+import { NETWORK_ID, networkLabelKey } from '../config/network';
 import { formatInteger } from '../lib/format';
 import { shortAddress } from '../lib/address';
 import { IconRotate } from '../ui/icons';
@@ -114,7 +114,8 @@ export function CitizenCard({ address, data, personal }: { address: string; data
                 </div>
                 <div className="cid-net">
                   {verified && <span className="cid-chip">✓ <bdi>{t('citizenship.approved')}</bdi></span>}
-                  <span>PEZKUWICHAIN · {NETWORK.name.toUpperCase()}</span>
+                  {/* The testnet says so on the card; mainnet is the plain PEZKUWICHAIN. */}
+                  <span>{NETWORK_ID === 'zagros' ? 'PEZKUWICHAIN · ZAGROS' : 'PEZKUWICHAIN'}</span>
                   <span className="cid-mono" title={address}>{shortAddress(address)}</span>
                 </div>
               </div>
@@ -145,7 +146,7 @@ export function CitizenCard({ address, data, personal }: { address: string; data
                 <div className="cid-back-fields">
                   <div><div className="cid-label"><bdi>{t('cid.wallet')}</bdi></div><div className="cid-mono cid-address">{address}</div></div>
                   <div className="cid-pair">
-                    <div><div className="cid-label"><bdi>{t('network.title')}</bdi></div><div className="cid-value">{NETWORK.name}</div></div>
+                    <div><div className="cid-label"><bdi>{t('network.title')}</bdi></div><div className="cid-value"><bdi>{t(networkLabelKey(NETWORK_ID))}</bdi></div></div>
                     <div><div className="cid-label"><bdi>{t('cid.status')}</bdi></div><div className={`cid-value${verified ? ' cid-ok' : ''}`}>{stageText}</div></div>
                   </div>
                 </div>

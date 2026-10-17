@@ -4,6 +4,7 @@ import { shortAddress } from '../lib/address';
 import { formatAmount } from '../lib/format';
 import LanguagePicker from './LanguagePicker';
 import ThemePicker from './ThemePicker';
+import { NetworkChip } from './NetworkChip';
 import TabBar from './TabBar';
 import { DesktopShell } from './DesktopShell';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -29,6 +30,7 @@ export default function Layout() {
           <span className="brand-name">Pezkuwi</span>
           <ThemePicker />
           <LanguagePicker />
+          <NetworkChip />
         </header>
       )}
       <main><ErrorBoundary key={pathname}><Outlet /></ErrorBoundary></main>

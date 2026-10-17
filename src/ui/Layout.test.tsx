@@ -51,6 +51,14 @@ describe('Layout', () => {
     setLanguage('kmr');
   });
 
+  it('the citizenship tab has its own label (kmr: Hevwelatî), while the home tile keeps Welatîbûn', () => {
+    setLanguage('kmr');
+    render(<MemoryRouter initialEntries={['/']}><Routes><Route element={<Layout />}><Route index element={<p>HOME</p>} /></Route></Routes></MemoryRouter>);
+    const tabs = screen.getByRole('navigation', { name: 'Beş' });
+    expect(within(tabs).getByRole('link', { name: 'Hevwelatî' })).toHaveAttribute('href', '/citizenship');
+    expect(within(tabs).queryByText('Welatîbûn')).toBeNull();
+  });
+
   it('the language pill shows the code and keeps the native picker', () => {
     setLanguage('kmr');
     render(<MemoryRouter initialEntries={['/']}><Routes><Route element={<Layout />}><Route index element={<p>HOME</p>} /></Route></Routes></MemoryRouter>);
@@ -66,6 +74,25 @@ describe('Layout', () => {
     setLanguage('en');
     render(<MemoryRouter><PageHeader title="Deep" /></MemoryRouter>);
     expect(within(screen.getByRole('banner')).getByRole('combobox', { name: 'Language' })).toBeInTheDocument();
+    setLanguage('kmr');
+  });
+
+  it('names the network being read in the header of home and every inner explorer screen, never on i-Wallet', () => {
+    setLanguage('en');
+    const { unmount } = render(<MemoryRouter initialEntries={['/']}><Routes><Route element={<Layout />}><Route index element={<p>HOME</p>} /></Route></Routes></MemoryRouter>);
+    const chip = within(document.querySelector('header.brand') as HTMLElement).getByText('Mainnet');
+    expect(chip).toHaveClass('net-chip', 'net-chip-mainnet');
+    unmount();
+    for (const path of ['/account', '/citizenship', '/network', '/payment']) {
+      const r = render(<MemoryRouter initialEntries={[path]}><PageHeader title="Deep" /></MemoryRouter>);
+      expect(within(screen.getByRole('banner')).getByText('Mainnet')).toHaveAttribute('data-network', 'mainnet');
+      r.unmount();
+    }
+    for (const path of ['/i-wallet', '/i-wallet/send', '/i-wallet/citizen']) {
+      const r = render(<MemoryRouter initialEntries={[path]}><PageHeader title="Wallet" /></MemoryRouter>);
+      expect(document.querySelector('.net-chip')).toBeNull();
+      r.unmount();
+    }
     setLanguage('kmr');
   });
 

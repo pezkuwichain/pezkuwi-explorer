@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decodeAddress, encodeAddress } from '@pezkuwi/util-crypto';
 import { NETWORK } from '../config/network';
-import { loadActivity, findPayment, indexerLag, CODE_PAGE, InvalidLookupError, NotIndexedError } from './history';
+import { loadActivity, findPayment, indexerLag, CODE_PAGE, CODE_MAX_PAGES, InvalidLookupError, NotIndexedError } from './history';
 
 const ME = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const BOB = '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty';
@@ -101,16 +101,54 @@ describe('history', () => {
     const r = await findPayment(CODE, reply([node({ id: '9-1-from', transfer: { from: ME, to: BOB, amount: '1', fee: '1', success: true } })]));
     expect(r).toMatchObject({ kind: 'code', status: 'arrived' });
   });
-  it('a code lookup asks for up to CODE_PAGE nodes; a full page is incomplete and gets no verdict', async () => {
-    const one = reply([node({ id: '9-1-from', transfer: { from: ME, to: BOB, amount: '1', fee: '1', success: true } })]);
-    await findPayment(CODE, one);
-    expect(JSON.parse(one.mock.calls[0][1].body).query).toContain(`first:${CODE_PAGE}`);
-    expect(CODE_PAGE).toBe(200);
-    const full = Array.from({ length: CODE_PAGE }, (_, i) => node({ id: `9-${i}-from`, transfer: { from: ME, to: BOB, amount: '1', fee: '1', success: true } }));
-    const r = await findPayment(CODE, reply(full));
+  // Like both live indexers (measured 2026-10-17): at most 100 nodes per answer whatever `first` asks for, ID_ASC order,
+  // a cursor per node and pageInfo. A lookup that trusted `first` would see only the first 100.
+  const capped = (all: object[], cap = 100) => vi.fn().mockImplementation(async (_u: string, init: { body: string }) => {
+    const q = JSON.parse(init.body).query as string;
+    const first = Number(/first:(\d+)/.exec(q)![1]);
+    const after = /after:"([^"]+)"/.exec(q)?.[1];
+    const start = after ? Number(after) + 1 : 0;
+    const nodes = all.slice(start, start + Math.min(first, cap));
+    const last = start + nodes.length - 1;
+    const pageInfo = { hasNextPage: last < all.length - 1, endCursor: nodes.length ? String(last) : null };
+    return { ok: true, json: async () => ({ data: { historyElements: { nodes, pageInfo } } }) };
+  });
+  const transfersOf = (n: number, from = ME) => Array.from({ length: n }, (_, i) =>
+    node({ id: `9-${String(i).padStart(4, '0')}-from`, transfer: { from, to: BOB, amount: '1', fee: '1', success: true } }));
+
+  it('a code lookup reads every page of a capped indexer, so a large batch is listed whole', async () => {
+    expect(CODE_PAGE).toBe(100);
+    const f = capped(transfersOf(250));
+    const r = await findPayment(CODE, f);
+    expect(r).toMatchObject({ kind: 'code', status: 'several' });
+    if (r.status === 'notFound') throw new Error('unreachable');
+    expect(r.transfers).toHaveLength(250);
+    expect(f).toHaveBeenCalledTimes(3);
+    const queries = f.mock.calls.map((c) => JSON.parse(c[1].body).query as string);
+    for (const q of queries) { expect(q).toContain(`first:${CODE_PAGE}`); expect(q).toContain('orderBy:ID_ASC'); expect(q).toContain('pageInfo{hasNextPage endCursor}'); }
+    expect(queries[0]).not.toContain('after:');
+    expect(queries[1]).toContain('after:"99"');
+  });
+  it('a capped indexer below 100 still pages by its cursor', async () => {
+    const r = await findPayment(CODE, capped(transfersOf(130), 50));
+    if (r.status === 'notFound') throw new Error('unreachable');
+    expect(r.transfers).toHaveLength(130);
+  });
+  it('more than CODE_MAX_PAGES pages is incomplete and gets no verdict', async () => {
+    const f = capped(transfersOf(CODE_PAGE * CODE_MAX_PAGES + 1));
+    const r = await findPayment(CODE, f);
     expect(r).toMatchObject({ kind: 'code', status: 'incomplete' });
     if (r.status === 'notFound') throw new Error('unreachable');
-    expect(r.transfers).toHaveLength(CODE_PAGE);
+    expect(r.transfers).toHaveLength(CODE_PAGE * CODE_MAX_PAGES);
+    expect(f).toHaveBeenCalledTimes(CODE_MAX_PAGES);
+  });
+  it('exactly CODE_MAX_PAGES full pages with nothing after them is complete', async () => {
+    const r = await findPayment(CODE, capped(transfersOf(CODE_PAGE * CODE_MAX_PAGES)));
+    expect(r).toMatchObject({ kind: 'code', status: 'several' });
+  });
+  it('a full page with no page info may have more: incomplete, no verdict', async () => {
+    const r = await findPayment(CODE, reply(transfersOf(CODE_PAGE)));
+    expect(r).toMatchObject({ kind: 'code', status: 'incomplete' });
   });
   it('an address lookup shows a self-transfer once, before taking the five most recent', async () => {
     const mk = (id: string, from: string, to: string, ts: number) =>

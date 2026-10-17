@@ -38,7 +38,7 @@ type Action =
   | { kind: 'teleport'; amount: bigint };
 type Funding = 'idle' | 'waiting' | 'late';
 const ZERO_HASH = `0x${'0'.repeat(64)}`;
-// A referrer is a mainnet account: the same SS58 rule as a Send recipient (checksum + prefix 42), never the Zagros helper.
+// A referrer is a mainnet account: the same SS58 rule as a Send recipient (checksum + prefix 42), never the explorer's helper (src/lib/address.ts, which follows the explorer's network).
 const mainnetAddress = (text: string): string | null => { const r = parseRecipient(text); return r.ok ? r.address : null; };
 
 // The citizenship status, balances and fees. The referral list loads on its own after this (CitizenBody), so a slow

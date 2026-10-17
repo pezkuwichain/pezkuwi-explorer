@@ -6,6 +6,10 @@ import { AccountProvider } from '../account/AccountContext';
 import { storage } from '../lib/storage';
 import Citizenship from './Citizenship';
 
+// The card names the network it reads; these assertions were written for Zagros, so the page is pinned to it
+// (stored before any import resolves NETWORK).
+vi.hoisted(() => localStorage.setItem('pezkuwi-explorer:network', 'zagros'));
+
 const ALICE = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const impl = vi.hoisted(() => ({
   load: (): Promise<unknown> => Promise.resolve({ stage: 'approved', roles: ['Welati'], trust: 12n }),
@@ -52,7 +56,8 @@ describe('Citizenship', () => {
     expect(numberRow).toHaveTextContent('Citizen no.DK-000057');
     expect(front().querySelector('.cid-chip')).toHaveTextContent('✓ Approved');
     expect(within(back()).getByText(ALICE)).toBeInTheDocument();
-    expect(back()).toHaveTextContent('Zagros');
+    expect(back()).toHaveTextContent('Testnet (Zagros)');
+    expect(front().querySelector('.cid-net')).toHaveTextContent('PEZKUWICHAIN · ZAGROS');
     expect(back()).toHaveTextContent('ON-CHAIN · NFT 57');
     expect(back().querySelector('.cid-qr svg path')!.getAttribute('d')!.length).toBeGreaterThan(100);
     const mrz = [...back().querySelectorAll('.cid-mrz > div')].map((d) => d.textContent);
@@ -198,7 +203,7 @@ describe('Citizenship', () => {
   it('the directorate button and dialog read in Kurmanji', async () => {
     await i18n.changeLanguage('kmr');
     renderIt();
-    fireEvent.click(await screen.findByRole('button', { name: 'Rêveberiya Giştî ya Karên Gelhe û Welatîbûnê' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rêveberiya Giştî ya Karên Gelhe û Hevwelatiyan' }));
     expect(await screen.findByRole('dialog', { name: 'Di qonaxa avakirinê de ye' })).toBeInTheDocument();
   });
 });

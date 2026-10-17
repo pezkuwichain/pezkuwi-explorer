@@ -4,7 +4,7 @@ import { IWALLET_NETWORK, IWALLET_SIGNED_EXTENSIONS } from '../config/iwallet-ne
 import { CONNECT_GIVE_UP_MS, REQUEST_TIMEOUT_MS } from '../chain/connections';
 import { withTimeout } from '../lib/timeout';
 
-// Mainnet connections for i-Wallet: a cache separate from src/chain/connections.ts (Zagros),
+// Mainnet connections for i-Wallet: a cache separate from src/chain/connections.ts (the explorer's chosen network),
 // with the same timeout and retry behaviour.
 type Attempt = { api: Promise<ApiPromise>; disconnect: () => void };
 const realFactory = (chain: ChainKey): Attempt => {

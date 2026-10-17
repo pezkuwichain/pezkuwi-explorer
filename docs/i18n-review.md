@@ -8,9 +8,10 @@ Turkish and English are written directly and are not listed.
 - source "dks.news": taken verbatim from the dks.news site (site/news.js; its `ku` is our ckb). fa and ar there are drafts too, so those rows stay marked draft.
 - walletModal kmr: pwap verbatim except its "berîk" is written "cuzdan" (the owner's choice for this site, PR #8), masculine as in the Ferheng (Zeynelabidin): "Cuzdanê ku pere dixin navê" (Xelîtk), so "cuzdanê", never "cuzdana".
 - source "brand": the product name, identical in every locale.
-- **Owner decision (Serok, 2026-10-16): in Kurmancî, citizenship is "Welatîbûn" and a citizen is "welatî" everywhere in the explorer, never "Hemwelatî"** (Hemwelatî carries the compatriot sense). Changed: `home.citizenship` and `citizenship.title` → Welatîbûn, `citizenship.citizen` → Welatî, `citizenship.revoked` → Welatîbûn hat rakirin, `citizenship.card` → Karta welatîbûnê. `src/i18n/kmr-spelling.test.ts` bans "hemwelat" in kmr. The rows stay drafts for grammar only.
+- **Owner decision (Serok, 2026-10-16): in Kurmancî, citizenship is "Welatîbûn" and a citizen is "welatî" everywhere in the explorer, never "Hemwelatî"** (since 2026-10-17 08:39 with two exceptions, the bottom tab "Hevwelatî" and the directorate "… Hevwelatiyan"; see below) (Hemwelatî carries the compatriot sense). Changed: `home.citizenship` and `citizenship.title` → Welatîbûn, `citizenship.citizen` → Welatî, `citizenship.revoked` → Welatîbûn hat rakirin, `citizenship.card` → Karta welatîbûnê. `src/i18n/kmr-spelling.test.ts` bans "hemwelat" in kmr. The rows stay drafts for grammar only.
   - Rationale (Serok, 2026-10-17): the Ferheng has Welatî/m. "Hemwelatî, kesên ji eynî welatê hev in." and Hevwelatî/m. "Hemwelatî, merivên ji welatekî, lê ne ji nijadekê." (Hemwelatî/m. "Hevwelatî, kesên ji eynî welatî ne, lê dibe ku ne ji nijadekê bin."). Hevwelatî / Hemwelatî name people who share a country, the hometown or compatriot sense: the spoken question "Tu hevwelatiyê kû yî?" (said "hewwelatî", written Hevwelatî) asks where someone is from. Welatîbûn and Hemwelatîbûn are not Ferheng entries; they are regular -bûn derivations. Citizenship as membership is therefore "Welatîbûn" and a citizen "Welatî", matching the chain role "Welati" and pwap. The UI is unchanged.
-  - Usage rule (Serok, 2026-10-17, final): pick the word by function. Addressing citizens (the state or DKS speaking to its people, "dear citizens") → "Hevwelatiyên birêz". Citizenship as a matter or process (applications, the citizenship tab, citizen issues) → "Welatîbûn". A citizen as a person or role → "Welatî".
+  - Owner decision (Serok, 2026-10-17, 08:39): the bottom tab bar's citizenship label is "Hevwelatî" (its own key `tab.citizenship`; the other five locales keep their `home.citizenship` text there), and the directorate is "Rêveberiya Giştî ya Karên Gelhe û Hevwelatiyan". The home tile (`home.citizenship`), the citizenship screen title and every i-Wallet text keep "Welatîbûn" / "Welatî". "Hevwelatiyan" is the oblique plural of Hevwelatî (Ferheng: Hevwelatî/m.), î shortened before -yan as in welatî → welatiyan; the owner's typed "Hevweelatîyan" was normalised to it. `src/i18n/kmr-spelling.test.ts` pins both.
+  - Usage rule (Serok, 2026-10-17, final): pick the word by function. Addressing citizens (the state or DKS speaking to its people, "dear citizens") → "Hevwelatiyên birêz". Citizenship as a matter or process (applications, the citizenship screen and its home tile, citizen issues) → "Welatîbûn". A citizen as a person or role → "Welatî". Two later owner exceptions (08:39, the bullet above): the bottom tab bar label is "Hevwelatî" and the directorate is "Rêveberiya Giştî ya Karên Gelhe û Hevwelatiyan".
 - Row account.failed: the kmr cell is verbatim from pwap (settingsScreen.biometricAlerts.failedTitle, "Bi ser neket"); ckb, fa and ar are drafts. The row is therefore marked "draft (kmr: pwap verbatim)".
 
 | key | kmr | ckb | fa | ar | source |
@@ -27,6 +28,7 @@ Turkish and English are written directly and are not listed.
 | home.account | Hesabê min | هەژمارەکەم | حساب من | حسابي | draft |
 | home.payment | Dayîna min gihîşt? | پارەدانەکەم گەیشت؟ | پرداخت من رسید؟ | هل وصلت دفعتي؟ | draft |
 | home.citizenship | Welatîbûn | هاوڵاتیبوون | شهروندی | المواطنة | draft |
+| tab.citizenship | Hevwelatî (Serok, 2026-10-17) | هاوڵاتیبوون | شهروندی | المواطنة | owner (kmr); others = home.citizenship |
 | home.network | Tor | تۆڕ | شبکه | الشبكة | pwap |
 | status.up | Tor dixebite | تۆڕ کار دەکات | شبکه کار می‌کند | الشبكة تعمل | draft |
 | status.down | Tor bersiv nade | تۆڕ وەڵام نادات | شبکه پاسخ نمی‌دهد | الشبكة لا تستجيب | draft |
@@ -133,19 +135,19 @@ Turkish and English are written directly and are not listed.
 | cid.clear | Ji vê cîhazê jê bibe | لەم ئامێرەدا بیسڕەوە | حذف از این دستگاه | احذف من هذا الجهاز | draft (citizen ID card) |
 | cid.notImage | Ev pel ne wêne ye. | ئەم فایلە وێنە نییە. | این فایل تصویر نیست. | هذا الملف ليس صورة. | draft (citizen ID card) |
 | cid.notSaved | Ev gerok wan nahêle; ew tenê heta ku tu rûpelê bigirî xuya dibin. | ئەم وێبگەڕە هەڵیان ناگرێت؛ تەنها تا داخستنی پەڕەکە دەردەکەون. | این مرورگر آن‌ها را نگه نمی‌دارد؛ فقط تا بستن صفحه دیده می‌شوند. | لا يحتفظ هذا المتصفح بها؛ تظهر فقط حتى تغلق الصفحة. | draft (citizen ID card) |
-| mascot.hello | Silav! Ez Pez im. | سڵاو! من پێزم. | سلام! من پز هستم. | مرحبًا! أنا بيز. | draft (desktop mascot speech bubble) |
+| mascot.hello | Silav! Ez Pezkuwi me. | سڵاو! ناوم Pezkuwi یە. | سلام! من Pezkuwi هستم. | مرحبًا! أنا Pezkuwi. | draft (desktop mascot speech bubble) |
 | mascot.say1 | Hesabê xwe bi yek tikandinê bibîne. | هەژمارەکەت بە یەک دەستلێدان ببینە. | حسابت را با یک لمس ببین. | شاهد حسابك بلمسة واحدة. | draft (desktop mascot speech bubble) |
 | mascot.say2 | Dayîna te gihîşt? Li vir bipirse. | پارەدانەکەت گەیشت؟ لێرە بپرسە. | پرداختت رسید؟ اینجا بپرس. | هل وصلت دفعتك؟ اسأل هنا. | draft (desktop mascot speech bubble) |
-| mascot.say3 | Tor dixebite — Zagros zindî ye. | تۆڕ کار دەکات — زاگرۆس زیندووە. | شبکه کار می‌کند — زاگرس زنده است. | الشبكة تعمل — زاغروس حيّة. | draft (desktop mascot speech bubble) |
+| mascot.say3 | Tor dixebite — {{network}} zindî ye. | تۆڕ کار دەکات — {{network}} زیندووە. | شبکه کار می‌کند — {{network}} زنده است. | الشبكة تعمل — {{network}} حيّة. | draft (desktop mascot speech bubble) |
 | mascot.say4 | Nasnameya te ya Dijital Kurdistanê li vir e. | ناسنامەی کوردستانی دیجیتاڵیت لێرەیە. | کارت شناسایی کردستان دیجیتال تو اینجاست. | هويتك في كردستان الرقمية هنا. | draft (desktop mascot speech bubble) |
 | mascot.say5 | HEZ û PEZ — pereyê Dijital Kurdistanê. | HEZ و PEZ — پارەی کوردستانی دیجیتاڵ. | HEZ و PEZ — پول کردستان دیجیتال. | HEZ و PEZ — مال كردستان الرقمية. | draft (desktop mascot speech bubble) |
 | mascot.say6 | Bi telefona xwe veke — QR-ê bişopîne. | لە مۆبایلەکەتدا بیکەرەوە — QR سکان بکە. | روی گوشی‌ات باز کن — QR را اسکن کن. | افتحه على هاتفك — امسح رمز QR. | draft (desktop mascot speech bubble) |
-| mascot.alt1 | Pez, maskota Pezkuwi, bi cilên kurdî | پێز، ماسکۆتی Pezkuwi، بە جلی کوردی | پز، نماد Pezkuwi، با لباس کردی | بيز، تميمة Pezkuwi، بملابس كردية | draft (desktop mascot picture description) |
-| mascot.alt2 | Pez rûniştî, bi êlekeke kurdî | پێز دانیشتووە، بە کەواوەیەکی کوردی | پز نشسته، با جلیقه کردی | بيز جالسًا بصدرية كردية | draft (desktop mascot picture description) |
-| mascot.alt3 | Pez bi cilên kevneşopî | پێز بە جلی نەریتی | پز با لباس سنتی | بيز بالزي التقليدي | draft (desktop mascot picture description) |
-| mascot.alt4 | Pez li ber bajarekî kevn û çiyayan | پێز لەبەردەم شارێکی کۆن و چیاکان | پز جلوی یک شهر قدیمی و کوه‌ها | بيز أمام مدينة قديمة وجبال | draft (desktop mascot picture description) |
-| mascot.alt5 | Pez li ber bircên nû | پێز لەبەردەم تاوەرە نوێیەکان | پز جلوی برج‌های مدرن | بيز أمام أبراج حديثة | draft (desktop mascot picture description) |
-| mascot.alt6 | Pez li ser piyan, li meydanekê | پێز لەسەر پێ، لە گۆڕەپانێکدا | پز ایستاده در یک میدان | بيز واقفًا في ساحة | draft (desktop mascot picture description) |
+| mascot.alt1 | Maskota Pezkuwi bi cilên kurdî | ماسکۆتی Pezkuwi بە جلی کوردی | نماد Pezkuwi با لباس کردی | تميمة Pezkuwi بملابس كردية | draft (desktop mascot picture description) |
+| mascot.alt2 | Pezkuwi rûniştî, bi êlekeke kurdî | Pezkuwi دانیشتووە، بە کەواوەیەکی کوردی | Pezkuwi نشسته، با جلیقه کردی | Pezkuwi جالسًا بصدرية كردية | draft (desktop mascot picture description) |
+| mascot.alt3 | Pezkuwi bi cilên kevneşopî | Pezkuwi بە جلی نەریتی | Pezkuwi با لباس سنتی | Pezkuwi بالزي التقليدي | draft (desktop mascot picture description) |
+| mascot.alt4 | Pezkuwi li ber bajarekî kevn û çiyayan | Pezkuwi لەبەردەم شارێکی کۆن و چیاکان | Pezkuwi جلوی یک شهر قدیمی و کوه‌ها | Pezkuwi أمام مدينة قديمة وجبال | draft (desktop mascot picture description) |
+| mascot.alt5 | Pezkuwi li ber bircên nû | Pezkuwi لەبەردەم تاوەرە نوێیەکان | Pezkuwi جلوی برج‌های مدرن | Pezkuwi أمام أبراج حديثة | draft (desktop mascot picture description) |
+| mascot.alt6 | Pezkuwi li ser piyan, li meydanekê | Pezkuwi لەسەر پێ، لە گۆڕەپانێکدا | Pezkuwi ایستاده در یک میدان | Pezkuwi واقفًا في ساحة | draft (desktop mascot picture description) |
 | walletModal.connect | Cuzdanê Girêbide | جزدان پەیوەست بکە | اتصال کیف پول | توصيل المحفظة | pwap (walletModal.connect; fa, ar draft) |
 | walletModal.connected | Cuzdan Girêdayî ye | جزدان پەیوەستە | کیف پول متصل شد | المحفظة متصلة | pwap (walletModal.connected; fa, ar draft) |
 | walletModal.connectDesc | Ji bo têkiliya bi PezkuwiChain re pêveka Pezkuwi.js girêbidin | پاشکۆی Pezkuwi.js پەیوەست بکە بۆ کارلێکردن لەگەڵ PezkuwiChain | افزونه Pezkuwi.js خود را متصل کنید تا با PezkuwiChain تعامل کنید | قم بتوصيل إضافة Pezkuwi.js للتفاعل مع PezkuwiChain | pwap (walletModal.connectDesc; fa, ar draft) |
@@ -205,7 +207,13 @@ ckb, fa and ar cells are drafts (kmr "Rûyê pêşîn/paşîn", "Wêne li cîhaz
 
 Desktop mascots (2026-10-15): mascot.hello and mascot.say1–say6 are the speech bubbles of the desktop layout; the kmr
 cells are the approved mockup's sentences (without its brackets) and are drafts like every ckb, fa and ar cell.
-mascot.alt1–alt6 describe the pictures. The name "Pez" is a placeholder until the owner names the mascot.
+mascot.alt1–alt6 describe the pictures. Owner decision (Serok, 2026-10-17, 09:16): the mascot is named "Pezkuwi"
+(was the placeholder "Pez"); kmr `mascot.hello` is exactly "Silav! Ez Pezkuwi me." (copula "me" after a vowel). Every
+locale writes the name in Latin letters, as `alt1` already wrote "Pezkuwi"; en "Hi! I’m Pezkuwi.", tr "Merhaba! Ben
+Pezkuwi'yim." (the old "Merhaba" kept), ckb "سڵاو! ناوم Pezkuwi یە." ("my name is", which reads better than a suffix on
+a Latin word), fa "سلام! من Pezkuwi هستم.", ar "مرحبًا! أنا Pezkuwi." `alt1` no longer says the name twice ("the
+Pezkuwi mascot in Kurdish clothes"); `alt2`–`alt6` start with "Pezkuwi". ckb, fa and ar remain drafts. The token
+symbol PEZ (`say5`) is unchanged.
 
 Wallet dialogs (2026-10-15): the walletModal.* rows are the texts of pwap's WalletModal and WalletConnectModal,
 copied verbatim from pwap web/src/i18n/locales/*.ts (tr and en too). The rows marked "draft (pwap fallback only)" are
@@ -521,7 +529,7 @@ under construction. New keys, all six files:
 
 | key | tr | en | kmr | ckb | fa | ar |
 |---|---|---|---|---|---|---|
-| `citizenship.directorate` | Nüfus ve Vatandaşlık İşleri Genel Müdürlüğü | General Directorate of Population and Citizenship Affairs | Rêveberiya Giştî ya Karên Gelhe û Welatîbûnê | بەڕێوەبەرایەتی گشتی کاروباری دانیشتوان و هاوڵاتیبوون | اداره کل امور جمعیت و شهروندی | المديرية العامة لشؤون السكان والمواطنة |
+| `citizenship.directorate` | Nüfus ve Vatandaşlık İşleri Genel Müdürlüğü | General Directorate of Population and Citizenship Affairs | Rêveberiya Giştî ya Karên Gelhe û Hevwelatiyan (Serok, 2026-10-17; was "… û Welatîbûnê") | بەڕێوەبەرایەتی گشتی کاروباری دانیشتوان و هاوڵاتیبوون | اداره کل امور جمعیت و شهروندی | المديرية العامة لشؤون السكان والمواطنة |
 | `citizenship.soonTitle` | Yapım aşamasında | Under construction | Di qonaxa avakirinê de ye | لە قۆناغی دروستکردندایە | در دست ساخت | قيد الإنشاء |
 | `citizenship.soonBody` | Bu hizmet yakında burada olacak. | This service will be available here soon. | Ev karûbar wê di demeke nêz de li vir be. | ئەم خزمەتگوزارییە بەم زووانە لێرە دەبێت. | این خدمت به‌زودی در اینجا در دسترس خواهد بود. | ستتوفر هذه الخدمة هنا قريبًا. |
 
@@ -579,3 +587,38 @@ completed referrals, read from the chain) and approves the ones still waiting. T
 - PR #22 review (2026-10-17): `refs.state.left` is a person who was a citizen through this referral and is not one
   now (renounced, or applying again under another referrer); kmr "Êdî ne welatî ye" (Welatî for a person; "êdî"
   flagged for native reading). `refs.more` pages the list 50 rows at a time. ckb, fa and ar are drafts.
+
+### Mainnet / testnet switch (2026-10-17, Serok)
+
+The Network tab chooses which network every explorer tab reads (i-Wallet always stays on mainnet); the same two
+labels are the chip in each screen's header. `mascot.say3` now names the network being read (`{{network}}`: the localised
+`network.mainnet` / `network.testnet` label, PR #23 review) instead of a fixed Zagros. tr and en are the source texts.
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `network.mainnet` | Ana ağ | Mainnet | Tora sereke | تۆڕی سەرەکی | شبکه اصلی | الشبكة الرئيسية |
+| `network.testnet` | Test ağı (Zagros) | Testnet (Zagros) | Tora ceribandinê (Zagros) | تۆڕی تاقیکردنەوە (Zagros) | شبکه آزمایشی (Zagros) | شبكة الاختبار (Zagros) |
+| `network.switchTitle` | Ağ değiştirilsin mi? | Change the network? | Tor were guhertin? | تۆڕ بگۆڕدرێت؟ | شبکه تغییر کند؟ | تغيير الشبكة؟ |
+| `network.switchBody` | Sayfa yeniden yüklenir, ardından Pezkuwi Explorer seçtiğin ağı gösterir. i-Wallet her zaman ana ağda kalır. | The page reloads, and Pezkuwi Explorer then shows the network you chose. i-Wallet always stays on the mainnet. | Rûpel ji nû ve tê barkirin, paşê Pezkuwi Explorer tora ku te hilbijart nîşan dide. i-Wallet herdem li ser tora sereke dimîne. | پەڕەکە دووبارە بار دەکرێتەوە، پاشان Pezkuwi Explorer ئەو تۆڕە پیشان دەدات کە هەڵتبژارد. i-Wallet هەمیشە لەسەر تۆڕی سەرەکی دەمێنێتەوە. | صفحه دوباره بارگذاری می‌شود و سپس Pezkuwi Explorer شبکه‌ای را که انتخاب کردید نشان می‌دهد. i-Wallet همیشه روی شبکه اصلی می‌ماند. | يُعاد تحميل الصفحة، ثم يعرض Pezkuwi Explorer الشبكة التي اخترتها. يبقى i-Wallet دائماً على الشبكة الرئيسية. |
+| `network.switchSignOut` | Önce cüzdanından çıkış yapılır; ardından yeniden bağlarsın. | Your wallet is signed out first; connect it again afterwards. | Pêşî tu ji cuzdanê xwe derdikevî; paşê wî dîsa girêbide. | سەرەتا لە جزدانەکەت دەردەچیت؛ دواتر دووبارە پەیوەستی بکەرەوە. | ابتدا از کیف پول خود خارج می‌شوید؛ سپس دوباره آن را متصل کنید. | سيُسجَّل خروجك من محفظتك أولاً؛ صِلها مجدداً بعد ذلك. |
+| `network.switchConfirm` | Değiştir ve yenile | Change and reload | Biguherîne û rûpelê nûve bike | بیگۆڕە | تغییر و بارگذاری دوباره | غيّر وأعد التحميل |
+| `network.switchCancel` | Vazgeç | Cancel | Betal bike | هەڵوەشاندنەوە | انصراف | إلغاء |
+| `network.switchFailed` | Bu tarayıcı seçimi saklamadı, bu yüzden ağ değiştirilmedi. | This browser would not keep the choice, so the network was not changed. | Vê gerokê hilbijartina te negirt, loma tor nehat guhertin. | ئەم وێبگەڕە هەڵبژاردنەکەی هەڵنەگرت، بۆیە تۆڕ نەگۆڕدرا. | این مرورگر انتخاب شما را نگه نداشت، بنابراین شبکه تغییر نکرد. | لم يحتفظ هذا المتصفح باختيارك، لذا لم تتغير الشبكة. |
+| `mascot.say3` | Ağ çalışıyor — {{network}} canlı. | The network is working — {{network}} is live. | Tor dixebite — {{network}} zindî ye. | تۆڕ کار دەکات — {{network}} زیندووە. | شبکه کار می‌کند — {{network}} زنده است. | الشبكة تعمل — {{network}} حيّة. |
+
+- kmr "Tor" is the explorer's word for the Network tab (`network.title`, pwap); "Tora sereke" is the i-Wallet's
+  "Tora sereke ya Pezkuwi" (`iwallet.mainnet`) without the name. "Ceribandin" is in the Ferheng (Zeynelabidin):
+  "Ceribandin/m. Sihêtkirin, hêçandin, azmûn, test, …" and is used feminine there ("Ceribandina tiştekî"), so its
+  oblique is "ceribandinê": "Tora ceribandinê" = the test network (the word is already in the Ferheng table above).
+- kmr `switchConfirm` (PR #23 review: it must say the page reloads, as the other five do) is `iwallet.send.change`
+  "Biguherîne" + "rûpelê nûve bike", the reload wording of pwap's `walletModal.afterInstall` ("rûpelê nûve bikin").
+  Ferheng: "nûkirin" appears (under Berceste/m., "tazekirin, nûkirin" = renew) but "nûve kirin" does not, and
+  "Barkirin/m." is "Koça xwe ji virê rakir û bir cihekî din" (moving house), so "ji nû ve bar bike" was not used for the
+  button. Flagged for native reading, together with "tê barkirin" (loading, pwap usage) in `switchBody`.
+- kmr `switchTitle` follows `iwallet.import.confirmTitle` ("… were guhertin?"); `switchCancel` is
+  `iwallet.import.confirmNo`, verbatim; `switchFailed` follows
+  `iwallet.citizen.form.notSaved` ("Vê gerokê … negirt, loma …"); `switchSignOut` uses walletModal's "girêbide".
+  "Herdem" (Ferheng: "Herdem/m. Her zeman, her an") and "paşê" (Ferheng: "Paşê/m. Piştre, ji niha û şûnde") are
+  Ferheng words. The kmr `switchBody` and `switchSignOut` sentences are new wording: flagged for native reading.
+- ckb, fa and ar are drafts. In those scripts `{{network}}` in `mascot.say3` is now the localised network label (it was
+  the transliterated "زاگرۆس" / "زاگرس" / "زاغروس"); a native reader may prefer a localised name per network.

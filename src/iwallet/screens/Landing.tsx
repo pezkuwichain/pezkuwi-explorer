@@ -6,7 +6,7 @@ import { IconArrow, IconBars, IconIdTab, IconPhoneKey, IconWarning } from '../..
 import { useIWallet } from '../IWalletContext';
 import { InstallButton } from '../Install';
 import { useInstallMode } from '../installMode';
-import SiteFooter, { AcceptLine } from '../../ui/SiteFooter';
+import { AcceptLine } from '../../ui/SiteFooter';
 import '../iwallet.css';
 
 // The i-Wallet tab before a wallet exists (state 'none'), or when this browser cannot store one ('unavailable').
@@ -64,7 +64,6 @@ export default function Landing() {
           <li><IconBars className="iw-f-net" /><span>{t('iwallet.feature.balances')}</span></li>
         </ul>
       </div>
-      <SiteFooter />
     </div>
   );
 }

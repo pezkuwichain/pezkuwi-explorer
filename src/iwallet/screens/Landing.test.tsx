@@ -31,7 +31,7 @@ describe('i-Wallet landing', () => {
     expect(screen.getByText('Pezkuwi ana ağ')).toBeInTheDocument();
   });
 
-  it('says under the calls to action that continuing accepts the terms and privacy notice, and carries the footer', async () => {
+  it('says under the calls to action that continuing accepts the terms and privacy notice', async () => {
     renderTab();
     const line = (await screen.findByText(/Devam ederek/)).closest('p')!;
     expect(line.closest('.iw-hero')).not.toBeNull();
@@ -40,9 +40,7 @@ describe('i-Wallet landing', () => {
     expect(within(line).getByRole('link', { name: 'Gizlilik bildirimini' })).toHaveAttribute('href', '/privacy');
     // Nothing unsaved on the landing: the pages open in place.
     expect(within(line).getByRole('link', { name: 'Gizlilik bildirimini' })).not.toHaveAttribute('target');
-    const foot = screen.getByRole('contentinfo');
-    expect(within(foot).getByRole('link', { name: 'Gizlilik' })).toHaveAttribute('href', '/privacy');
-    expect(within(foot).getByRole('link', { name: 'YouTube' })).toHaveAttribute('href', 'https://www.youtube.com/@dijitalkurdistan');
+    // The site footer comes from the Layout on /i-wallet (src/ui/SiteFooter.test.tsx), not from the landing itself.
   });
 
   it('has the consent line in all six languages', async () => {

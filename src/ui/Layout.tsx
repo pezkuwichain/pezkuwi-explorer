@@ -21,8 +21,9 @@ export function Amount({ value, decimals, symbol }: { value: bigint; decimals: n
 export default function Layout() {
   const { pathname } = useLocation();
   const home = pathname === '/';
-  // The i-Wallet places the footer itself, on its landing only: never under the wallet's signing screens.
-  const iWallet = pathname === '/i-wallet' || pathname.startsWith('/i-wallet/');
+  // The footer shows everywhere except under the i-Wallet's flows that hold unsaved or signing state
+  // (create, import, send, citizenship): there a stray tap on a link must not lose the work.
+  const walletFlow = /^\/i-wallet\/(create|import|send|citizen)(\/|$)/.test(pathname);
   return (
     <DesktopShell>
     <div className={`page${home ? ' page-home' : ''}`}>
@@ -37,7 +38,7 @@ export default function Layout() {
         </header>
       )}
       <main><ErrorBoundary key={pathname}><Outlet /></ErrorBoundary></main>
-      {!iWallet && <SiteFooter />}
+      {!walletFlow && <SiteFooter />}
       <TabBar />
     </div>
     </DesktopShell>

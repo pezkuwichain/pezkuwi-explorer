@@ -46,10 +46,15 @@ describe('site footer', () => {
     }
   });
 
-  it('is not under the i-Wallet screens (its landing places the footer itself)', () => {
-    for (const path of ['/i-wallet', '/i-wallet/send', '/i-wallet/create', '/i-wallet/citizen', '/i-wallet/settings']) {
+  it('is on the i-Wallet home, receive and settings screens, but not under its create, import, send or citizenship flows', () => {
+    for (const path of ['/i-wallet', '/i-wallet/receive', '/i-wallet/settings']) {
       const { unmount } = at(path);
-      expect(screen.queryByRole('contentinfo')).toBeNull();
+      expect(screen.getByRole('contentinfo'), path).toBeInTheDocument();
+      unmount();
+    }
+    for (const path of ['/i-wallet/send', '/i-wallet/create', '/i-wallet/import', '/i-wallet/citizen']) {
+      const { unmount } = at(path);
+      expect(screen.queryByRole('contentinfo'), path).toBeNull();
       unmount();
     }
   });

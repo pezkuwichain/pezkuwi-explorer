@@ -77,3 +77,6 @@ redirecting to the site root until the i-Wallet ships.
    8. Look at the language picker and the citizenship region list: they open and read correctly (see step 2).
 6. Rollback: if any step fails, change the 443 block of `cuzdan.conf` back to
    `return 301 https://explorer.pezkuwichain.io/;` and reload nginx; then revert the i-Wallet merge on `main`.
+
+## i-Wallet referral list: when to move it to the indexer
+The i-Wallet "Wallets you referred" list (`src/iwallet/citizen.ts` `myReferrals`) scans `referral.referrals` and `identityKyc.applications` on the public People RPC on every page view of an Approved citizen (4 + 97 entries in about 0.3 s on 2026-10-17). Move it to the People indexer (SubQuery, keyed by referrer) when `referral.referrals` passes 5,000 entries or the scan takes over 2 s on a phone, whichever comes first.

@@ -183,6 +183,17 @@
 .iw-stage > button { align-self: stretch; }
 .iw-refs { display: flex; flex-direction: column; gap: 8px; }
 .iw-ref { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-block-size: 56px; }
+.iw-ref + .iw-ref { border-block-start: 1px solid var(--border); }
+.iw-ref-main { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; padding-block: 6px; }
+.iw-ref-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--muted-strong); font-size: 12px; }
+/* One chip per state: waiting for me (yellow), waiting for their signature (blue), citizen (green), no longer a
+   citizen and revoked (grey). */
+.iw-ref-chip { padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+.iw-ref-waiting { background: var(--zer-soft); color: var(--zer-text); }
+.iw-ref-signing { background: var(--info-soft); color: var(--info-text); }
+.iw-ref-citizen { background: var(--ok-soft); color: var(--ok-text); }
+.iw-ref-left, .iw-ref-revoked { background: var(--surface-sunk); color: var(--muted-strong); }
+.iw-ref-copy { display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; cursor: pointer; font-weight: 700; }
 .iw-summary dd.iw-recipient { justify-content: flex-end; }
 
 /* Send: the token and network pickers (rows of the shared token list) and the "sending X on Y" line. */

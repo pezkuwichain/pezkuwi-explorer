@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { decodeAddress, encodeAddress } from '@pezkuwi/util-crypto';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { user } from '../test-user';
@@ -22,6 +22,10 @@ const REF_EXTRA = 1_066_656n;
 const impl = vi.hoisted(() => ({
   status: 'NotStarted', nft: null as bigint | null, people: 0n, peopleAfter: [] as bigint[], assetHub: 0n,
   apps: [] as Array<{ applicant: string; referrer: string; status: string }>,
+  // Completed referrals (referral.referrals) with the referred account's status and NFT.
+  refs: [] as Array<{ referred: string; referrer: string; createdAt: number; status: string; nft: bigint | null }>,
+  // One referral read that rejects, and a gate that holds referral.referrals back until opened.
+  fail: null as null | 'refs' | 'apps' | 'kycMulti' | 'nftMulti', refsGate: null as null | Promise<void>,
   script: ['inBlock', 'finalized'] as string[], dropAfterSend: false, scans: 0, feeFail: false,
   signed: [] as Array<{ name: string; args: unknown[] }>, pairs: [] as Array<{ lock: ReturnType<typeof vi.fn> }>,
 }));
@@ -64,7 +68,10 @@ const mkTx = (name: string, args: unknown[]) => ({
     return Promise.resolve(() => undefined);
   },
 });
-const statusOf = (a: string) => (a === ADDR ? impl.status : (impl.apps.find((x) => x.applicant === a)?.status ?? 'NotStarted'));
+const statusOf = (a: string) => (a === ADDR ? impl.status
+  : impl.apps.find((x) => x.applicant === a)?.status ?? impl.refs.find((x) => x.referred === a)?.status ?? 'NotStarted');
+const nftOf = (a: string) => (a === ADDR ? impl.nft : impl.refs.find((x) => x.referred === a)?.nft ?? null);
+const opt = (v: bigint | null) => ({ isSome: v !== null, unwrap: () => ({ toBigInt: () => v }) });
 const account = (free: () => bigint) => () => Promise.resolve({ data: { free: { toBigInt: free }, reserved: { toBigInt: () => 0n }, frozen: { toBigInt: () => 0n } } });
 const tx = (name: string) => (...a: unknown[]) => mkTx(name, a);
 const people = {
@@ -72,14 +79,22 @@ const people = {
     system: { account: account(() => (impl.peopleAfter.length ? impl.peopleAfter.shift()! : impl.people)) },
     identityKyc: {
       kycStatuses: Object.assign((a: string) => Promise.resolve({ type: statusOf(a) }), {
-        multi: (as: string[]) => Promise.resolve(as.map((a) => ({ type: statusOf(a) }))),
+        multi: (as: string[]) => (impl.fail === 'kycMulti' ? Promise.reject(new Error('rpc')) : Promise.resolve(as.map((a) => ({ type: statusOf(a) })))),
       }),
-      applications: { entries: () => { impl.scans += 1; return Promise.resolve(impl.apps.map((x) => [
+      applications: { entries: () => { impl.scans += 1; if (impl.fail === 'apps') return Promise.reject(new Error('rpc')); return Promise.resolve(impl.apps.map((x) => [
         { args: [{ toString: () => x.applicant }] },
         { isSome: true, unwrap: () => ({ identityHash: { toString: () => '0xh' }, referrer: { toString: () => x.referrer } }) },
       ])); } },
     },
-    tiki: { citizenNft: () => Promise.resolve({ isSome: impl.nft !== null, unwrap: () => ({ toBigInt: () => impl.nft }) }) },
+    referral: { referrals: { entries: async () => {
+      if (impl.refsGate) await impl.refsGate;
+      if (impl.fail === 'refs') throw new Error('rpc');
+      return impl.refs.map((x) => [
+        { args: [{ toString: () => x.referred }] },
+        { isSome: true, unwrap: () => ({ referrer: { toString: () => x.referrer }, createdAt: { toNumber: () => x.createdAt } }) },
+      ]);
+    } } },
+    tiki: { citizenNft: Object.assign((a: string) => Promise.resolve(opt(nftOf(a))), { multi: (as: string[]) => (impl.fail === 'nftMulti' ? Promise.reject(new Error('rpc')) : Promise.resolve(as.map((a) => opt(nftOf(a))))) }) },
   },
   consts: { identityKyc: { kycApplicationDeposit: { toBigInt: () => DEPOSIT } } },
   tx: {
@@ -140,7 +155,7 @@ describe('i-Wallet citizenship', () => {
     await i18n.changeLanguage('tr');
     localStorage.clear(); sessionStorage.clear();
     store = new Map<string, unknown>([['keystore', {}], ['words', {}]]);
-    Object.assign(impl, { status: 'NotStarted', nft: null, people: 0n, peopleAfter: [], assetHub: 10n * T, apps: [], script: ['inBlock', 'finalized'], dropAfterSend: false, scans: 0, feeFail: false });
+    Object.assign(impl, { status: 'NotStarted', nft: null, people: 0n, peopleAfter: [], assetHub: 10n * T, apps: [], refs: [], fail: null, refsGate: null, script: ['inBlock', 'finalized'], dropAfterSend: false, scans: 0, feeFail: false });
     impl.signed = []; impl.pairs = [];
     Object.assign(FUNDING_POLL, { everyMs: 20, forMs: 2_000 });
   });
@@ -374,7 +389,7 @@ describe('i-Wallet citizenship', () => {
       if (status === 'Revoked') await screen.findByText('Bu hesabın vatandaşlığı iptal edildi.');
       else await screen.findByRole('heading', { name: 'Vatandaşsın' });
       expect(impl.scans).toBe(0);
-      expect(screen.queryByText('Onayını bekleyen başvurular')).toBeNull();
+      expect(screen.queryByText('Referansı olduğun cüzdanlar')).toBeNull();
       expect(screen.queryByRole('button', { name: `${BOB} onayla` })).toBeNull();
     });
   }
@@ -438,7 +453,7 @@ describe('i-Wallet citizenship', () => {
       { applicant: '5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y', referrer: ADDR, status: 'ReferrerApproved' },
     ];
     renderCitizen(); await login();
-    expect(await screen.findByText('Onayını bekleyen başvurular')).toBeInTheDocument();
+    expect(await screen.findByText('Referansı olduğun cüzdanlar')).toBeInTheDocument();
     const buttons = screen.getAllByRole('button', { name: /onayla$/ });
     expect(buttons).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: `${BOB} onayla` }));
@@ -502,12 +517,190 @@ describe('i-Wallet citizenship', () => {
     const first = renderCitizen(); await login();
     await screen.findByRole('heading', { name: 'Referansının onayı bekleniyor' });
     expect(impl.scans).toBe(0);
-    expect(screen.queryByText('Onayını bekleyen başvurular')).toBeNull();
+    expect(screen.queryByText('Referansı olduğun cüzdanlar')).toBeNull();
     first.unmount();
 
     impl.status = 'Approved'; impl.nft = 3n;
     renderCitizen(); await login();
-    await screen.findByText('Onayını bekleyen başvurular');
+    await screen.findByText('Referansı olduğun cüzdanlar');
     expect(impl.scans).toBe(1);
+  });
+
+  describe('wallets you referred', () => {
+    const CAROL = '5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y';
+    const DAVE = '5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy';
+    const EVE = '5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw';
+    const FERDIE = '5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL';
+    const OTHER = '5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY';
+    const section = async () => (await screen.findByRole('heading', { name: 'Referansı olduğun cüzdanlar' })).closest('section')!;
+    const rows = (sec: HTMLElement) => within(sec).getAllByRole('listitem');
+    const seed = () => {
+      impl.status = 'Approved'; impl.nft = 1n; impl.people = T;
+      impl.apps = [
+        { applicant: CAROL, referrer: ADDR, status: 'ReferrerApproved' },
+        { applicant: BOB, referrer: ADDR, status: 'PendingReferral' },
+        { applicant: OTHER, referrer: BOB, status: 'PendingReferral' }, // names someone else
+      ];
+      impl.refs = [
+        // BOB renounced and applies again naming this account: the open application wins (one row, with Approve).
+        { referred: BOB, referrer: ADDR, createdAt: 9_000, status: 'Approved', nft: null },
+        // OTHER renounced and applies again under another referrer: no longer a citizen.
+        { referred: OTHER, referrer: ADDR, createdAt: 40_000, status: 'Approved', nft: null },
+        { referred: DAVE, referrer: ADDR, createdAt: 14_905, status: 'Approved', nft: 12n },
+        { referred: EVE, referrer: ADDR, createdAt: 30_000, status: 'Revoked', nft: 13n },
+        { referred: FERDIE, referrer: ADDR, createdAt: 20_000, status: 'Approved', nft: null },
+      ];
+    };
+
+    it('lists every wallet this citizen referred by its current status: waiting for me, their signature, citizens newest first, left, revoked', async () => {
+      seed();
+      renderCitizen(); await login();
+      const sec = await section();
+      expect(within(sec).getByText('Toplam: 6')).toBeInTheDocument();
+      const list = rows(sec);
+      expect(list.map((li) => li.getAttribute('data-state'))).toEqual(['waiting', 'signing', 'citizen', 'citizen', 'left', 'revoked']);
+      expect(list.map((li) => within(li).getByText(/…/).textContent)).toEqual([BOB, CAROL, FERDIE, DAVE, OTHER, EVE].map(shortAddress));
+      expect(within(list[0]).getByText('Onayını bekliyor')).toBeInTheDocument();
+      expect(within(list[1]).getByText('Onayladın · imzası bekleniyor')).toBeInTheDocument();
+      expect(within(list[2]).getByText('Vatandaş')).toBeInTheDocument();
+      expect(within(list[2]).queryByText(/NFT/)).toBeNull();
+      expect(within(list[2]).getByText('20000')).toBeInTheDocument();
+      expect(within(list[3]).getByText('Welati Tiki NFT #12')).toBeInTheDocument();
+      expect(within(list[3]).getByText('14905')).toBeInTheDocument();
+      expect(within(list[4]).getByText('Artık vatandaş değil')).toBeInTheDocument();
+      expect(within(list[4]).getByText('40000')).toBeInTheDocument();
+      expect(within(list[5]).getByText('İptal edildi')).toBeInTheDocument();
+      expect(within(list[5]).queryByText(/NFT/)).toBeNull();
+      for (const [i, a] of [BOB, CAROL, FERDIE, DAVE, OTHER, EVE].entries()) {
+        expect(within(list[i]).getByRole('button', { name: `${a} adresini kopyala` })).toBeInTheDocument();
+      }
+      // Approve only where the chain accepts approve_referral: the open application waiting for this account.
+      expect(within(sec).getAllByRole('button', { name: /onayla$/ })).toHaveLength(1);
+      expect(within(list[0]).getByRole('button', { name: `${BOB} onayla` })).toBeInTheDocument();
+      for (const li of list.slice(1)) expect(within(li).queryByRole('button', { name: /onayla$/ })).toBeNull();
+    });
+
+    it('shows the list under the card of an Approved account without an NFT too', async () => {
+      seed(); impl.nft = null;
+      renderCitizen(); await login();
+      await screen.findByText(i18n.t('iwallet.citizen.approvedNoNft'));
+      expect(rows(await section())).toHaveLength(6);
+    });
+
+    const shown: Record<string, string> = {
+      PendingReferral: 'Referansının onayı bekleniyor', ReferrerApproved: 'Referansın onayladı',
+      Revoked: 'Bu hesabın vatandaşlığı iptal edildi.', NotStarted: 'Vatandaşsın',
+    };
+    for (const status of Object.keys(shown)) {
+      it(`hides the list for an account whose status reads ${status}`, async () => {
+        seed(); impl.status = status; impl.nft = status === 'NotStarted' ? 4n : null;
+        renderCitizen(); await login();
+        await screen.findByText(shown[status]);
+        expect(screen.queryByRole('heading', { name: 'Referansı olduğun cüzdanlar' })).toBeNull();
+        expect(screen.queryByText('Henüz kimseye referans olmadın.')).toBeNull();
+        expect(screen.queryByRole('button', { name: /onayla$/ })).toBeNull();
+        expect(impl.scans).toBe(0);
+      });
+    }
+
+    it('says nobody was referred yet and copies the referral link', async () => {
+      impl.status = 'Approved'; impl.nft = 1n; impl.people = T;
+      const write = vi.fn(() => Promise.resolve());
+      renderCitizen(); await login();
+      const sec = await section();
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: write } });
+      expect(within(sec).getByText('Henüz kimseye referans olmadın.')).toBeInTheDocument();
+      expect(within(sec).queryByRole('list')).toBeNull();
+      const link = `https://cuzdan.pex.network/?ref=${ADDR}`;
+      expect(within(sec).getByText(link)).toBeInTheDocument();
+      await user.click(within(sec).getByRole('button', { name: 'Referans bağlantımı kopyala' }));
+      expect(write).toHaveBeenCalledWith(link);
+    });
+
+    it('reads the list again after an approve, and the row moves to waiting for their signature', async () => {
+      seed();
+      renderCitizen(); await login();
+      await user.click(await screen.findByRole('button', { name: `${BOB} onayla` }));
+      expect(screen.getByText(BOB)).toBeInTheDocument(); // the confirm names the applicant in full
+      // The chain moves BOB on once the approve lands.
+      impl.apps = impl.apps.map((x) => (x.applicant === BOB ? { ...x, status: 'ReferrerApproved' } : x));
+      await signWith('right-pass1');
+      expect(await screen.findByText('Referans onaylandı')).toBeInTheDocument();
+      expect(impl.signed).toEqual([{ name: 'identityKyc.approveReferral', args: [BOB] }]);
+      await user.click(screen.getByRole('button', { name: 'Vatandaşlığa dön' }));
+      const sec = await section();
+      expect(impl.scans).toBe(2);
+      const list = rows(sec);
+      expect(list.map((li) => li.getAttribute('data-state'))).toEqual(['signing', 'signing', 'citizen', 'citizen', 'left', 'revoked']);
+      expect(within(sec).queryByRole('button', { name: /onayla$/ })).toBeNull();
+    });
+
+    it('reads the list again after a refused approve, so the stale Approve goes', async () => {
+      seed(); impl.script = ['failed'];
+      renderCitizen(); await login();
+      await user.click(await screen.findByRole('button', { name: `${BOB} onayla` }));
+      // BOB cancelled after the scan: the chain refuses the approve.
+      impl.apps = impl.apps.filter((x) => x.applicant !== BOB);
+      await signWith('right-pass1');
+      await user.click(await screen.findByRole('button', { name: 'Vatandaşlığa dön' }));
+      const sec = await section();
+      await waitFor(() => expect(impl.scans).toBe(2));
+      await waitFor(() => expect(within(sec).queryByRole('button', { name: `${BOB} onayla` })).toBeNull());
+      // BOB is still in referral.referrals from the earlier citizenship (Approved in this mock): a citizen row now.
+      expect(within(sec).getAllByRole('listitem').find((li) => li.textContent?.includes(shortAddress(BOB)))?.getAttribute('data-state')).toBe('citizen');
+    });
+
+    for (const fail of ['refs', 'apps', 'kycMulti', 'nftMulti', 'variant'] as const) {
+      it(`greys only the section when the referral read fails (${fail}), keeps the card and the link, and retries`, async () => {
+        seed();
+        if (fail === 'variant') impl.apps = [...impl.apps, { applicant: FERDIE, referrer: ADDR, status: 'Suspended' }];
+        else impl.fail = fail;
+        if (fail === 'variant') impl.refs = impl.refs.filter((x) => x.referred !== FERDIE);
+        renderCitizen(); await login();
+        const sec = await section();
+        expect(await within(sec).findByText('Referansı olduğun cüzdanlar yüklenemedi.')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Vatandaşsın' })).toBeInTheDocument();
+        expect(screen.getByText('Welati Tiki NFT #1')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /onayla$/ })).toBeNull();
+        expect(within(sec).getByText(`https://cuzdan.pex.network/?ref=${ADDR}`)).toBeInTheDocument();
+        expect(within(sec).getByRole('button', { name: 'Referans bağlantımı kopyala' })).toBeInTheDocument();
+        // The failure is not cached: Retry reads the list again.
+        impl.fail = null; impl.apps = impl.apps.filter((x) => x.status !== 'Suspended');
+        const before = impl.scans;
+        await user.click(within(sec).getByRole('button', { name: 'Tekrar dene' }));
+        expect(await within(sec).findByRole('button', { name: `${BOB} onayla` })).toBeInTheDocument();
+        expect(impl.scans).toBe(before + 1);
+      });
+    }
+
+    it('shows the citizen card before the referral list has loaded', async () => {
+      seed();
+      let open!: () => void;
+      impl.refsGate = new Promise<void>((r) => { open = r; });
+      renderCitizen(); await login();
+      expect(await screen.findByRole('heading', { name: 'Vatandaşsın' })).toBeInTheDocument();
+      const sec = await section();
+      expect(within(sec).getByText(/^Yükleniyor/)).toBeInTheDocument();
+      expect(within(sec).queryByRole('list')).toBeNull();
+      open();
+      expect(await within(sec).findByRole('button', { name: `${BOB} onayla` })).toBeInTheDocument();
+    });
+
+    it('shows 50 rows at a time with Show more', async () => {
+      impl.status = 'Approved'; impl.nft = 1n; impl.people = T;
+      impl.refs = Array.from({ length: 120 }, (_, i) => ({
+        referred: encodeAddress(new Uint8Array(32).fill(0).map((_, j) => (j === 0 ? 1 : j === 1 ? i : 0)), 42),
+        referrer: ADDR, createdAt: 1_000 + i, status: 'Approved', nft: BigInt(i),
+      }));
+      renderCitizen(); await login();
+      const sec = await section();
+      expect(within(sec).getByText('Toplam: 120')).toBeInTheDocument();
+      expect(rows(sec)).toHaveLength(50);
+      await user.click(within(sec).getByRole('button', { name: 'Daha fazla göster (50 / 120)' }));
+      expect(rows(sec)).toHaveLength(100);
+      await user.click(within(sec).getByRole('button', { name: 'Daha fazla göster (100 / 120)' }));
+      expect(rows(sec)).toHaveLength(120);
+      expect(within(sec).queryByRole('button', { name: /Daha fazla göster/ })).toBeNull();
+    });
   });
 });

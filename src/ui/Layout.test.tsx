@@ -80,12 +80,12 @@ describe('Layout', () => {
   it('names the network being read in the header of home and every inner explorer screen, never on i-Wallet', () => {
     setLanguage('en');
     const { unmount } = render(<MemoryRouter initialEntries={['/']}><Routes><Route element={<Layout />}><Route index element={<p>HOME</p>} /></Route></Routes></MemoryRouter>);
-    const chip = within(document.querySelector('header.brand') as HTMLElement).getByText('Mainnet');
+    const chip = within(document.querySelector('header.brand') as HTMLElement).getByText('Mainnet (Pezkuwi)');
     expect(chip).toHaveClass('net-chip', 'net-chip-mainnet');
     unmount();
     for (const path of ['/account', '/citizenship', '/network', '/payment']) {
       const r = render(<MemoryRouter initialEntries={[path]}><PageHeader title="Deep" /></MemoryRouter>);
-      expect(within(screen.getByRole('banner')).getByText('Mainnet')).toHaveAttribute('data-network', 'mainnet');
+      expect(within(screen.getByRole('banner')).getByText('Mainnet (Pezkuwi)')).toHaveAttribute('data-network', 'mainnet');
       r.unmount();
     }
     for (const path of ['/i-wallet', '/i-wallet/send', '/i-wallet/citizen']) {

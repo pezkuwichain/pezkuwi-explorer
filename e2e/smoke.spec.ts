@@ -49,8 +49,8 @@ test('a first visit reads mainnet and the live mainnet network answers', async (
   // Runs after the Zagros pin of beforeEach: removes it again, as on a first visit.
   await page.addInitScript(() => localStorage.removeItem('pezkuwi-explorer:network'));
   await page.goto('/network');
-  await expect(page.locator('.page-header .net-chip-mainnet')).toHaveText('Mainnet');
-  await expect(page.getByRole('radio', { name: 'Mainnet' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.page-header .net-chip-mainnet')).toHaveText('Mainnet (Pezkuwi)');
+  await expect(page.getByRole('radio', { name: 'Mainnet (Pezkuwi)' })).toHaveAttribute('aria-checked', 'true');
   const light = page.locator('section.live');
   await expect(light).not.toHaveText(/Checking/, { timeout: 30_000 });
   await expect(light).toHaveText(/The network is working/);

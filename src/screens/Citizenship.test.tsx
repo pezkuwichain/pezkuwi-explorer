@@ -1,3 +1,4 @@
+import { formatCitizenUid } from '../citizen/citizenUid';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -48,12 +49,12 @@ describe('Citizenship', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
-  it('front: DK- number on one line, verified chip; back: full address, network, status, QR and MRZ', async () => {
+  it('front: shared citizen number on one line, verified chip; back: full address, network, status, QR and MRZ', async () => {
     impl.load = () => Promise.resolve({ stage: 'citizen', roles: ['Welati'], trust: 86n, nftId: 57n });
     renderIt();
     await waitFor(() => expect(front()).not.toBeNull());
     const numberRow = front().querySelector('.cid-number-row')!;
-    expect(numberRow).toHaveTextContent('Citizen no.DK-000057');
+    expect(numberRow).toHaveTextContent(`Citizen no.${formatCitizenUid(ALICE, 57n)}`);
     expect(front().querySelector('.cid-chip')).toHaveTextContent('✓ Approved');
     expect(within(back()).getByText(ALICE)).toBeInTheDocument();
     expect(back()).toHaveTextContent('Testnet (Zagros)');
@@ -61,7 +62,7 @@ describe('Citizenship', () => {
     expect(back()).toHaveTextContent('ON-CHAIN · NFT 57');
     expect(back().querySelector('.cid-qr svg path')!.getAttribute('d')!.length).toBeGreaterThan(100);
     const mrz = [...back().querySelectorAll('.cid-mrz > div')].map((d) => d.textContent);
-    expect(mrz).toEqual(['IDDKZ000057<<<<<<<<<<<<<<<<<<<', '5GRWVAEF5ZXB26FZ9RCQPDWS57CTER', 'WELATI<<<<<<<<<<<<<<<<<<<<<<<<']);
+    expect(mrz).toEqual([`IDDKZ${formatCitizenUid(ALICE, 57n)!.replace(/[^0-9]/g, '')}`.padEnd(30, '<'), '5GRWVAEF5ZXB26FZ9RCQPDWS57CTER', 'WELATI<<<<<<<<<<<<<<<<<<<<<<<<']);
   });
 
   it('without an NFT the number place shows the stage, and only approved or citizen gets the verified chip', async () => {
@@ -70,7 +71,7 @@ describe('Citizenship', () => {
     await waitFor(() => expect(front()).not.toBeNull());
     expect(front().querySelector('.cid-number-row')).toHaveTextContent('Citizen no.Applied');
     expect(front().querySelector('.cid-chip')).toBeNull();
-    expect(front()).not.toHaveTextContent('DK-');
+    expect(front()).not.toHaveTextContent('#42-');
   });
 
   it('the card is one button that flips it; the hidden face is hidden from screen readers too', async () => {

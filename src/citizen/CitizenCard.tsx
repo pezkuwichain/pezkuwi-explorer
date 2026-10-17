@@ -35,7 +35,7 @@ const RIDGE_B = 'M0 300 L46 270 L78 284 L118 244 L150 270 L188 234 L232 276 L270
 export function CitizenCard({ address, data, personal }: { address: string; data: CitizenData; personal: Personal }) {
   const { t, i18n } = useTranslation();
   const [back, setBack] = useState(false);
-  const number = cidNumber(data.nftId ?? null);
+  const number = cidNumber(data.nftId ?? null, address);
   const verified = data.stage === 'approved' || data.stage === 'citizen';
   const stageText = t(`citizenship.${data.stage}`);
   const role = data.roles[0];

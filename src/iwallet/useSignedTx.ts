@@ -1,11 +1,11 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ApiPromise } from '@pezkuwi/api';
 import type { SubmittableExtrinsic } from '@pezkuwi/api/types';
 import { CorruptKeystoreError, WrongPasswordError, unlock as decrypt } from './keystore';
 import { useHoldOpen, useIWallet } from './IWalletContext';
 import { withKeyProgress } from './progress';
-import { friendlyError, isNodeRefusal, submit, type SubmitEvent } from './tx';
+import { finalityReader, friendlyError, isNodeRefusal, submit, type SubmitEvent } from './tx';
 
 // The signing step shared by the citizenship actions, with the same rule as Send (Task 7): each action decrypts a
 // fresh pair from the password (or Face ID), signs, and locks that pair before waiting for the chain.
@@ -29,6 +29,9 @@ export function useSignedTx() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<TxOutcome>({ kind: 'idle' });
   const busyRef = useRef(false);
+  // The running attempt's status subscription and finality watcher, ended when the screen goes away.
+  const live = useRef<AbortController | null>(null);
+  useEffect(() => () => live.current?.abort(), []);
   // From the first decrypt to leaving the result, an auto-lock must not swap this screen for the unlock form: the
   // attempt carries on regardless, and its outcome (no secret in it) is what tells the person whether money left.
   useHoldOpen(busy || outcome.kind !== 'idle');
@@ -54,6 +57,7 @@ export function useSignedTx() {
     let onDisconnect: () => void = () => undefined;
     // Ends the status subscription when the disconnect wins the race, so it cannot report into a finished attempt.
     const stop = new AbortController();
+    live.current = stop;
     const disconnected = new Promise<'disconnected'>((resolve) => {
       onDisconnect = () => { if (!terminal && handedOff) { terminal = true; set({ kind: 'interrupted' }); stop.abort(); resolve('disconnected'); } };
     });
@@ -69,7 +73,7 @@ export function useSignedTx() {
       else if (ev.type === 'slow') { terminal = true; set(ev.inBlock ? { kind: 'slow' } : { kind: 'interrupted' }); }
     };
     try {
-      await Promise.race([submit(build(), pair, onStatus, stop.signal), disconnected]);
+      await Promise.race([submit(build(), pair, onStatus, stop.signal, finalityReader(api)), disconnected]);
     } catch (err) {
       // Only a failure before hand-off, or a refusal by the node's pool, proves nothing was sent.
       if (!terminal) {

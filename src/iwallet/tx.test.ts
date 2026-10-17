@@ -4,7 +4,8 @@ import type { KeyringPair } from '@pezkuwi/keyring/types';
 import { ERROR_KEYS } from './errors';
 import en from '../i18n/locales/en.json';
 import {
-  LARGE_HEZ, buildTransfer, estimateFee, friendlyError, isNodeRefusal, maxSendable, needsLargeAck, submit, tokenInfo, type SubmitEvent,
+  FINALITY_POLL_MS, FINALITY_WAIT_MS, LARGE_HEZ, buildTransfer, estimateFee, finalityReader, friendlyError, isNodeRefusal, maxSendable,
+  needsLargeAck, submit, tokenInfo, type FinalityReader, type SubmitEvent,
 } from './tx';
 
 const T = 10n ** 12n;
@@ -214,6 +215,229 @@ describe('submit stop signal', () => {
       await new Promise((r) => setTimeout(r, 5));
       expect(unsub).toHaveBeenCalledTimes(1);
     }
+  });
+});
+
+// The status subscription can go quiet after inBlock (a silent socket reconnect drops it): finality is then read from
+// the chain itself, every FINALITY_POLL_MS.
+describe('submit finality watcher', () => {
+  const inBlock = (hash: string) => res({ isInBlock: true, asInBlock: { toHex: () => hash } });
+  // A subscription that reports what `script` pushes and is otherwise silent.
+  const quietTx = () => {
+    let cb: (r: unknown) => void = () => undefined;
+    const unsub = vi.fn();
+    return { unsub, push: (r: unknown) => cb(r), tx: { signAsync: () => Promise.resolve(), send: (c: (r: unknown) => void) => { cb = c; return Promise.resolve(unsub); } } };
+  };
+  const reader = (over: Partial<FinalityReader> & { finalized?: () => number; canonical?: Record<number, string> } = {}) => {
+    const r = {
+      finalizedNumber: vi.fn(() => Promise.resolve(over.finalized?.() ?? 0)),
+      blockNumber: vi.fn((h: string) => Promise.resolve(h === '0xb1' ? 10 : 11)),
+      canonicalHash: vi.fn((n: number) => Promise.resolve(over.canonical?.[n] ?? '0xb1')),
+      extrinsicResult: vi.fn(() => Promise.resolve({ kind: 'success' as const })),
+      ...over,
+    };
+    return r;
+  };
+
+  it('finalizes from the chain when the subscription goes silent after inBlock', async () => {
+    vi.useFakeTimers();
+    try {
+      let fin = 9;
+      const chain = reader({ finalized: () => fin });
+      const q = quietTx();
+      const seen: SubmitEvent[] = [];
+      let settled = false;
+      const p = submit(q.tx as never, pairStub(), (e) => seen.push(e), undefined, chain).then(() => { settled = true; });
+      await vi.advanceTimersByTimeAsync(0);
+      q.push(inBlock('0xb1'));
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS);
+      // Not final yet: nothing is decided.
+      expect(seen).toEqual([{ type: 'submitted' }, { type: 'inBlock', blockHash: '0xb1' }]);
+      expect(settled).toBe(false);
+      fin = 12;
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS);
+      await p;
+      expect(chain.canonicalHash).toHaveBeenCalledWith(10);
+      expect(chain.extrinsicResult).toHaveBeenCalledWith('0xb1', '0xhash');
+      expect(seen).toEqual([{ type: 'submitted' }, { type: 'inBlock', blockHash: '0xb1' }, { type: 'finalized', blockHash: '0xb1', extrinsicHash: '0xhash' }]);
+      expect(q.unsub).toHaveBeenCalledTimes(1);
+      // The watcher is stopped: no more reads.
+      const reads = vi.mocked(chain.finalizedNumber).mock.calls.length;
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS * 3);
+      expect(vi.mocked(chain.finalizedNumber).mock.calls.length).toBe(reads);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('reports a failed extrinsic read from the block, and an unreadable outcome as unknown', async () => {
+    vi.useFakeTimers();
+    try {
+      const dispatchError = { isModule: true };
+      for (const [result, want] of [
+        [{ kind: 'failed', dispatchError }, { type: 'failed', dispatchError }],
+        [{ kind: 'unknown' }, { type: 'unknown' }],
+      ] as const) {
+        const chain = reader({ finalized: () => 10, extrinsicResult: vi.fn(() => Promise.resolve(result as never)) });
+        const q = quietTx();
+        const seen: SubmitEvent[] = [];
+        const p = submit(q.tx as never, pairStub(), (e) => seen.push(e), undefined, chain);
+        await vi.advanceTimersByTimeAsync(0);
+        q.push(inBlock('0xb1'));
+        await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS);
+        await p;
+        expect(seen.at(-1)).toEqual(want);
+      }
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('keeps waiting when the in-block block was retracted, and finalizes the new block', async () => {
+    vi.useFakeTimers();
+    try {
+      // Block 10 on the canonical chain is another block: 0xb1 was retracted.
+      const chain = reader({ finalized: () => 12, canonical: { 10: '0xother', 11: '0xb2' } });
+      const q = quietTx();
+      const seen: SubmitEvent[] = [];
+      let settled = false;
+      const p = submit(q.tx as never, pairStub(), (e) => seen.push(e), undefined, chain).then(() => { settled = true; });
+      await vi.advanceTimersByTimeAsync(0);
+      q.push(inBlock('0xb1'));
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS * 3);
+      expect(settled).toBe(false);
+      expect(chain.extrinsicResult).not.toHaveBeenCalled();
+      // The subscription's own Retracted also keeps it waiting.
+      q.push(res({ isRetracted: true }));
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS);
+      expect(settled).toBe(false);
+      q.push(inBlock('0xb2'));
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS);
+      await p;
+      expect(seen.at(-1)).toEqual({ type: 'finalized', blockHash: '0xb2', extrinsicHash: '0xhash' });
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('says slow, never stuck, when nothing is final three minutes after the block', async () => {
+    vi.useFakeTimers();
+    try {
+      const chain = reader({ finalized: () => 1 });
+      const q = quietTx();
+      const seen: SubmitEvent[] = [];
+      let settled = false;
+      const p = submit(q.tx as never, pairStub(), (e) => seen.push(e), undefined, chain).then(() => { settled = true; });
+      await vi.advanceTimersByTimeAsync(0);
+      q.push(inBlock('0xb1'));
+      await vi.advanceTimersByTimeAsync(FINALITY_WAIT_MS - 1);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await p;
+      expect(seen.at(-1)).toEqual({ type: 'slow', inBlock: true });
+      expect(q.unsub).toHaveBeenCalledTimes(1);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('a read that fails is tried again on the next tick', async () => {
+    vi.useFakeTimers();
+    try {
+      let n = 0;
+      const chain = reader({ finalizedNumber: vi.fn(() => (++n === 1 ? Promise.reject(new Error('rpc')) : Promise.resolve(10))) });
+      const q = quietTx();
+      const seen: SubmitEvent[] = [];
+      const p = submit(q.tx as never, pairStub(), (e) => seen.push(e), undefined, chain);
+      await vi.advanceTimersByTimeAsync(0);
+      q.push(inBlock('0xb1'));
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS * 2);
+      await p;
+      expect(seen.at(-1)).toEqual({ type: 'finalized', blockHash: '0xb1', extrinsicHash: '0xhash' });
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('when the subscription finalizes first, the watcher stops and there is one outcome', async () => {
+    vi.useFakeTimers();
+    try {
+      // The watcher's last read is in flight when the subscription reports Finalized; it then answers "failed".
+      let answer: (v: never) => void = () => undefined;
+      const chain = reader({ finalized: () => 10, extrinsicResult: vi.fn(() => new Promise<never>((r) => { answer = r; })) });
+      const q = quietTx();
+      const seen: SubmitEvent[] = [];
+      const p = submit(q.tx as never, pairStub(), (e) => seen.push(e), undefined, chain);
+      await vi.advanceTimersByTimeAsync(0);
+      q.push(inBlock('0xb1'));
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS);
+      q.push(res({ isFinalized: true, asFinalized: { toHex: () => '0xb1' } }));
+      await p;
+      answer({ kind: 'failed', dispatchError: { isModule: true } } as never);
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS * 2);
+      expect(seen.filter((e) => e.type !== 'submitted' && e.type !== 'inBlock')).toEqual([{ type: 'finalized', blockHash: '0xb1', extrinsicHash: '0xhash' }]);
+      expect(chain.extrinsicResult).toHaveBeenCalledTimes(1);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('a pool exit after the block stays unknown and stops the watcher', async () => {
+    vi.useFakeTimers();
+    try {
+      for (const flag of ['isDropped', 'isInvalid', 'isUsurped'] as const) {
+        const chain = reader({ finalized: () => 1 });
+        const q = quietTx();
+        const seen: SubmitEvent[] = [];
+        const p = submit(q.tx as never, pairStub(), (e) => seen.push(e), undefined, chain);
+        await vi.advanceTimersByTimeAsync(0);
+        q.push(inBlock('0xb1'));
+        q.push(res({ [flag]: true }));
+        await p;
+        expect(seen.at(-1)).toEqual({ type: 'unknown' });
+        expect(vi.getTimerCount()).toBe(0);
+      }
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('stops the watcher when the caller stops waiting', async () => {
+    vi.useFakeTimers();
+    try {
+      const chain = reader({ finalized: () => 1 });
+      const q = quietTx();
+      const ctl = new AbortController();
+      const p = submit(q.tx as never, pairStub(), () => undefined, ctl.signal, chain);
+      await vi.advanceTimersByTimeAsync(0);
+      q.push(inBlock('0xb1'));
+      expect(vi.getTimerCount()).toBe(2);
+      ctl.abort();
+      await p;
+      expect(vi.getTimerCount()).toBe(0);
+      expect(q.unsub).toHaveBeenCalledTimes(1);
+    } finally { vi.useRealTimers(); }
+  });
+});
+
+describe('finalityReader', () => {
+  const header = (n: number) => ({ number: { toNumber: () => n } });
+  const rec = (index: number, method: string, data: unknown[] = []) => ({
+    phase: { isApplyExtrinsic: true, asApplyExtrinsic: { toNumber: () => index } }, event: { section: 'system', method, data },
+  });
+  const api = (events: unknown[]) => asApi({
+    rpc: { chain: {
+      getFinalizedHead: () => Promise.resolve('0xfin'),
+      getHeader: (h: string) => Promise.resolve(header(h === '0xfin' ? 12 : 10)),
+      getBlockHash: (n: number) => Promise.resolve({ toHex: () => `0xcanon${n}` }),
+      getBlock: () => Promise.resolve({ block: { extrinsics: [{ hash: { toHex: () => '0xother' } }, { hash: { toHex: () => '0xhash' } }] } }),
+    } },
+    at: () => Promise.resolve({ query: { system: { events: () => Promise.resolve(events) } } }),
+  });
+
+  it('reads the finalized number, a block number and the canonical hash', async () => {
+    const r = finalityReader(api([]));
+    expect(await r.finalizedNumber()).toBe(12);
+    expect(await r.blockNumber('0xb1')).toBe(10);
+    expect(await r.canonicalHash(10)).toBe('0xcanon10');
+  });
+
+  it("judges the extrinsic by its own index's events only", async () => {
+    const err = { isModule: true };
+    // The extrinsic is index 1; index 0's success must not count for it.
+    expect(await finalityReader(api([rec(0, 'ExtrinsicSuccess'), rec(1, 'ExtrinsicSuccess')])).extrinsicResult('0xb1', '0xhash')).toEqual({ kind: 'success' });
+    expect(await finalityReader(api([rec(0, 'ExtrinsicSuccess'), rec(1, 'ExtrinsicFailed', [err])])).extrinsicResult('0xb1', '0xhash')).toEqual({ kind: 'failed', dispatchError: err });
+    expect(await finalityReader(api([rec(0, 'ExtrinsicSuccess')])).extrinsicResult('0xb1', '0xhash')).toEqual({ kind: 'unknown' });
+    expect(await finalityReader(api([rec(0, 'ExtrinsicSuccess')])).extrinsicResult('0xb1', '0xmissing')).toEqual({ kind: 'unknown' });
   });
 });
 

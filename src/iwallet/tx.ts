@@ -1,7 +1,7 @@
 import type { ApiPromise } from '@pezkuwi/api';
 import type { SubmittableExtrinsic } from '@pezkuwi/api/types';
 import type { ISubmittableResult } from '@pezkuwi/types/types';
-import type { DispatchError } from '@pezkuwi/types/interfaces';
+import type { DispatchError, EventRecord } from '@pezkuwi/types/interfaces';
 import type { KeyringPair } from '@pezkuwi/keyring/types';
 import { IWALLET_NETWORK } from '../config/iwallet-network';
 import type { ChainKey } from '../config/network';
@@ -76,42 +76,120 @@ export function isNodeRefusal(e: unknown): boolean {
   return m !== null && REFUSAL_CODES.has(Number(m[1]));
 }
 
+// What the finality watcher reads from the chain (see finalityReader). Each call may reject; the watcher then tries
+// again on its next tick.
+export interface FinalityReader {
+  /** The block number of the node's finalized head. */
+  finalizedNumber(): Promise<number>;
+  /** The number of the block with this hash. */
+  blockNumber(blockHash: string): Promise<number>;
+  /** The canonical (best-chain) block hash at this number. */
+  canonicalHash(n: number): Promise<string>;
+  /** How the extrinsic with this hash fared in that block, from the block's own events. */
+  extrinsicResult(blockHash: string, extrinsicHash: string): Promise<
+    { kind: 'success' } | { kind: 'failed'; dispatchError: DispatchError } | { kind: 'unknown' }
+  >;
+}
+
+export function finalityReader(api: ApiPromise): FinalityReader {
+  return {
+    finalizedNumber: async () => (await api.rpc.chain.getHeader(await api.rpc.chain.getFinalizedHead())).number.toNumber(),
+    blockNumber: async (h) => (await api.rpc.chain.getHeader(h)).number.toNumber(),
+    canonicalHash: async (n) => (await api.rpc.chain.getBlockHash(n)).toHex(),
+    extrinsicResult: async (blockHash, extrinsicHash) => {
+      const [signed, at] = await Promise.all([api.rpc.chain.getBlock(blockHash), api.at(blockHash)]);
+      const index = signed.block.extrinsics.findIndex((x) => x.hash.toHex() === extrinsicHash);
+      if (index < 0) return { kind: 'unknown' };
+      const records = (await at.query.system.events()) as unknown as EventRecord[];
+      for (const { phase, event } of records) {
+        if (!phase.isApplyExtrinsic || phase.asApplyExtrinsic.toNumber() !== index || event.section !== 'system') continue;
+        if (event.method === 'ExtrinsicSuccess') return { kind: 'success' };
+        if (event.method === 'ExtrinsicFailed') return { kind: 'failed', dispatchError: event.data[0] as DispatchError };
+      }
+      return { kind: 'unknown' };
+    },
+  };
+}
+
+/** How often the finality watcher reads the finalized head once the extrinsic is in a block. */
+export const FINALITY_POLL_MS = 6_000;
+/** After the first block, how long to wait for finality before saying it is slow. */
+export const FINALITY_WAIT_MS = 180_000;
+
 // Signs, locks the pair, then sends. Resolves after a terminal event; rejects if signing fails (before anything left
 // this device) or if the send call rejects. 'submitted' is reported just BEFORE the extrinsic is handed to the node,
 // so a caller knows that any later rejection may hide a transaction that is already in the pool.
 // `stop` ends the status subscription early (the caller gave up waiting, e.g. the connection dropped).
-export async function submit(tx: Tx, pair: KeyringPair, onStatus: (e: SubmitEvent) => void, stop?: AbortSignal): Promise<void> {
+// With `chain`, finality is also confirmed from the chain itself once the extrinsic is in a block: the status
+// subscription can go quiet (a socket that reconnects silently drops it) and would then wait for the node's own
+// finality timeout, hundreds of blocks later. Whichever reports first wins; the other is stopped.
+export async function submit(
+  tx: Tx, pair: KeyringPair, onStatus: (e: SubmitEvent) => void, stop?: AbortSignal, chain?: FinalityReader,
+): Promise<void> {
   // The secret key is needed only to sign: wipe it before the (possibly long) wait for finality.
   try { await tx.signAsync(pair, { nonce: -1 }); } finally { try { pair.lock(); } catch { /* already locked */ } }
   return new Promise<void>((resolve, reject) => {
     let unsub: (() => void) | undefined;
     let done = false;
     let seenInBlock = false;
-    const finish = () => { done = true; unsub?.(); resolve(); };
+    let poll: ReturnType<typeof setInterval> | undefined;
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+    // The block the watcher waits on; null after a retraction until the next inBlock.
+    let target: { hash: string; extrinsicHash: string; n: number | null } | null = null;
+    const clear = () => { done = true; clearInterval(poll); clearTimeout(deadline); unsub?.(); };
+    const finish = () => { clear(); resolve(); };
+    // One terminal report, whoever makes it.
+    const end = (e: SubmitEvent) => { if (done) return; onStatus(e); finish(); };
     if (stop) {
-      if (stop.aborted) { done = true; } else stop.addEventListener('abort', () => { done = true; unsub?.(); resolve(); }, { once: true });
+      if (stop.aborted) finish(); else stop.addEventListener('abort', () => { if (!done) finish(); }, { once: true });
     }
+    let reading = false;
+    const check = async () => {
+      const at = target;
+      if (done || reading || !chain || !at) return;
+      reading = true;
+      try {
+        if (at.n === null) at.n = await chain.blockNumber(at.hash);
+        const finalized = await chain.finalizedNumber();
+        if (done || target !== at || finalized < at.n) return;
+        // Finalized past it, but another block is canonical there: this one was retracted. Wait for a new inBlock.
+        if ((await chain.canonicalHash(at.n)) !== at.hash) { if (target === at) target = null; return; }
+        if (done || target !== at) return;
+        const r = await chain.extrinsicResult(at.hash, at.extrinsicHash);
+        if (target !== at) return;
+        if (r.kind === 'success') end({ type: 'finalized', blockHash: at.hash, extrinsicHash: at.extrinsicHash });
+        else if (r.kind === 'failed') end({ type: 'failed', dispatchError: r.dispatchError });
+        else end({ type: 'unknown' });
+      } catch { /* a failed read: try again on the next tick */ } finally { reading = false; }
+    };
+    const onInBlock = (hash: string, extrinsicHash: string) => {
+      seenInBlock = true;
+      target = { hash, extrinsicHash, n: null };
+      if (!deadline) deadline = setTimeout(() => end({ type: 'slow', inBlock: true }), FINALITY_WAIT_MS);
+      if (chain && !poll) poll = setInterval(() => { void check(); }, FINALITY_POLL_MS);
+    };
     const handle = (r: ISubmittableResult) => {
       if (done) return;
-      if (r.dispatchError) { onStatus({ type: 'failed', dispatchError: r.dispatchError }); finish(); return; }
+      if (r.dispatchError) { end({ type: 'failed', dispatchError: r.dispatchError }); return; }
       const s = r.status;
-      if (s.isInBlock) { seenInBlock = true; onStatus({ type: 'inBlock', blockHash: s.asInBlock.toHex() }); }
+      if (s.isInBlock) {
+        const blockHash = s.asInBlock.toHex();
+        onInBlock(blockHash, r.txHash.toHex());
+        onStatus({ type: 'inBlock', blockHash });
+      } else if (s.isRetracted) target = null; // its block left the best chain; a new inBlock follows
       else if (s.isFinalized) {
-        if (hasSuccess(r)) onStatus({ type: 'finalized', blockHash: s.asFinalized.toHex(), extrinsicHash: r.txHash.toHex() });
-        else onStatus({ type: 'unknown' });
-        finish();
-      } else if (s.isFinalityTimeout) { onStatus({ type: 'slow', inBlock: seenInBlock }); finish(); }
+        end(hasSuccess(r) ? { type: 'finalized', blockHash: s.asFinalized.toHex(), extrinsicHash: r.txHash.toHex() } : { type: 'unknown' });
+      } else if (s.isFinalityTimeout) end({ type: 'slow', inBlock: seenInBlock });
       else if (s.isDropped || s.isInvalid || s.isUsurped) {
         // Only Invalid / Usurped before any block prove nothing will be included. Dropped means just that this node's
         // pool let it go (it may already have been gossiped), and after a block any of the three leaves it unknown.
-        onStatus(seenInBlock || s.isDropped ? { type: 'unknown' } : { type: 'dropped' });
-        finish();
+        end(seenInBlock || s.isDropped ? { type: 'unknown' } : { type: 'dropped' });
       }
     };
     onStatus({ type: 'submitted' });
     tx.send(handle).then(
       (u) => { unsub = u as () => void; if (done) unsub(); },
-      (e: unknown) => { done = true; reject(e); },
+      (e: unknown) => { if (done) return; clear(); reject(e); },
     );
   });
 }

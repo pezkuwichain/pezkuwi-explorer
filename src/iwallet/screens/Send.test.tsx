@@ -392,6 +392,17 @@ describe('i-Wallet send', () => {
     await waitFor(() => expect(impl.unsubs).toBe(1));
   });
 
+  it('releases the status subscription and the finality watcher when the screen goes away', async () => {
+    impl.script = ['inBlock'];
+    const view = renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    await screen.findByText(/Ağ tarafından kabul edildi/);
+    expect(impl.unsubs).toBe(0);
+    view.unmount();
+    await waitFor(() => expect(impl.unsubs).toBe(1));
+  });
+
   it('reports a transaction the pool refused as invalid (before any block) as not sent', async () => {
     impl.script = ['invalid'];
     renderSend(); await login();

@@ -9,8 +9,7 @@ describe('token art', () => {
     for (const symbol of [NETWORK.native.symbol, ...NETWORK.assets.map((a) => a.symbol)]) {
       const { container, unmount } = render(<TokenIcon symbol={symbol} />);
       const src = container.querySelector('img')?.getAttribute('src');
-      // USDT is the wallet's Pezkuwi-badged PNG (wUSDT.png); HEZ and PEZ are its SVGs.
-      expect(src, symbol).toBe(symbol === 'USDT' ? '/tokens/USDT.png' : `/tokens/${symbol}.svg`);
+      expect(src, symbol).toBe(`/tokens/${symbol}.svg`);
       const file = readFileSync(`public${src}`);
       if (src!.endsWith('.svg')) {
         const svg = file.toString('utf8');
@@ -25,6 +24,6 @@ describe('token art', () => {
   });
 
   it('keeps no token art the wallet does not show', () => {
-    for (const gone of ['HEZ.png', 'PEZ.png', 'wUSDT.svg', 'USDT.svg']) expect(existsSync(`public/tokens/${gone}`), gone).toBe(false);
+    for (const gone of ['HEZ.png', 'PEZ.png', 'wUSDT.svg', 'USDT.png']) expect(existsSync(`public/tokens/${gone}`), gone).toBe(false);
   });
 });

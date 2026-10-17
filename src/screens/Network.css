@@ -20,10 +20,15 @@
 .stat-icon { inline-size: 40px; block-size: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
 .stat-info { background: var(--info-soft); color: var(--info-icon); }
 .stat-zer { background: var(--zer-soft); color: var(--zer-icon); }
-/* Figure and unit stay on one line at 390px, in every locale. */
-.stat-value { margin: 0; font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--text-strong); line-height: 1.1; white-space: nowrap; }
-.stat-value .big-amount { flex-wrap: nowrap; gap: 6px; }
-.stat-value .big-amount .num { font-size: 24px; letter-spacing: 0; }
+/* A tile is a size container, and the figure never runs out of it: its size follows the tile (24 px on a wide tile,
+   about 21.5 px on a 390 px phone, 19 px at 360), which fits the longest compact figure measured (fa "≈۴۰٫۳ میلیون",
+   148 px at 24 px) on one line. The unit goes to the next line when figure and unit do not fit together, and as a last
+   resort the figure itself breaks at its space instead of pushing the page sideways. */
+.stat { container-type: inline-size; }
+.stat-value { margin: 0; font-family: var(--font-display); font-size: min(24px, 16cqi); font-weight: 700; color: var(--text-strong); line-height: 1.1; }
+.stat-value .big-amount { flex-wrap: wrap; column-gap: 6px; row-gap: 2px; max-inline-size: 100%; }
+.stat-value .big-amount .num { font-size: min(24px, 16cqi); letter-spacing: 0; min-inline-size: 0; }
+.stat-value .big-amount .sym { white-space: nowrap; }
 .stat-value .big-amount .sym { font-size: 15px; color: var(--muted); }
 
 .votes { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; }

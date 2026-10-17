@@ -298,20 +298,18 @@ for (const lang of ['kmr', 'tr'] as const) {
 }
 
 // Privacy and terms pages and the footer at 360 and 390 px, dark and light, left to right (Kurmanji, English) and right
-// to left (Sorani, Arabic). The footer is checked at the bottom of the page: every link a 44 px target, nothing under the
+// to left (Sorani, Persian, Arabic). The footer is checked at the bottom of the page: every link a 44 px target, nothing under the
 // fixed tab bar, no horizontal scroll.
 for (const scheme of ['dark', 'light'] as const) {
   test.describe(`legal pages and footer, ${scheme} theme`, () => {
     test.use({ colorScheme: scheme });
     for (const width of [360, 390] as const) {
-      for (const lang of ['kmr', 'en', 'ckb', 'ar'] as const) {
+      for (const lang of ['kmr', 'en', 'ckb', 'fa', 'ar'] as const) {
         test(`${width} px ${lang}: privacy, terms, footer, i-Wallet landing`, async ({ page }) => {
           const blocked = await setUp(page, { account: false, lang });
           await page.setViewportSize({ width, height: 800 });
           const name = (n: string) => `legal-${n}-${lang}-${width}`;
-          // pageWide: the whole page has no horizontal scroll. On /network only the footer's own box is checked: in
-          // Arabic the treasury figure there overflows its tile by a few pixels (pre-existing, not the footer's).
-          const footerClear = async (pageWide = true) => {
+          const footerClear = async () => {
             await page.locator('footer.site-foot').scrollIntoViewIfNeeded();
             await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
             const foot = (await page.locator('footer.site-foot').boundingBox())!;
@@ -326,19 +324,23 @@ for (const scheme of ['dark', 'light'] as const) {
             const own = (await page.locator('footer.site-foot').boundingBox())!;
             expect(own.x).toBeGreaterThanOrEqual(-0.5);
             expect(own.x + own.width).toBeLessThanOrEqual(width + 0.5);
-            if (pageWide) expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+            expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
           };
           for (const kind of ['privacy', 'terms'] as const) {
             await page.goto(`/${kind}`);
             await expect(page.locator('article.legal h2').first()).toBeVisible({ timeout: 30_000 });
-            expect(await page.evaluate(() => document.documentElement.dir)).toBe(['ckb', 'ar'].includes(lang) ? 'rtl' : 'ltr');
+            expect(await page.evaluate(() => document.documentElement.dir)).toBe(['ckb', 'fa', 'ar'].includes(lang) ? 'rtl' : 'ltr');
             await shot(page, name(kind), scheme);
             await footerClear();
             await shot(page, name(`${kind}-end`), scheme);
           }
           await page.goto('/network');
           await settled(page);
-          await footerClear(false);
+          await footerClear();
+          // The stat tiles: figure and unit never run out of their tile (the unit wraps under a long figure instead).
+          for (const v of await page.locator('.stat-value').all()) {
+            expect(await v.evaluate((e) => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
+          }
           await shot(page, name('network-footer'), scheme);
           await page.goto('/i-wallet');
           await expect(page.locator('a.iw-hero-primary')).toBeVisible({ timeout: 30_000 });

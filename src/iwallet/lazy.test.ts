@@ -6,8 +6,10 @@ import { readFileSync } from 'node:fs';
 // service worker's 2 MiB precache limit (src/pwa.test.ts). That holds only while the always-loaded files never import
 // the wallet's screens, keyring, crypto or Face ID code statically. A static import (not `import type`, not import())
 // of any of these from those files would pull the whole wallet back into the main chunk.
+// Static imports and re-exports (`import … from`, `export … from`, side-effect `import '…'`), either quote; not
+// `import type` / `export type`, not import(). The build itself is checked in src/pwa.test.ts.
 const staticImports = (file: string) =>
-  [...readFileSync(file, 'utf8').matchAll(/^import\s+(?!type\b)[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]!);
+  [...readFileSync(file, 'utf8').matchAll(/^(?:import|export)\s+(?!type\b)(?:[^;]*?\bfrom\s+)?['"]([^'"]+)['"]/gm)].map((m) => m[1]!);
 
 const HEAVY = [/\/keystore$/, /\/faceid$/, /\/citizen$/, /\/IWalletTree$/, /\/screens\//, /\/IWalletRoutes$/, /^@pezkuwi\/keyring/, /\/saveWallet$/, /\/tx$/];
 

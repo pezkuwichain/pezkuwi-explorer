@@ -299,7 +299,7 @@ for (const lang of ['kmr', 'tr'] as const) {
 
 // Privacy and terms pages and the footer at 360 and 390 px, dark and light, left to right (Kurmanji, English) and right
 // to left (Sorani, Persian, Arabic). The footer is checked at the bottom of the page: every link a 44 px target, nothing under the
-// fixed tab bar, no horizontal scroll.
+// fixed tab bar (the experts link included), no horizontal scroll.
 for (const scheme of ['dark', 'light'] as const) {
   test.describe(`legal pages and footer, ${scheme} theme`, () => {
     test.use({ colorScheme: scheme });
@@ -315,7 +315,7 @@ for (const scheme of ['dark', 'light'] as const) {
             const foot = (await page.locator('footer.site-foot').boundingBox())!;
             const tabs = (await page.locator('nav.tabbar').boundingBox())!;
             expect(foot.y + foot.height).toBeLessThanOrEqual(tabs.y + 0.5);
-            for (const a of await page.locator('footer.site-foot .foot-legal a, footer.site-foot .foot-social a').all()) {
+            for (const a of await page.locator('footer.site-foot > a, footer.site-foot .foot-legal a, footer.site-foot .foot-social a').all()) {
               const b = (await a.boundingBox())!;
               expect(b.width).toBeGreaterThanOrEqual(44);
               expect(b.height).toBeGreaterThanOrEqual(44);

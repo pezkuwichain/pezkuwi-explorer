@@ -64,13 +64,39 @@ describe('privacy and terms pages', () => {
           expect(within(clause).getByText(/Zagros/)).toBeInTheDocument();
         }
         // Owner decision (Serok, 2026-10-17): the genesis-reset clause was removed; nothing may refer to one.
-        expect(body).not.toMatch(/genesis/i);
-        expect(body).not.toMatch(/genesis'/i);
-        expect(text(doc)).not.toMatch(/genesis|جێنێسیس|جنسیس|التكوين/i);
+        expect(body).not.toMatch(/genesis|جێنێسیس|جنسیس|التكوين/i);
         expect(document.documentElement.dir).toBe(['ckb', 'fa', 'ar'].includes(lang) ? 'rtl' : 'ltr');
       });
     }
   }
+
+  // The only reset the texts may mention is the Zagros test network's (terms §4): a reset or restart sentence anywhere
+  // else (a mainnet reset, the removed genesis clause in other words) fails here, in every language.
+  const RESET: Record<string, RegExp> = {
+    en: /reset|restart|start over/i,
+    tr: /sıfırla|yeniden başlat|baştan başla/i,
+    kmr: /ji nû ve|destpêkirin|sifir|reset/i,
+    ckb: /سەرەتاوە|دەست پێ بکاتەوە|ڕیسێت|سفر/,
+    fa: /بازنشانی|راه‌اندازی مجدد|ریست|از نو/,
+    ar: /يُعاد ضبط|إعادة ضبط|إعادة تشغيل|يُعاد تشغيل|من جديد/,
+  };
+  it('mentions a reset only in the Zagros test-network clause, in every language', () => {
+    for (const lang of LOCALES) {
+      const re = RESET[lang]!;
+      for (const kind of KINDS) {
+        const doc = legalDoc(kind, lang);
+        expect(JSON.stringify(doc.intro), `${kind}.${lang} intro`).not.toMatch(re);
+        doc.sections.forEach((s, i) => {
+          const zagrosClause = kind === 'terms' && i === 3;
+          const t = JSON.stringify(s);
+          if (zagrosClause) {
+            expect(t, `${lang} terms §4`).toMatch(re);
+            expect(t).toMatch(/Zagros/);
+          } else expect(t, `${kind}.${lang} §${i + 1}`).not.toMatch(re);
+        });
+      }
+    }
+  });
 
   it('renders right to left in Sorani with headings, lists and the host names kept left to right', () => {
     setLanguage('ckb');

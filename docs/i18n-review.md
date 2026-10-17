@@ -646,7 +646,10 @@ The `/privacy` and `/terms` pages and the footer links. The long text is not in 
   (October; pwap writes its own date as "8 Mijdar 2025", so the same month system is used), `analîtîk`, `cookieyên`
   (cookie kept as the international word), `nodên` (node), `indexera` (indexer), `rasthatî` (random; Ferheng has only
   Rasthatin/m. "şans"), `sêyem` (third, in "aliyê sêyem"), `tevbigerî` (Ferheng has tevger), `kurt-demî` (short-lived),
-  the names `Yekîtiya Ewropayê` and `Keyaniya Yekbûyî`. **Wording questions:** `Nepenîtî` as the page title (pwap has both
+  the names `Yekîtiya Ewropayê`, `Qada Aborî ya Ewropayê` and `Keyaniya Yekbûyî`. `yekalî` (one-way, privacy §4) is in
+  the Ferheng only as "one-sided" (under Devxwar/m. and Yeksa/m.); the one-way sense is a draft. PR #28 review: privacy §5
+  now names both the EU and the EEA in kmr and ckb, and in all four says "your data-protection authority" (the one
+  responsible for you), not "the authority of your country". **Wording questions:** `Nepenîtî` as the page title (pwap has both
   "Polîtîkaya Nepenîtiyê" and "Siyaseta Taybetiyê"); `Şertên bikaranînê` (pwap's "Şertên Karûbarê" is kept for the
   PezkuwiChain Terms of Service it names); `berpirsyar` is the Ferheng spelling (Berpirsyar/m. Mesul), not the common
   "berpirsiyar"; `desthilat` for the data-protection authority; terms §1 heading is a paraphrase ("a tool that does not
@@ -666,3 +669,14 @@ The `/privacy` and `/terms` pages and the footer links. The long text is not in 
   words from the request. kmr `legal.accept` follows pwap `login.terms` ("Bi berdewamkirinê, tu …") with the verb moved to the
   end; ckb follows pwap `login.terms` verbatim for its opening. All kmr, ckb, fa and ar cells here are drafts.
 - The social account names (YouTube, X, Instagram, Facebook, Telegram) are brand names and are not translated.
+
+### i-Wallet code that did not load (2026-10-17, PR #28 review)
+
+Shown when the on-demand wallet code fails to download (not a storage problem). tr and en are source texts; the rest
+are drafts. kmr "nehat barkirin" follows the explorer's "tê barkirin" (loading, pwap usage); "Dîsa biceribîne" is
+`iwallet.error.generic` verbatim.
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `iwallet.loadFailed.body` | i-Wallet yüklenemedi. Bağlantını kontrol edip tekrar dene. | i-Wallet could not be loaded. Check your connection and try again. | i-Wallet nehat barkirin. Girêdana xwe kontrol bike û dîsa biceribîne. | i-Wallet بار نەکرا. پەیوەندییەکەت بپشکنە و دووبارە هەوڵبدەرەوە. | i-Wallet بارگذاری نشد. اتصال خود را بررسی کنید و دوباره تلاش کنید. | تعذّر تحميل i-Wallet. تحقق من اتصالك وحاول مرة أخرى. |
+| `iwallet.loadFailed.retry` | Tekrar dene | Try again | Dîsa biceribîne | دووبارە هەوڵبدەرەوە | تلاش دوباره | حاول مرة أخرى |

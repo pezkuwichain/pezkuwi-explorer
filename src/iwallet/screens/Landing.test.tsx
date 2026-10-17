@@ -38,6 +38,8 @@ describe('i-Wallet landing', () => {
     expect(line).toHaveTextContent('Devam ederek Kullanım koşullarını ve Gizlilik bildirimini kabul etmiş olursun.');
     expect(within(line).getByRole('link', { name: 'Kullanım koşullarını' })).toHaveAttribute('href', '/terms');
     expect(within(line).getByRole('link', { name: 'Gizlilik bildirimini' })).toHaveAttribute('href', '/privacy');
+    // Nothing unsaved on the landing: the pages open in place.
+    expect(within(line).getByRole('link', { name: 'Gizlilik bildirimini' })).not.toHaveAttribute('target');
     const foot = screen.getByRole('contentinfo');
     expect(within(foot).getByRole('link', { name: 'Gizlilik' })).toHaveAttribute('href', '/privacy');
     expect(within(foot).getByRole('link', { name: 'YouTube' })).toHaveAttribute('href', 'https://www.youtube.com/@dijitalkurdistan');

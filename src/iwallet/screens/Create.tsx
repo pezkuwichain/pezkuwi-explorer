@@ -131,7 +131,7 @@ export default function Create() {
               submitLabel={t(busy ? 'iwallet.create.working' : 'iwallet.create.submit')}
               busy={busy} error={error} onSubmit={create}
             />
-            <AcceptLine />
+            <AcceptLine newTab />
           </>
         )}
       </div>

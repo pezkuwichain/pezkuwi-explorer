@@ -33,7 +33,8 @@
 .back:hover { background: var(--surface); }
 
 .experts { text-align: center; font-size: 13px; color: var(--muted); padding: 8px 20px 12px; }
-.experts a { color: var(--muted); display: inline-block; padding-block: 12px; text-decoration: none; }
+/* 12 + 20 + 12 = a 44 px target (var(--tap)); inline-block keeps the space before the domain. */
+.experts a { color: var(--muted); display: inline-block; padding-block: 12px; line-height: 20px; min-block-size: var(--tap); box-sizing: border-box; text-decoration: none; }
 .experts a bdi { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
 /* SiteFooter: the experts link, then the privacy / terms links, then the social icons; every target is 44 px. It is
    in the page flow, so the page's own padding (var(--tabbar)) keeps it clear of the fixed tab bar. */

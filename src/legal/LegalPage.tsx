@@ -16,9 +16,9 @@ export default function LegalPage({ kind }: { kind: LegalKind }) {
   const doc = legalDoc(kind, i18n.language);
   return (
     <>
-      <PageHeader title={doc.title} />
-      <article className="legal" aria-labelledby={`legal-${kind}-scope`}>
-        <p className="legal-scope" id={`legal-${kind}-scope`}>{linkify(doc.scope)}</p>
+      <PageHeader title={doc.title} titleId={`legal-${kind}-title`} />
+      <article className="legal" aria-labelledby={`legal-${kind}-title`}>
+        <p className="legal-scope">{linkify(doc.scope)}</p>
         <p className="legal-updated">{doc.updated}</p>
         {doc.intro.map((b, i) => <Block key={i} block={b} />)}
         {doc.sections.map((s) => (

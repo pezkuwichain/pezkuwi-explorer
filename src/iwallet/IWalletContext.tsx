@@ -12,12 +12,16 @@ import { clearAllForms, clearForm, clearTeleportSent } from './personal-store';
 const keystore = () => import('./keystore');
 const faceid = () => import('./faceid');
 
-export type IWalletState = 'idle' | 'loading' | 'none' | 'locked' | 'unlocked' | 'unavailable';
+// 'loadFailed': the wallet's own code (loaded on demand) did not arrive, e.g. offline in a tab older than a deploy; it is
+// not a storage problem, and retryLoad() tries again.
+export type IWalletState = 'idle' | 'loading' | 'none' | 'locked' | 'unlocked' | 'unavailable' | 'loadFailed';
 
 export interface IWalletValue {
   state: IWalletState;
   /** Starts reading the stored keystore (once). Nothing touches IndexedDB before this is called. */
   ensureLoaded(): void;
+  /** After 'loadFailed': imports the wallet code again and reads the stored keystore. */
+  retryLoad(): void;
   address: string | null;
   /** The stored encrypted keystore (public JSON, safe to export). */
   keystore: KeyringPair$Json | null;
@@ -43,7 +47,11 @@ export const HIDDEN_LOCK_MS = 60_000;
 
 const Ctx = createContext<IWalletValue | null>(null);
 
-export function IWalletProvider({ children, store = indexedDbStore }: { children: ReactNode; store?: KvStore }) {
+export function IWalletProvider({ children, store = indexedDbStore, loadCode = keystore }: {
+  children: ReactNode; store?: KvStore;
+  /** The on-demand keystore module (tests pass a failing one). */
+  loadCode?: typeof keystore;
+}) {
   const [state, setState] = useState<IWalletState>('idle');
   const [json, setJson] = useState<KeyringPair$Json | null>(null);
   const jsonRef = useRef<KeyringPair$Json | null>(null);
@@ -57,14 +65,19 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
     if (started.current) return;
     started.current = true;
     setState('loading');
-    keystore().then((k) => k.loadKeystore(store)).then(
-      (j) => {
-        if (!live.current) return;
-        jsonRef.current = j; setJson(j); setState(j ? 'locked' : 'none');
-      },
-      () => { if (live.current) setState('unavailable'); },
+    loadCode().then(
+      (k) => k.loadKeystore(store).then(
+        (j) => {
+          if (!live.current) return;
+          jsonRef.current = j; setJson(j); setState(j ? 'locked' : 'none');
+        },
+        () => { if (live.current) setState('unavailable'); },
+      ),
+      // The code itself did not load: say so and allow another try (not "this browser cannot store a wallet").
+      () => { started.current = false; if (live.current) setState('loadFailed'); },
     );
-  }, [store]);
+  }, [store, loadCode]);
+  const retryLoad = useCallback(() => { if (!started.current) ensureLoaded(); }, [ensureLoaded]);
 
   const unlock = useCallback(async (password: string) => {
     const j = jsonRef.current;
@@ -159,9 +172,9 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
 
   const holdOpen = holds > 0;
   const value = useMemo<IWalletValue>(() => ({
-    state, ensureLoaded, address: json?.address ?? null, keystore: json, readWords, unlock, unlockFaceId, lock, setCreated, remove,
+    state, ensureLoaded, retryLoad, address: json?.address ?? null, keystore: json, readWords, unlock, unlockFaceId, lock, setCreated, remove,
     holdOpen, setHold,
-  }), [state, ensureLoaded, json, readWords, unlock, unlockFaceId, lock, setCreated, remove, holdOpen, setHold]);
+  }), [state, ensureLoaded, retryLoad, json, readWords, unlock, unlockFaceId, lock, setCreated, remove, holdOpen, setHold]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

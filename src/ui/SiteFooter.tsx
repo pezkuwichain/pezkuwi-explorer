@@ -22,11 +22,14 @@ export default function SiteFooter() {
   );
 }
 
-// The one line under the i-Wallet's create and import buttons, and at the end of the create flow.
-export function AcceptLine() {
+// The one line under the i-Wallet's create and import buttons, and at the end of the create flow. newTab: for a screen
+// that holds unsaved state (the create flow keeps the new 12 words only in memory), the pages open in a new tab, so
+// reading them never throws that state away.
+export function AcceptLine({ newTab = false }: { newTab?: boolean }) {
+  const link = (to: string) => (newTab ? <a href={to} target="_blank" rel="noopener noreferrer" /> : <Link to={to} />);
   return (
     <p className="accept-line">
-      <Trans i18nKey="legal.accept" components={{ terms: <Link to="/terms" />, privacy: <Link to="/privacy" /> }} />
+      <Trans i18nKey="legal.accept" components={{ terms: link('/terms'), privacy: link('/privacy') }} />
     </p>
   );
 }

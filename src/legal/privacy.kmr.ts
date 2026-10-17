@@ -40,11 +40,11 @@ const doc: LegalDoc = {
     },
     {
       heading: '4. Tiştên ku li ser blokzincîrê ji her kesî re vekirî ne.',
-      blocks: [{ p: 'Danûstandinên ku tu dişînî, ji ber xwezaya blokzincîrê, ji her kesî re vekirî û herdemî ne. Serlêdana welatîbûnê jî tê de ye. Ji bo welatîbûnê, i-Wallet li ser zincîrê tenê kodekê tomar dike ku ji navê te, navnîşana te û nirxekî rasthatî yê li ser cîhaza te tê hilanîn hatiye çêkirin. Navê te ji vê kodê nayê xwendin, û nav bi xwe qet ji cîhaza te dernakeve.' }],
+      blocks: [{ p: 'Danûstandinên ku tu dişînî, ji ber xwezaya blokzincîrê, ji her kesî re vekirî û herdemî ne. Serlêdana welatîbûnê jî tê de ye. Ji bo welatîbûnê, i-Wallet li ser zincîrê tenê kodeke yekalî tomar dike ku ji navê te, navnîşana te û nirxekî rasthatî yê li ser cîhaza te tê hilanîn hatiye çêkirin. Navê te ji vê kodê nayê xwendin, û nav bi xwe qet ji cîhaza te dernakeve.' }],
     },
     {
       heading: '5. Mafên te.',
-      blocks: [{ p: 'Ji ber ku ji xeynî tomarên kurt-demî em tu daneyên te yên kesane li ser serverên xwe hilnagirin, di piraniya rewşan de tiştek tune ye ku em nîşanî te bidin, rast bikin an jê bibin. Ji bo her daxwaz an pirsê ji privacy@pezkuwichain.io re binivîse. Heke tu li Yekîtiya Ewropayê (EU/EEA) an Keyaniya Yekbûyî (UK) yî, tu dikarî gilî jî bidî desthilata parastina daneyan a welatê xwe.' }],
+      blocks: [{ p: 'Ji ber ku ji xeynî tomarên kurt-demî em tu daneyên te yên kesane li ser serverên xwe hilnagirin, di piraniya rewşan de tiştek tune ye ku em nîşanî te bidin, rast bikin an jê bibin. Ji bo her daxwaz an pirsê ji privacy@pezkuwichain.io re binivîse. Heke tu li Yekîtiya Ewropayê an Qada Aborî ya Ewropayê (EU/EEA) an jî li Keyaniya Yekbûyî (UK) yî, tu dikarî gilî jî bidî desthilata xwe ya parastina daneyan.' }],
     },
     {
       heading: '6. Guhertin.',

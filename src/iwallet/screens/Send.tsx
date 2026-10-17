@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { ApiPromise } from '@pezkuwi/api';
 import PageHeader from '../../ui/PageHeader';
 import { IconFaceId, IconScan, IconWarning } from '../../ui/icons';
+import { ChainIcon, TokenIcon } from '../../ui/assetIcons';
+import { HOLDING_CHAINS } from '../../ui/holdingChains';
+import '../../ui/Holdings.css';
 import { scanQr } from '../../account/connectors/qr';
 import { shortAddress } from '../../lib/address';
 import { formatAmount } from '../../lib/format';
-import { IWALLET_ED } from '../../config/iwallet-network';
+import { IWALLET_ED, IWALLET_NETWORK } from '../../config/iwallet-network';
+import type { ChainKey } from '../../config/network';
 import { getMainnetApi } from '../chain';
 import { chainSpendable, loadAssetBalances } from '../data';
 import { hasFaceId } from '../faceid';
@@ -25,8 +29,98 @@ import '../iwallet.css';
 const FEE_DEBOUNCE_MS = 400;
 // Headroom over the estimated fee when computing Max, so a fee that moves a little cannot push the send over the edge.
 const feeWithMargin = (fee: bigint): bigint => fee + (fee + 9n) / 10n;
-type Phase = 'form' | 'confirm';
+// The Pezkuwi Wallet's send flow: the token, then (HEZ only, which lives on all three chains) the network, then the
+// transfer on that network. PEZ and USDT are Asset Hub assets, so they skip the network step.
+type Phase = 'token' | 'network' | 'form' | 'confirm';
 type Balances = { hez: bigint | null; assets: Record<number, bigint> } | 'failed' | null;
+const isChain = (v: string | null): v is ChainKey => v !== null && (HOLDING_CHAINS as readonly string[]).includes(v);
+const isToken = (v: string | null): v is SendToken => v !== null && (SEND_TOKENS as readonly string[]).includes(v);
+
+// /i-wallet/send?token=HEZ&chain=relay|assetHub|people opens straight on that transfer; a value that is not one of
+// those is ignored (the person then picks it).
+function fromLink(params: URLSearchParams): { phase: Phase; token: SendToken; chain: ChainKey } {
+  const tk = params.get('token');
+  const ch = params.get('chain');
+  if (!isToken(tk)) return { phase: 'token', token: 'HEZ', chain: 'assetHub' };
+  if (tk !== 'HEZ') return { phase: 'form', token: tk, chain: 'assetHub' };
+  return isChain(ch) ? { phase: 'form', token: tk, chain: ch } : { phase: 'network', token: tk, chain: 'assetHub' };
+}
+
+function TokenStep({ onPick }: { onPick: (t: SendToken) => void }) {
+  const { t } = useTranslation();
+  const sub = (tk: SendToken) => {
+    if (tk === 'HEZ') return 'PezkuwiChain';
+    const std = IWALLET_NETWORK.assets.find((a) => a.symbol === tk)?.standard;
+    return std ? `${t('chain.assetHub')} (${std})` : t('chain.assetHub');
+  };
+  return (
+    <div className="iw">
+      <PageHeader title={t('iwallet.home.send')} />
+      <div className="iw-body">
+        <section className="tokens iw-pick-list" aria-label={t('iwallet.send.token')}>
+          <ul>{SEND_TOKENS.map((tk) => (
+            <li key={tk} className="token-row">
+              <button type="button" className="iw-pick" onClick={() => onPick(tk)}>
+                <TokenIcon symbol={tk} />
+                <span className="token-name"><span className="token-symbol">{tk}</span><span className="token-chain">{sub(tk)}</span></span>
+              </button>
+            </li>))}</ul>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+// Each network with what can be sent from it there (free minus frozen, as the wallet's "transferable"); one network
+// failing to load says so on its own row and never hides the others.
+function NetworkStep({ address, token, onPick }: { address: string; token: SendToken; onPick: (c: ChainKey) => void }) {
+  const { t, i18n } = useTranslation();
+  const [bal, setBal] = useState<Partial<Record<ChainKey, bigint | 'failed'>>>({});
+  const [run, setRun] = useState(0);
+  useEffect(() => {
+    let live = true;
+    for (const c of HOLDING_CHAINS) {
+      chainSpendable(c, address).then(
+        (v) => { if (live) setBal((b) => ({ ...b, [c]: v })); },
+        () => { if (live) setBal((b) => ({ ...b, [c]: 'failed' })); },
+      );
+    }
+    return () => { live = false; };
+  }, [address, run]);
+  const { decimals, symbol } = IWALLET_NETWORK.native;
+  return (
+    <div className="iw">
+      <PageHeader title={t('iwallet.send.title', { token })} />
+      <div className="iw-body">
+        <p className="iw-lead">{t('iwallet.send.networkTitle', { token })}</p>
+        <section className="tokens iw-pick-list" aria-label={t('iwallet.send.network')}>
+          <ul>{HOLDING_CHAINS.map((c) => {
+            const v = bal[c];
+            return (
+              <li key={c} className="token-row">
+                {v === 'failed' ? (
+                  <div className="iw-pick">
+                    <ChainIcon chain={c} />
+                    <span className="token-name"><span className="token-symbol">{t(`chain.${c}`)}</span>
+                      <span className="token-chain">{t('state.error')} <button type="button" className="retry" onClick={() => { setBal((b) => ({ ...b, [c]: undefined })); setRun((n) => n + 1); }}>{t('state.retry')}</button></span>
+                    </span>
+                  </div>
+                ) : (
+                  <button type="button" className="iw-pick" onClick={() => onPick(c)} aria-busy={v === undefined}>
+                    <ChainIcon chain={c} />
+                    <span className="token-name"><span className="token-symbol">{t(`chain.${c}`)}</span>
+                      <span className="token-chain">{t('iwallet.send.available', { amount: v === undefined ? '—' : formatAmount(v, decimals, symbol, i18n.language) })}</span>
+                    </span>
+                  </button>
+                )}
+              </li>
+            );
+          })}</ul>
+        </section>
+      </div>
+    </div>
+  );
+}
 
 function SendBody({ address }: { address: string }) {
   const { t, i18n } = useTranslation();
@@ -35,13 +129,16 @@ function SendBody({ address }: { address: string }) {
   const signer = useSignedTx();
   const { outcome } = signer;
 
-  const [phase, setPhase] = useState<Phase>('form');
+  const [params] = useSearchParams();
+  const [start] = useState(() => fromLink(params));
+  const [phase, setPhase] = useState<Phase>(start.phase);
   const [to, setTo] = useState('');
-  const [token, setToken] = useState<SendToken>('HEZ');
+  const [token, setToken] = useState<SendToken>(start.token);
+  const [chain, setChain] = useState<ChainKey>(start.chain);
   const [amountText, setAmountText] = useState('');
   const [ack, setAck] = useState(false);
-  const [api, setApi] = useState<ApiPromise | null>(null);
-  const [balances, setBalances] = useState<Balances>(null);
+  const [conn, setConn] = useState<{ chain: ChainKey; api: ApiPromise } | null>(null);
+  const [loaded, setLoaded] = useState<{ key: string; value: Balances } | null>(null);
   const [feeResult, setFeeResult] = useState<{ key: string; fee: bigint | null } | null>(null);
   const [feeTry, setFeeTry] = useState(0);
   const [maxBusy, setMaxBusy] = useState(false);
@@ -53,27 +150,42 @@ function SendBody({ address }: { address: string }) {
   const [balanceRun, setBalanceRun] = useState(0);
 
   const info = tokenInfo(token);
+  // Everything below is bound to the chosen network: its connection, balance, fee and existential deposit.
+  const api = conn?.chain === chain ? conn.api : null;
+  const ed = IWALLET_ED[chain];
+  const balanceKey = `${token}|${chain}|${balanceRun}`;
+  const balances: Balances = loaded?.key === balanceKey ? loaded.value : null;
   const recipient = useMemo(() => parseRecipient(to), [to]);
   const toNorm = recipient.ok ? recipient.address : null;
   const amount = useMemo(() => parseAmount(amountText, info.decimals), [amountText, info.decimals]);
 
-  // The mainnet Asset Hub connection, once.
+  const onForm = phase === 'form' || phase === 'confirm';
+  // The connection to the chosen network (the genesis check in getMainnetApi applies to each).
+  useEffect(() => {
+    if (!onForm) return;
+    let live = true;
+    getMainnetApi(chain).then((a) => { if (live) setConn({ chain, api: a }); }, () => undefined);
+    return () => { live = false; };
+  }, [chain, onForm]);
   useEffect(() => {
     let live = true;
-    getMainnetApi('assetHub').then((a) => { if (live) setApi(a); }, () => undefined);
     hasFaceId().then((v) => { if (live) setFace(v); }, () => undefined);
     return () => { live = false; };
   }, [address]);
-  // Only what a transfer needs, all on Asset Hub: spendable HEZ and the asset balances. The relay and People are not
-  // read, so their outage never blocks a send. Read again after every send (balanceRun).
+  // Only what this transfer needs, on its own network: HEZ reads the spendable HEZ there; an asset reads Asset Hub's
+  // HEZ (for the fee) and the asset balances. No other network is read, so its outage never blocks this send.
+  // Read again after every send (balanceRun).
   useEffect(() => {
+    if (!onForm) return;
     let live = true;
-    Promise.all([chainSpendable('assetHub', address), loadAssetBalances(address)]).then(
-      ([hez, a]) => { if (live) setBalances({ hez, assets: Object.fromEntries(a.map((x) => [x.id, x.amount])) }); },
-      () => { if (live) setBalances('failed'); },
-    );
+    const key = balanceKey;
+    const read: Promise<Balances> = token === 'HEZ'
+      ? chainSpendable(chain, address).then((hez) => ({ hez, assets: {} }))
+      : Promise.all([chainSpendable('assetHub', address), loadAssetBalances(address)])
+        .then(([hez, a]) => ({ hez, assets: Object.fromEntries(a.map((x) => [x.id, x.amount])) }));
+    read.then((value) => { if (live) setLoaded({ key, value }); }, () => { if (live) setLoaded({ key, value: 'failed' }); });
     return () => { live = false; };
-  }, [address, balanceRun]);
+  }, [address, token, chain, balanceKey, onForm]);
 
   const hezSpendable = balances && balances !== 'failed' ? balances.hez : null;
   const balance = balances && balances !== 'failed'
@@ -84,7 +196,7 @@ function SendBody({ address }: { address: string }) {
   // Until the fee for the CURRENT amount is back, sending stays disabled; a failed estimate is shown as "—".
   const feeAmount = amount !== null && amount > 0n ? amount : 1n;
   const feeTo = toNorm ?? address;
-  const feeKey = `${token}|${feeTo}|${feeAmount}|${feeTry}`;
+  const feeKey = `${chain}|${token}|${feeTo}|${feeAmount}|${feeTry}`;
   const feeState: 'pending' | 'failed' | bigint = !api || feeResult?.key !== feeKey ? 'pending' : (feeResult.fee ?? 'failed');
   const fee = typeof feeState === 'bigint' ? feeState : null;
   useEffect(() => {
@@ -121,7 +233,7 @@ function SendBody({ address }: { address: string }) {
   }, [api, finalizedBlock]);
 
   const maxAmount = balance === null ? null
-    : maxSendable(balance, info.assetId === null ? (fee ?? 0n) : 0n, IWALLET_ED.assetHub, token);
+    : maxSendable(balance, info.assetId === null ? (fee ?? 0n) : 0n, ed, token);
   const large = needsLargeAck(token, amount);
   // The fee is paid in HEZ and withdrawn with the account kept alive, so an asset send needs fee + ED in HEZ.
   const noFee = info.assetId !== null && fee !== null && hezSpendable !== null && hezSpendable < fee + IWALLET_ED.assetHub;
@@ -157,7 +269,7 @@ function SendBody({ address }: { address: string }) {
     setMaxBusy(true);
     try {
       const f = await estimateFee(buildTransfer(api, token, feeTo, balance), address);
-      if (f !== null) setAmountText(toText(maxSendable(balance, feeWithMargin(f), IWALLET_ED.assetHub, token), info.decimals));
+      if (f !== null) setAmountText(toText(maxSendable(balance, feeWithMargin(f), ed, token), info.decimals));
     } catch { /* the amount stays as typed */ } finally { setMaxBusy(false); }
   };
 
@@ -166,9 +278,17 @@ function SendBody({ address }: { address: string }) {
     if (!api || toNorm === null || amount === null) return;
     void signer.run(api, () => buildTransfer(api, token, toNorm, amount), password).then((o) => {
       // The old "Available" and Max are stale once anything may have left: read them again.
-      if (o !== null) { setBalances(null); setBalanceRun((n) => n + 1); }
+      if (o !== null) setBalanceRun((n) => n + 1);
     });
   };
+  const pickToken = (tk: SendToken) => {
+    if (tk !== token) { setAmountText(''); setAck(false); }
+    setToken(tk);
+    if (tk === 'HEZ') setPhase('network');
+    else { setChain('assetHub'); setPhase('form'); }
+  };
+  const pickChain = (c: ChainKey) => { if (c !== chain) { setAmountText(''); setAck(false); } setChain(c); setPhase('form'); };
+  const chainName = t(`chain.${chain}`);
   const reset = () => {
     signer.reset(); setPhase('form'); setTo(''); setAmountText(''); setAck(false); setMaxBusy(false); setScanError(false); setScanning(false);
   };
@@ -183,6 +303,7 @@ function SendBody({ address }: { address: string }) {
         interrupted={t('iwallet.send.interrupted')}
         detail={outcome.kind === 'finalized' && <>
           <p className="iw-lead">{amount !== null ? money(amount) : ''} → <bdi dir="ltr">{shortAddress(toNorm ?? '')}</bdi></p>
+          <p className="iw-lead">{t('iwallet.send.network')}: {chainName}</p>
           {blockNo?.hash === outcome.blockHash && <p className="iw-lead">{t('iwallet.send.recordNo')}: <bdi dir="ltr">{blockNo.n}</bdi></p>}
         </>}
         actions={<>
@@ -201,7 +322,7 @@ function SendBody({ address }: { address: string }) {
         <AuthConfirm
           summary={(
             <dl className="iw-summary">
-              <dt>{t('iwallet.citizen.row.chain')}</dt><dd>{t('iwallet.citizen.chain.assetHub')}</dd>
+              <dt>{t('iwallet.send.network')}</dt><dd>{chainName}</dd>
               <dt>{t('iwallet.send.to')}</dt><dd><bdi dir="ltr">{toNorm}</bdi></dd>
               <dt>{t('iwallet.send.amount')}</dt><dd><bdi dir="ltr">{amount !== null ? money(amount) : ''}</bdi></dd>
               <dt>{t('iwallet.send.feeLabel')}</dt><dd><bdi dir="ltr">{fee !== null ? money(fee, 'HEZ') : '—'}</bdi></dd>
@@ -219,17 +340,17 @@ function SendBody({ address }: { address: string }) {
     );
   }
 
+  if (phase === 'token') return <TokenStep onPick={pickToken} />;
+  if (phase === 'network') return <NetworkStep address={address} token={token} onPick={pickChain} />;
+
   return (
     <div className="iw">
       <PageHeader title={t('iwallet.send.title', { token })} />
       <form className="iw-body iw-form" onSubmit={review}>
-        <div className="iw-field">
-          <span>{t('iwallet.send.token')}</span>
-          <div className="iw-tokens" role="group" aria-label={t('iwallet.send.token')}>
-            {SEND_TOKENS.map((tk) => (
-              <button key={tk} type="button" className="iw-token" aria-pressed={tk === token} disabled={maxBusy} onClick={() => { setToken(tk); setAck(false); }}>{tk}</button>
-            ))}
-          </div>
+        <div className="iw-sendon">
+          <TokenIcon symbol={token} size={28} />
+          <span className="iw-sendon-text"><strong>{token}</strong><span><ChainIcon chain={chain} size={14} /> {chainName}</span></span>
+          <button type="button" className="iw-secondary iw-change" disabled={maxBusy} onClick={() => { setAck(false); setPhase('token'); }}>{t('iwallet.send.change')}</button>
         </div>
 
         <div className="iw-field">

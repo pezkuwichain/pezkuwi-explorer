@@ -219,7 +219,7 @@ What "confirmed" means here:
 - **kmr**: every word is in the Ferheng (Zeynelabidin Zinar, *Ferhenga Bêjebêjê*, 2025) or in pwap's `kmr.ts`, and no grammar or wording question is known. Vocabulary was checked mechanically against both sources; the Ferheng entries relied on are in the table below. Grammar and naturalness were not machine-checked.
 - **ckb**: the cell is pwap text verbatim, or every word occurs in pwap's `ckb.ts` or the explorer's other ckb strings, and no wording question is known.
 - **fa, ar**: the project has no native-reviewed fa or ar source, so a cell is "confirmed" only if it is pwap text verbatim (or a brand string). Everything else is a draft.
-- Brand strings, identical in every language and not translated (7): `iwallet.title`, `iwallet.home.hezSub`, `iwallet.home.pezSub`, `iwallet.home.usdtSub`, `iwallet.send.parsed`, `iwallet.citizen.citizen.nft`, `iwallet.citizen.chain.assetHub`.
+- Brand strings, identical in every language and not translated (4): `iwallet.title`, `iwallet.send.parsed`, `iwallet.citizen.citizen.nft`, `iwallet.citizen.chain.assetHub`. (`iwallet.home.hezSub`, `pezSub`, `usdtSub` were removed on 2026-10-17, see "Per-network HEZ" below.) The network names Relay, Asset Hub and People (`chain.*`, shared with the Account tab) are brand names too.
 
 ### Glossary (one term per concept)
 
@@ -351,7 +351,6 @@ Words not in the Ferheng, taken from pwap's `kmr.ts` (a native reader may prefer
 - `iwallet.error.notSaved`: not attested in pwap or the explorer: بۆیە, تری, پەنجەرەیەکی
 - `iwallet.home.a2hs`: not attested in pwap or the explorer: بسڕدرێتەوە, دەڕوات
 - `iwallet.home.hot`: "جزدانی گەرم" is a calque of "hot wallet" (گەرم not in pwap); not attested in pwap or the explorer: گەرم
-- `iwallet.home.parts`: not attested in pwap or the explorer: دابەشبوونی
 - `iwallet.home.title`: "i-Wallet ـەکەت" join
 - `iwallet.import.body`: "وشەکانی گەڕاندنەوە" (recovery words) replaces "یەدەگ", which pwap never uses; not attested in pwap or the explorer: بۆشاییەک, لەنێوانیاندا
 - `iwallet.import.confirmBody`: not attested in pwap or the explorer: بیگەیتێ, بەبێ, جارێکی, کۆنەکە
@@ -401,3 +400,22 @@ Every `iwallet.*` cell is a draft except the brand strings above and these 66 ce
 Every `iwallet.*` cell is a draft except the brand strings above and these 60 cells, which are pwap text verbatim: `import.confirmNo`, `home.send`, `home.receive`, `home.citizen`, `home.pezSub`, `next`, `quiz.verify`, `password.label`, `receive.title`, `send.title`, `send.recipient`, `send.amount`, `send.max`, `send.amountInvalid`, `send.to`, `send.confirm`, `send.done`, `send.feeLabel`, `citizen.title`, `citizen.apply`, `citizen.cancel`, `citizen.confirm`, `citizen.confirmTitle`, `citizen.form.personal`, `citizen.form.fullName`, `citizen.form.fatherName`, `citizen.form.grandfatherName`, `citizen.form.motherName`, `citizen.form.tribe`, `citizen.form.marital`, `citizen.form.married`, `citizen.form.unmarried`, `citizen.form.childrenCount`, `citizen.form.childName`, `citizen.form.birthYear`, `citizen.form.region`, `citizen.form.selectRegion`, `citizen.form.email`, `citizen.form.emailInvalid`, `citizen.form.profession`, `citizen.form.required`, `citizen.region.bakur`, `citizen.region.basur`, `citizen.region.rojava`, `citizen.region.rojhelat`, `citizen.region.kurdistan_a_sor`, `citizen.region.diaspora`, `citizen.deposit.title`, `citizen.pending.title`, `citizen.pending.body`, `citizen.pending.depositBack`, `citizen.approved.title`, `citizen.approved.body`, `citizen.refs.approve`, `citizen.row.to`, `citizen.act.confirm`, `citizen.act.cancel`, `citizen.chain.assetHub`, `citizen.done.apply`, `citizen.done.approve`.
 
 Read first in fa and ar: the warning card (`warning.*`, Serok's text), `home.hot` and `send.largeTitle` ("hot wallet"), `send.txId` / `send.recordNo` (no "hash"/"block"), and the citizenship-chain texts (`citizen.fund.*`).
+
+### Per-network HEZ (2026-10-17)
+
+The home now uses the Account tab's balance card and token rows (HEZ total split over Relay, Asset Hub and People; HEZ, PEZ, USDT rows with the Account tab's network labels), and Send asks for the token, then for HEZ the network. The counts above predate this change.
+
+Removed keys (no longer rendered; ignore their entries above): `iwallet.home.assets`, `iwallet.home.hezSub`, `iwallet.home.pezSub`, `iwallet.home.usdtSub`, `iwallet.home.parts`.
+
+New keys; every kmr, ckb, fa and ar cell below is a draft until a native reader signs it off:
+
+| key | kmr | ckb | fa | ar |
+|---|---|---|---|---|
+| `iwallet.send.networkTitle` | Ji bo şandina {{token}} torê hilbijêre | تۆڕێک هەڵبژێرە بۆ ناردنی {{token}} | شبکه را برای ارسال {{token}} انتخاب کنید | اختر الشبكة لإرسال {{token}} |
+| `iwallet.send.network` | Tor | تۆڕ | شبکه | الشبكة |
+| `iwallet.send.change` | Biguherîne | گۆڕین | تغییر | تغيير |
+| `iwallet.receive.networks` | Ev navnîşan li her sê torên Pezkuwi werdigire: Relay, Asset Hub û People. | ئەم یەک ناونیشانە لە هەر سێ تۆڕی Pezkuwi وەردەگرێت: Relay، Asset Hub و People. | همین یک آدرس در هر سه شبکه Pezkuwi دریافت می‌کند: Relay، Asset Hub و People. | هذا العنوان الواحد يستقبل على شبكات Pezkuwi الثلاث كلها: Relay وAsset Hub وPeople. |
+
+- **kmr**: vocabulary confirmed: "tor" as in `send.fee` (xerca torê, glossary "network"), "hilbijêre" (Ferheng: Dengdan/m. Hilbijartin; pwap "Wêneyekî hilbijêre"), "biguherîne" (explorer "Erê, biguherîne"; Ferheng guhertin), "werdigire" (wergirtin, glossary "receive"), "her sê". Word order of `networkTitle` ("Ji bo şandina HEZ torê hilbijêre", after the wallet's "Select network for sending %s") was not machine-checked.
+- **ckb**: "تۆڕ" as in the glossary (کرێی تۆڕ); "هەڵبژێرە" and "گۆڕین" occur in pwap's `ckb.ts`, "وەردەگرێت" in the explorer's ckb; the sentences as a whole are drafts.
+- **fa, ar**: drafts (no pwap source for these sentences).

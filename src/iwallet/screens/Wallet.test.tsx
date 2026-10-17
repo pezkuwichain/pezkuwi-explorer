@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { user } from '../test-user';
 import i18n from '../../i18n';
@@ -12,11 +12,10 @@ import type { KvStore } from '../idb';
 
 const ADDR = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const impl = vi.hoisted(() => ({
-  hez: null as null | (() => Promise<unknown>),
-  assets: null as null | (() => Promise<unknown>),
+  holdings: null as null | (() => Promise<unknown>),
   words: vi.fn(), enrol: vi.fn(), faceSupported: false, faceOn: false, forgot: 0,
 }));
-vi.mock('../data', () => ({ loadHezBalance: () => impl.hez!(), loadAssetBalances: () => impl.assets!() }));
+vi.mock('../data', () => ({ loadWalletHoldings: () => impl.holdings!() }));
 vi.mock('../faceid', () => ({
   hasFaceId: () => Promise.resolve(impl.faceOn), unlockWithFaceId: () => Promise.resolve(null),
   faceIdSupported: () => Promise.resolve(impl.faceSupported),
@@ -31,11 +30,11 @@ vi.mock('../keystore', async (orig) => ({
 }));
 
 const T = 10n ** 12n;
-const hezOk = (relay: bigint, people: bigint) => () => Promise.resolve({
-  total: 5n * T + relay + people, perChain: { relay, assetHub: 5n * T, people }, assetHubSpendable: 5n * T,
-});
-const assetsOk = () => Promise.resolve([
-  { id: 1, symbol: 'PEZ', decimals: 12, amount: 2n * T }, { id: 1000, symbol: 'USDT', decimals: 6, amount: 3_000_000n },
+// What loadWalletHoldings returns: the Account tab's shape (HEZ with its split, then PEZ and USDT, zero kept).
+const holdingsOk = (relay: bigint, people: bigint, pez = 2n * T) => () => Promise.resolve([
+  { symbol: 'HEZ', decimals: 12, amount: 5n * T + relay + people, perChain: { relay, assetHub: 5n * T, people } },
+  { symbol: 'PEZ', decimals: 12, amount: pez },
+  { symbol: 'USDT', decimals: 6, amount: 3_000_000n, standard: 'PEZ-20' },
 ]);
 
 let store: Map<string, unknown>;
@@ -71,40 +70,46 @@ describe('i-Wallet home', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('tr');
     store = new Map<string, unknown>([['keystore', {}], ['words', {}], ['faceid', {}]]);
-    impl.hez = hezOk(0n, 0n); impl.assets = assetsOk; impl.words.mockReset();
+    impl.holdings = holdingsOk(0n, 0n); impl.words.mockReset();
     window.matchMedia = (() => ({ matches: false })) as never;
   });
 
-  it('shows the HEZ total, the asset rows and the actions once unlocked', async () => {
+  it('shows the Account card: the HEZ total, its split on all three networks (zero included) and the actions', async () => {
+    impl.holdings = holdingsOk(2n * T, 0n);
     renderAt('/i-wallet');
     await unlock();
-    expect(await screen.findByText('5')).toBeInTheDocument();
-    expect(screen.getByText('PEZ')).toBeInTheDocument();
-    expect(screen.getByText('USDT')).toBeInTheDocument();
+    expect(await screen.findByTitle('7 HEZ')).toBeInTheDocument();
+    // The same tiles as the Account tab, in its order; People holds nothing and still has its tile.
+    expect([...document.querySelectorAll('.total-card .chain-tile')].map((c) => c.textContent)).toEqual(['Relay2', 'Asset Hub5', 'People0']);
     expect(screen.getByRole('link', { name: /Gönder/ })).toHaveAttribute('href', '/i-wallet/send');
     expect(screen.getByRole('link', { name: /Vatandaşlık/ })).toHaveAttribute('href', '/i-wallet/citizen');
     expect(screen.getByRole('link', { name: /^Al/ })).toHaveAttribute('href', '/i-wallet/receive');
-    expect(screen.queryByRole('list', { name: 'HEZ dağılımı' })).toBeNull();
+    expect(within(document.querySelector('.total-card') as HTMLElement).getByRole('button', { name: 'Adresi kopyala' })).toBeInTheDocument();
   });
 
-  it('lists the per-chain parts only when relay or People hold HEZ', async () => {
-    impl.hez = hezOk(2n * T, 0n);
+  it('lists HEZ first, then PEZ and USDT (even at zero) with the Account tab\'s network labels', async () => {
+    impl.holdings = holdingsOk(0n, 0n, 0n);
     renderAt('/i-wallet');
     await unlock();
-    expect(await screen.findByRole('list', { name: 'HEZ dağılımı' })).toBeInTheDocument();
+    const list = await screen.findByRole('region', { name: 'Varlıklar' });
+    expect(within(list).getAllByRole('listitem').map((r) => r.textContent)).toEqual(['HEZPezkuwiChain5', 'PEZAsset Hub0', 'USDTAsset Hub (PEZ-20)3']);
   });
 
-  it('shows could-not-load with retry instead of a partial HEZ total, and keeps the asset rows', async () => {
-    impl.hez = () => Promise.reject(new Error('relay down'));
+  it('shows could-not-load with retry instead of a partial HEZ total, and keeps the address and actions', async () => {
+    let calls = 0;
+    impl.holdings = () => { calls++; return calls === 1 ? Promise.reject(new Error('relay down')) : holdingsOk(0n, 0n)(); };
     renderAt('/i-wallet');
     await unlock();
     expect(await screen.findByRole('button', { name: 'Tekrar dene' })).toBeInTheDocument();
     expect(screen.queryByText('HEZ', { selector: '.sym' })).toBeNull();
+    expect(document.querySelector('.chain-tile')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Varlıklar' })).toBeNull();
     // Address and actions need no balance: they stay while the HEZ figure is unavailable.
     expect(screen.getByRole('link', { name: /^Al/ })).toHaveAttribute('href', '/i-wallet/receive');
     expect(screen.getByRole('link', { name: /Gönder/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Adresi kopyala' })).toBeInTheDocument();
-    expect(await screen.findByText('PEZ')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Tekrar dene' }));
+    expect(await screen.findByTitle('5 HEZ')).toBeInTheDocument();
   });
 
   it('shows the Home Screen hint in a browser tab and hides it in standalone mode', async () => {
@@ -121,7 +126,7 @@ describe('i-Wallet home', () => {
 });
 
 describe('locked wallet screens', () => {
-  beforeEach(async () => { await i18n.changeLanguage('tr'); store = new Map(); impl.hez = hezOk(0n, 0n); impl.assets = assetsOk; });
+  beforeEach(async () => { await i18n.changeLanguage('tr'); store = new Map(); impl.holdings = holdingsOk(0n, 0n); });
 
   it.each(['/i-wallet/receive', '/i-wallet/settings'])('%s shows the unlock form, never the data, while locked', async (path) => {
     renderAt(path);
@@ -141,6 +146,7 @@ describe('i-Wallet receive', () => {
     await unlock();
     expect(await screen.findByRole('img', { name: 'Adresinin QR kodu' })).toBeInTheDocument();
     expect(screen.getByText(ADDR)).toBeInTheDocument();
+    expect(screen.getByText('Bu tek adres üç Pezkuwi ağının hepsinde alır: Relay, Asset Hub ve People.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Adresi kopyala' }));
     expect(write).toHaveBeenCalledWith(ADDR);
   });

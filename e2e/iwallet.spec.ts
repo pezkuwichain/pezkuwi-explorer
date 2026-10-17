@@ -123,5 +123,14 @@ test('create a wallet, prove the backup, lock on reload and unlock with the pass
   await expect(page.getByRole('heading', { name: 'Your i-Wallet' })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.iw-addr-text').first()).toHaveAttribute('title', full!);
 
+  // Send follows the wallet's flow: the token, then for HEZ the network (nothing is sent; balances are not awaited).
+  await page.getByRole('link', { name: 'Send' }).click();
+  const tokens = page.getByRole('region', { name: 'Asset' });
+  await expect(tokens.getByRole('button')).toHaveText(['HEZPezkuwiChain', 'PEZAsset Hub', 'USDTAsset Hub (PEZ-20)']);
+  await tokens.getByRole('button', { name: /^HEZ/ }).click();
+  await expect(page.getByText('Select network for sending HEZ')).toBeVisible();
+  const nets = page.getByRole('region', { name: 'Network' }).locator('.token-symbol');
+  await expect(nets).toHaveText(['Relay', 'Asset Hub', 'People']);
+
   expect(await problems()).toEqual([]);
 });

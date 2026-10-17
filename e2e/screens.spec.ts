@@ -226,6 +226,10 @@ for (const lang of ['kmr', 'tr'] as const) {
 
         // The unlocked pages by in-app navigation (a reload would lock the wallet).
         await page.locator('a.iw-act[href="/i-wallet/send"]').click();
+        await page.locator('button.iw-pick').first().click(); // HEZ
+        await page.waitForTimeout(2_500);
+        await shot(page, name('send-network'), scheme);
+        await page.locator('button.iw-pick').nth(1).click(); // Asset Hub
         await expect(page.locator('#iw-send-to')).toBeVisible();
         await page.waitForTimeout(2_500);
         await shot(page, name('send'), scheme);

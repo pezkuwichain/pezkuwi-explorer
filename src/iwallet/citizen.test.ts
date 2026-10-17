@@ -5,7 +5,7 @@ import type { ApiPromise } from '@pezkuwi/api';
 import { normaliseAddress } from '../lib/address';
 import {
   EMPTY_FORM, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, formKey, formProblems, identityHash, loadForm, newSalt,
-  loadStatus, needsFunding, parseReferrer, pendingReferrals, saveForm, stageOf, teleportAmount, toKycStatus, type CitizenForm,
+  loadStatus, myReferrals, needsFunding, orderReferrals, parseReferrer, referralLink, saveForm, stageOf, teleportAmount, toKycStatus, type CitizenForm,
 } from './citizen';
 
 const ADDR = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
@@ -148,29 +148,79 @@ describe('stageOf', () => {
   });
 });
 
-describe('pendingReferrals', () => {
-  const app = (referrer: string) => ({ isSome: true, unwrap: () => ({ identityHash: { toString: () => `0xhash-${referrer.slice(0, 4)}` }, referrer: { toString: () => referrer } }) });
+describe('myReferrals', () => {
+  const DAVE = '5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy';
+  const EVE = '5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw';
+  const FERDIE = '5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL';
+  const GONE = encodeAddress(new Uint8Array(32).fill(7), 42);
+  const OTHER = encodeAddress(new Uint8Array(32).fill(9), 42);
+  // The chain may hand the referrer back in another SS58 prefix: the match is by public key.
+  const me0 = encodeAddress(decodeAddress(ADDR), 0);
   const key = (a: string) => ({ args: [{ toString: () => a }] });
-  const status: Record<string, string> = { [BOB]: 'PendingReferral', [CHARLIE]: 'ReferrerApproved', [ADDR]: 'PendingReferral' };
-  const people = {
-    query: {
-      identityKyc: {
-        applications: { entries: () => Promise.resolve([
-          [key(BOB), app(ADDR)],
-          [key(CHARLIE), app(ADDR)], // already approved by us
-          [key(ADDR), app(BOB)], // names someone else
-        ]) },
-        kycStatuses: { multi: vi.fn((as: string[]) => Promise.resolve(as.map((a) => ({ type: status[a] })))) },
+  const app = (referrer: string) => ({ isSome: true, unwrap: () => ({ identityHash: { toString: () => '0xh' }, referrer: { toString: () => referrer } }) });
+  const ref = (referrer: string, at: number) => ({ isSome: true, unwrap: () => ({ referrer: { toString: () => referrer }, createdAt: { toNumber: () => at } }) });
+  const status: Record<string, string> = {
+    [BOB]: 'PendingReferral', [CHARLIE]: 'ReferrerApproved', [DAVE]: 'PendingReferral', [EVE]: 'Approved', [FERDIE]: 'Approved', [GONE]: 'Revoked', [OTHER]: 'Approved',
+  };
+  const nft: Record<string, bigint> = { [EVE]: 5n, [GONE]: 8n };
+  const mk = (apps: unknown[], refs: unknown[]) => {
+    const kycMulti = vi.fn((as: string[]) => Promise.resolve(as.map((a) => ({ type: status[a] ?? 'NotStarted' }))));
+    const nftMulti = vi.fn((as: string[]) => Promise.resolve(as.map((a) => ({ isSome: a in nft, unwrap: () => ({ toBigInt: () => nft[a] }) }))));
+    const api = {
+      query: {
+        identityKyc: { applications: { entries: () => Promise.resolve(apps) }, kycStatuses: { multi: kycMulti } },
+        referral: { referrals: { entries: () => Promise.resolve(refs) } },
+        tiki: { citizenNft: { multi: nftMulti } },
       },
-    },
-  } as unknown as ApiPromise;
-  it('lists only applications that name this account and still wait for it', async () => {
-    const list = await pendingReferrals(encodeAddress(decodeAddress(ADDR), 0), { getApi: () => Promise.resolve(people) });
-    expect(list).toEqual([{ applicant: BOB, identityHash: '0xhash-5Grw' }]);
-    // One batched status read for the two applicants that name this account.
-    const multi = (people as unknown as { query: { identityKyc: { kycStatuses: { multi: ReturnType<typeof vi.fn> } } } }).query.identityKyc.kycStatuses.multi;
-    expect(multi).toHaveBeenCalledTimes(1);
-    expect(multi).toHaveBeenCalledWith([BOB, CHARLIE]);
+    } as unknown as ApiPromise;
+    return { deps: { getApi: () => Promise.resolve(api) }, kycMulti, nftMulti };
+  };
+
+  it('merges open applications and completed referrals that name this account, in display order', async () => {
+    const { deps, kycMulti, nftMulti } = mk(
+      [[key(BOB), app(me0)], [key(CHARLIE), app(me0)], [key(DAVE), app(OTHER)], [key(EVE), app(me0)]],
+      [[key(EVE), ref(me0, 100)], [key(FERDIE), ref(me0, 200)], [key(GONE), ref(me0, 50)], [key(OTHER), ref(BOB, 300)]],
+    );
+    expect(await myReferrals(ADDR, deps)).toEqual([
+      { address: BOB, state: 'waiting', createdAt: null, nftId: null },
+      { address: CHARLIE, state: 'signing', createdAt: null, nftId: null },
+      { address: FERDIE, state: 'citizen', createdAt: 200, nftId: null },
+      { address: EVE, state: 'citizen', createdAt: 100, nftId: 5n },
+      // A revoked citizen's NFT is not shown.
+      { address: GONE, state: 'revoked', createdAt: 50, nftId: null },
+    ]);
+    // One batched status read and one batched NFT read for every candidate, each account once (EVE is in both maps).
+    expect(kycMulti).toHaveBeenCalledTimes(1);
+    expect(nftMulti).toHaveBeenCalledTimes(1);
+    expect(kycMulti.mock.calls[0][0]).toEqual([EVE, FERDIE, GONE, BOB, CHARLIE]);
+  });
+
+  it('never marks a completed referral as waiting, so it never gets an Approve', async () => {
+    // Drift guard: a referral.referrals row whose status reads PendingReferral is still a completed referral.
+    const { deps } = mk([], [[key(DAVE), ref(me0, 10)]]);
+    expect((await myReferrals(ADDR, deps)).map((r) => r.state)).toEqual(['citizen']);
+  });
+
+  it('lists an Approved application as a citizen without a record number and skips one that reads NotStarted', async () => {
+    const fresh = encodeAddress(new Uint8Array(32).fill(3), 42); // no status entry: NotStarted
+    const { deps } = mk([[key(OTHER), app(ADDR)], [key(fresh), app(ADDR)]], []);
+    expect(await myReferrals(ADDR, deps)).toEqual([{ address: OTHER, state: 'citizen', createdAt: null, nftId: null }]);
+  });
+
+  it('reads no statuses when nobody named this account', async () => {
+    const { deps, kycMulti } = mk([[key(DAVE), app(OTHER)]], [[key(OTHER), ref(BOB, 1)]]);
+    expect(await myReferrals(ADDR, deps)).toEqual([]);
+    expect(kycMulti).not.toHaveBeenCalled();
+  });
+
+  it('orders newest first within a group and puts an unknown record number last', () => {
+    const r = (address: string, state: 'citizen' | 'revoked' | 'waiting', createdAt: number | null) => ({ address, state, createdAt, nftId: null });
+    expect(orderReferrals([r('a', 'revoked', 9), r('b', 'citizen', null), r('c', 'citizen', 5), r('d', 'waiting', null), r('e', 'citizen', 7)]).map((x) => x.address))
+      .toEqual(['d', 'e', 'c', 'b', 'a']);
+  });
+
+  it('builds the short referral link', () => {
+    expect(referralLink(ADDR)).toBe(`https://cuzdan.pex.network/?ref=${ADDR}`);
   });
 });
 

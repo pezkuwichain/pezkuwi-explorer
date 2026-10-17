@@ -149,35 +149,80 @@ export function stageOf(s: CitizenStatus): Stage {
   }
 }
 
-export type PendingReferral = { applicant: string; identityHash: string };
-// Applications that name this account as referrer and still wait for its approval (pwap getPendingApprovalsForReferrer).
-// The applications struct is { identityHash, referrer } with the referrer always set (the pallet fills its default).
-// Only an Approved account can be a referrer (ReferrerNotCitizen), so callers run this only for one (canRefer). The statuses of
-// the matching applicants are read in one batched query.
-export async function pendingReferrals(address: string, deps: Deps = real): Promise<PendingReferral[]> {
+// "Wallets you referred" (Serok, 2026-10-17): every account that named this one as referrer, from two sources.
+//  - identityKyc.applications: open applications only, { identityHash, referrer }. PendingReferral waits for this
+//    account's approve_referral; ReferrerApproved waits for the applicant's confirm_citizenship.
+//  - referral.referrals: referred -> { referrer, createdAt (block) }, written by the referral pallet when a citizenship
+//    is approved and kept when it is revoked (on_citizenship_revoked only charges the referrer). Measured on mainnet
+//    People 2026-10-17: 97 entries, the same 97 accounts and referrers as identityKyc.citizenReferrers (which has no
+//    block number, so it is not read), every one Approved, and per referrer the count equals referral.referralCount.
+// Approve is offered only for an open application that names this account and reads PendingReferral, which is exactly
+// what approve_referral accepts; a completed referral never gets one.
+// Cost: two full-map scans (hundreds of entries today) plus one batched status read and one batched NFT read. At a
+// large scale (millions of citizens) this needs an indexer (SubQuery) keyed by referrer instead of entries() scans.
+export type ReferralState = 'waiting' | 'signing' | 'citizen' | 'revoked';
+export type MyReferral = { address: string; state: ReferralState; createdAt: number | null; nftId: bigint | null };
+const STATE_ORDER: Record<ReferralState, number> = { waiting: 0, signing: 1, citizen: 2, revoked: 3 };
+// Waiting for me first, then waiting for their signature, then citizens, then revoked; newest record first within a
+// group (an unknown record number last), then by address so the order is stable.
+export function orderReferrals(list: MyReferral[]): MyReferral[] {
+  return [...list].sort((a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state]
+    || (b.createdAt ?? -1) - (a.createdAt ?? -1)
+    || (a.address < b.address ? -1 : a.address > b.address ? 1 : 0));
+}
+
+type Str = { toString(): string };
+type Key = { args: [Str] };
+type Opt<T> = { isSome?: boolean; unwrap?(): unknown } & Partial<T>;
+type AppValue = { identityHash: Str; referrer: Str };
+type RefValue = { referrer: Str; createdAt: { toNumber(): number } };
+// entries() of an OptionQuery yields Option<T> on some api versions and the struct on others.
+function unwrapOpt<T>(v: Opt<T>, has: (x: Partial<T>) => boolean): T | null {
+  if (typeof v.isSome === 'boolean') return v.isSome && v.unwrap ? (v.unwrap() as T) : null;
+  return has(v) ? (v as T) : null;
+}
+
+export async function myReferrals(address: string, deps: Deps = real): Promise<MyReferral[]> {
   const api = await deps.getApi('people');
   const q = api.query as never as {
     identityKyc: {
-      applications: { entries(): Promise<Array<[{ args: [{ toString(): string }] }, { isSome?: boolean; unwrap?(): unknown } & AppValue]>> };
+      applications: { entries(): Promise<Array<[Key, Opt<AppValue>]>> };
       kycStatuses: { multi(a: string[]): Promise<Array<{ type: string }>> };
     };
+    referral: { referrals: { entries(): Promise<Array<[Key, Opt<RefValue>]>> } };
+    tiki: { citizenNft: { multi(a: string[]): Promise<Array<{ isSome: boolean; unwrap(): { toBigInt(): bigint } }>> } };
   };
-  const entries = await withTimeout(q.identityKyc.applications.entries(), REQUEST_TIMEOUT_MS);
-  const mine = entries
-    .map(([k, v]) => ({ applicant: k.args[0].toString(), app: unwrapApp(v) }))
-    .filter((e) => e.app !== null && samePublicKey(e.app.referrer.toString(), address));
-  if (mine.length === 0) return [];
-  const statuses = await withTimeout(q.identityKyc.kycStatuses.multi(mine.map((e) => e.applicant)), REQUEST_TIMEOUT_MS);
-  return mine
-    .filter((_, i) => statuses[i].type === 'PendingReferral')
-    .map((e) => ({ applicant: e.applicant, identityHash: e.app!.identityHash.toString() }));
+  const me = decodeAddress(address);
+  const isMe = (a: Str) => { try { return u8aEq(decodeAddress(a.toString()), me); } catch { return false; } };
+  const [apps, refs] = await withTimeout(Promise.all([q.identityKyc.applications.entries(), q.referral.referrals.entries()]), REQUEST_TIMEOUT_MS);
+  const created = new Map<string, number>();
+  for (const [k, v] of refs) {
+    const r = unwrapOpt<RefValue>(v, (x) => !!x.referrer && !!x.createdAt);
+    if (r && isMe(r.referrer)) created.set(k.args[0].toString(), r.createdAt.toNumber());
+  }
+  const applicants = apps
+    .filter(([, v]) => { const a = unwrapOpt<AppValue>(v, (x) => !!x.identityHash && !!x.referrer); return a !== null && isMe(a.referrer); })
+    .map(([k]) => k.args[0].toString())
+    .filter((a) => !created.has(a));
+  const all = [...created.keys(), ...applicants];
+  if (all.length === 0) return [];
+  const [statuses, nfts] = await withTimeout(Promise.all([q.identityKyc.kycStatuses.multi(all), q.tiki.citizenNft.multi(all)]), REQUEST_TIMEOUT_MS);
+  const list: MyReferral[] = [];
+  all.forEach((a, i) => {
+    const kyc = toKycStatus(statuses[i].type);
+    const nftId = nfts[i].isSome ? nfts[i].unwrap().toBigInt() : null;
+    const createdAt = created.get(a) ?? null;
+    let state: ReferralState | null;
+    if (createdAt !== null) state = kyc === 'Revoked' ? 'revoked' : 'citizen';
+    else state = ({ PendingReferral: 'waiting', ReferrerApproved: 'signing', Approved: 'citizen', Revoked: 'revoked', NotStarted: null } as const)[kyc];
+    if (state) list.push({ address: a, state, createdAt, nftId: state === 'citizen' ? nftId : null });
+  });
+  return orderReferrals(list);
 }
-type AppValue = { identityHash: { toString(): string }; referrer: { toString(): string } };
-function unwrapApp(v: { isSome?: boolean; unwrap?(): unknown } & Partial<AppValue>): AppValue | null {
-  // entries() of an OptionQuery yields Option<Application> on some api versions and the struct on others.
-  if (typeof v.isSome === 'boolean') return v.isSome && v.unwrap ? (v.unwrap() as AppValue) : null;
-  return v.identityHash && v.referrer ? (v as AppValue) : null;
-}
+
+// The link a citizen shares: the short address redirects to /i-wallet with the query kept, and the citizenship form
+// fills its referrer field from ?ref= (rememberReferrer above).
+export const referralLink = (address: string) => `https://cuzdan.pex.network/?ref=${encodeURIComponent(address)}`;
 
 export const kycDeposit = (people: ApiPromise): bigint =>
   (people.consts as never as { identityKyc: { kycApplicationDeposit: { toBigInt(): bigint } } }).identityKyc.kycApplicationDeposit.toBigInt();

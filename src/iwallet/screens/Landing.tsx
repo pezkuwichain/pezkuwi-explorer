@@ -14,7 +14,8 @@ export default function Landing() {
   const { state } = useIWallet();
   const unavailable = state === 'unavailable';
   const install = useInstallMode();
-  // On iOS the Home Screen app has its own storage, so the wallet is best created there from the start.
+  // On iOS the Home Screen app has its own storage, so the wallet is best created there from the start. On Android the
+  // installed app shares the browser's storage: the card only offers quick access.
   const installFirst = install === 'ios' || install === 'prompt';
   return (
     <div className="iw">
@@ -40,7 +41,7 @@ export default function Landing() {
         ) : (<>
           {installFirst && (
             <section className="iw-install-card" aria-label={t('iwallet.install.button')}>
-              <p>{t('iwallet.install.landing')}</p>
+              <p>{t(install === 'ios' ? 'iwallet.install.landing' : 'iwallet.install.landingQuick')}</p>
               <InstallButton mode={install} className="iw-primary iw-install-btn" />
             </section>
           )}

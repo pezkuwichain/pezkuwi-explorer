@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import PageHeader from '../../ui/PageHeader';
@@ -15,6 +15,9 @@ export default function Unlock() {
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  // As in AuthConfirm: after a failure the screen itself puts focus back on the field.
+  useEffect(() => { if (error && !busy) input.current?.focus(); }, [error, busy]);
   const [corrupt, setCorrupt] = useState(false);
   const [face, setFace] = useState(false);
   useEffect(() => {
@@ -53,7 +56,7 @@ export default function Unlock() {
           <form className="iw-form" onSubmit={submit}>
             <label className="iw-field">
               <span>{t('iwallet.password.label')}</span>
-              <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" />
+              <input ref={input} type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" />
             </label>
             {error && <p className="iw-error" role="alert">{error}</p>}
             <button type="submit" className="iw-primary" disabled={!pw || busy}>

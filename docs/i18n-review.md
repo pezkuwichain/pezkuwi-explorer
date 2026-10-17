@@ -449,11 +449,14 @@ draft until a native reader signs it off.
 | `install.step3` | Li “Zêde bike” bitikîne | دەست بنێ بە «زیادکردن» | روی «افزودن» بزنید | اضغط على «إضافة» |
 | `install.iosNote` | Sepana li Ekrana Malê daneyên xwe ji Safariyê cuda tomar dike: i-Wallet ji Ekrana Malê veke. Heke te cuzdanê xwe di Safariyê de çêkiribe, li wir bi 12 peyvên xwe vegerîne. | بەرنامەکەی سەر شاشەی سەرەکی داتای خۆی جیا لە Safari هەڵدەگرێت: … | برنامهٔ صفحه اصلی فضای ذخیره‌سازی خودش را دارد، جدا از Safari: … | يحتفظ تطبيق الشاشة الرئيسية بتخزينه الخاص، منفصلًا عن Safari: … |
 | `install.landing` | Pêşî i-Wallet li Ekrana Malê zêde bike û cuzdanê xwe li wir çêke | سەرەتا i-Wallet زیاد بکە بۆ شاشەی سەرەکی و جزدانەکەت لەوێ دروست بکە | ابتدا i-Wallet را به صفحه اصلی اضافه کنید و کیف پول خود را آنجا بسازید | أضف i-Wallet أولًا إلى الشاشة الرئيسية وأنشئ محفظتك هناك |
+| `install.landingQuick` (Android: the installed app shares the browser's storage, so no "create it there"; added 2026-10-17, PR #20 review) | i-Wallet li Ekrana Malê zêde bike da ku zû vekî | بۆ دەستگەیشتنی خێرا i-Wallet زیاد بکە بۆ شاشەی سەرەکی | برای دسترسی سریع، i-Wallet را به صفحه اصلی اضافه کنید | أضف i-Wallet إلى الشاشة الرئيسية للوصول السريع |
 
 - **The quoted iOS labels** (step 2 and step 3) must match what the person's iPhone shows. iOS has no Kurmancî or Soranî
   interface, so a Kurdish reader's iPhone shows Turkish, Arabic, Persian or English labels ("Ana Ekrana Ekle" / "Ekle",
   "إضافة إلى الشاشة الرئيسية" / "إضافة", "Add to Home Screen" / "Add"). The kmr and ckb quotes are translations of the
   label, not the label itself; a native reader should decide whether to quote the English label instead.
+- **kmr `install.landingQuick`**: tr "Hızlı erişim için i-Wallet'i Ana Ekrana ekle", en "Add i-Wallet to your Home Screen for
+  quick access"; kmr "da ku zû vekî" (so you open it quickly) uses Zû/m. "Lezgîn, lez" and Vekirin/m.; draft like the rest.
 - **kmr**: vocabulary confirmed: "Ekrana Malê" and "zêde bike" as in `home.a2hs`; "parvekirin" (Ferheng
   Parvekirin/m.), "nîşan" (Ferheng Nîşan/m. marke, sembol), "cuda" (Ferheng Cihê/n. Cuda), "tomar", "dane", "sepan"
   (pwap usage, see above), "hilbijêre", "vegerîne" (`unlock.restore`), "çêke" (çêkirin). "Bitikîne" for "tap" is

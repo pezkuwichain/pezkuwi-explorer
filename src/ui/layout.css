@@ -87,3 +87,18 @@
 .theme-menu-ok { color: var(--link); visibility: hidden; }
 .theme-menu-item[aria-checked='true'] { color: var(--text-strong); }
 .theme-menu-item[aria-checked='true'] .theme-menu-ok { visibility: visible; }
+
+/* The network this page reads (NetworkChip): its own line under the header row, aligned with the title. Mainnet in
+   kesk, the testnet in zer so it reads as a warning. */
+.page-header, .brand { flex-wrap: wrap; }
+.net-row { flex-basis: 100%; display: flex; padding-inline-start: 52px; }
+.brand .net-row { padding-inline-start: 40px; }
+.net-chip {
+  display: inline-flex; align-items: center; gap: 6px; block-size: 24px; padding-inline: 10px; box-sizing: border-box;
+  border-radius: 999px; border: 1px solid; font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+.net-chip-dot { inline-size: 7px; block-size: 7px; border-radius: 999px; flex: none; }
+.net-chip-mainnet { background: var(--ok-soft); border-color: var(--ok-line); color: var(--ok-text); }
+.net-chip-mainnet .net-chip-dot { background: var(--kesk); }
+.net-chip-zagros { background: var(--zer-soft); border-color: var(--zer-line); color: var(--zer-text); }
+.net-chip-zagros .net-chip-dot { background: var(--zer); }

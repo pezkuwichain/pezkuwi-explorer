@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAsync } from '../hooks/useAsync';
 import { loadNetwork, type NetworkOverview } from '../data/network';
@@ -7,7 +8,10 @@ import PageHeader from '../ui/PageHeader';
 import { BigAmount } from '../ui/BigAmount';
 import { ChainIcon } from '../ui/assetIcons';
 import { IconBank, IconShield } from '../ui/icons';
-import { NETWORK } from '../config/network';
+import { NETWORK, NETWORK_ID, switchNetwork, type NetworkId } from '../config/network';
+import { useAccount } from '../account/AccountContext';
+import { disconnectWalletConnect } from '../account/connectors/walletconnect';
+import { Dialog } from '../ui/Dialog';
 import { formatPercent } from '../lib/format';
 import './Network.css';
 
@@ -35,6 +39,58 @@ function Referendum({ v }: { v: Vote }) {
   );
 }
 
+const CHOICES: readonly { id: NetworkId; label: string }[] = [
+  { id: 'mainnet', label: 'network.mainnet' },
+  { id: 'zagros', label: 'network.testnet' },
+];
+// How long a sign-out may wait for the wallet relay before the page reloads anyway (the local sign-out stands).
+const SIGN_OUT_WAIT_MS = 2_000;
+
+// Mainnet or the Zagros testnet, for every explorer tab (i-Wallet stays on mainnet). Choosing the other one asks
+// first, because the page reloads (src/config/network.ts switchNetwork). A wallet that is signed in is signed out
+// before the reload: its session was opened for the network being left.
+function NetworkSwitch() {
+  const { t } = useTranslation();
+  const { address, source, forget } = useAccount();
+  const [pending, setPending] = useState<NetworkId | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const signedIn = address !== null && (source === 'walletconnect' || source === 'extension');
+  const confirm = async () => {
+    if (!pending) return;
+    setBusy(true);
+    if (signedIn) {
+      // Ending the WalletConnect session is started here so the reload can wait for it (forget() alone ends it in
+      // the background); it forgets the session at once, so forget's own disconnect finds nothing left to end.
+      const ended = source === 'walletconnect' ? disconnectWalletConnect().catch(() => {}) : Promise.resolve();
+      forget();
+      await Promise.race([ended, new Promise((r) => setTimeout(r, SIGN_OUT_WAIT_MS))]);
+    }
+    if (!switchNetwork(pending)) { setBusy(false); setPending(null); setFailed(true); }
+  };
+  return (
+    <>
+      <div className="net-switch" role="radiogroup" aria-label={t('network.title')}>
+        {CHOICES.map((c) => (
+          <button key={c.id} type="button" role="radio" aria-checked={c.id === NETWORK_ID}
+            className={`net-option net-option-${c.id}`}
+            onClick={() => { setFailed(false); if (c.id !== NETWORK_ID) setPending(c.id); }}>
+            <span className="net-option-dot" aria-hidden="true" />{t(c.label)}
+          </button>
+        ))}
+      </div>
+      {failed && <p className="card-note net-switch-failed" role="alert">{t('network.switchFailed')}</p>}
+      <Dialog open={pending !== null} onClose={() => { if (!busy) setPending(null); }} title={t('network.switchTitle')}
+        description={<>{t('network.switchBody')}{signedIn && <> {t('network.switchSignOut')}</>}</>}>
+        <div className="net-switch-actions">
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void confirm()}>{t('network.switchConfirm')}</button>
+          <button type="button" className="btn btn-quiet" disabled={busy} onClick={() => setPending(null)}>{t('network.switchCancel')}</button>
+        </div>
+      </Dialog>
+    </>
+  );
+}
+
 export default function Network() {
   const { t } = useTranslation();
   const s = useAsync(() => loadNetwork(), []);
@@ -46,6 +102,7 @@ export default function Network() {
     <>
       <PageHeader title={t('network.title')} />
       <div className="screen network">
+        <NetworkSwitch />
         <section className={`live live-${live}`} role="status">
           <span className="live-orb" aria-hidden="true"><span className="live-dot" /></span>
           <span className="live-text"><span className="live-word">{t(`status.${live}`)}</span><span className="live-name">{NETWORK.name}</span></span>

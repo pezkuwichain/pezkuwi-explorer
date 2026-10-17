@@ -41,3 +41,24 @@
 .aye { color: var(--ok-text); }
 .nay { color: var(--bad-text); }
 .vote-link { min-block-size: 48px; border-radius: 14px; font-size: 15px; }
+
+/* Mainnet / testnet: a two-option segmented control at the top of the tab (NetworkSwitch). */
+.net-switch {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 18px;
+  background: var(--surface-sunk); border: 1px solid var(--border);
+}
+.net-option {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-block-size: var(--tap); padding: 6px 10px;
+  box-sizing: border-box; border: 1px solid transparent; border-radius: 14px; background: transparent; color: var(--muted-strong);
+  font: inherit; font-size: 14px; font-weight: 600; line-height: 1.2; text-align: center; cursor: pointer;
+}
+.net-option:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.net-option-dot { inline-size: 8px; block-size: 8px; border-radius: 999px; flex: none; background: var(--border-strong); }
+.net-option[aria-checked='true'] { background: var(--surface); color: var(--text-strong); font-weight: 700; cursor: default; }
+.net-option-mainnet[aria-checked='true'] { border-color: var(--ok-line); }
+.net-option-mainnet[aria-checked='true'] .net-option-dot { background: var(--kesk); }
+.net-option-zagros[aria-checked='true'] { border-color: var(--zer-line); }
+.net-option-zagros[aria-checked='true'] .net-option-dot { background: var(--zer); }
+.net-switch-failed { margin: 0; color: var(--bad-text); }
+.net-switch-actions { display: flex; flex-direction: column; gap: 10px; }
+.net-switch-actions .btn { min-block-size: 48px; border-radius: 14px; font-size: 15px; }

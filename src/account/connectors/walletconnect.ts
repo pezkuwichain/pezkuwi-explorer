@@ -1,4 +1,4 @@
-import { NETWORK } from '../../config/network';
+import { MAINNET, NETWORK, caip2For } from '../../config/network';
 import { storage } from '../../lib/storage';
 import { NoWalletError, RejectedError } from './extension';
 
@@ -10,14 +10,16 @@ import { NoWalletError, RejectedError } from './extension';
 // because Pezkuwi Wallet answers that proposal and no other.
 export const WC_METHODS = ['polkadot_signTransaction', 'polkadot_signMessage'] as const;
 export const WC_EVENTS = ['chainChanged', 'accountsChanged'] as const;
-// Pezkuwi Wallet's chain registry (pezkuwi-wallet-utils chains v15/v17) contains only these three chains and
-// no Zagros chain, so a proposal that requires a Zagros chain id cannot be approved. The account (public key)
-// does not depend on the chain: pair on these three, take the SS58 address, and normaliseAddress turns it
-// into the form of the network the explorer reads.
+// Pezkuwi Wallet's chain registry (pezkuwi-wallet-utils chains v15/v17) contains only the three mainnet chains and
+// no Zagros chain, so a proposal that requires a Zagros chain id cannot be approved. The session therefore asks
+// for the mainnet chain ids whichever network the explorer reads (NETWORK, src/config/network.ts): on mainnet they
+// are NETWORK's own, on Zagros they are the only ones the wallet can approve. The account (public key) does not
+// depend on the chain: pair on these three, take the SS58 address, and normaliseAddress turns it into the form
+// of the network the explorer reads (both networks use SS58 42).
 export const PEZKUWI_CHAINS = [
-  'polkadot:1aa94987791a5544e9667ec249d2cef1', // Relay
-  'polkadot:e7c15092dcbe3f320260ddbbc685bfce', // Asset Hub
-  'polkadot:69a8d025ab7b63363935d7d9397e0f65', // People
+  caip2For(MAINNET, 'relay'), // polkadot:1aa94987791a5544e9667ec249d2cef1
+  caip2For(MAINNET, 'assetHub'), // polkadot:e7c15092dcbe3f320260ddbbc685bfce
+  caip2For(MAINNET, 'people'), // polkadot:69a8d025ab7b63363935d7d9397e0f65
 ] as const;
 
 export const wcRequiredNamespaces = () => ({

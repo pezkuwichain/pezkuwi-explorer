@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import i18n from '../i18n';
+import { AccountProvider } from '../account/AccountContext';
+import { storage } from '../lib/storage';
 import Network from './Network';
 
 type Overview = { live: boolean | null; validators: number | null; votes: { chain: string; index: number; ayes: bigint; nays: bigint }[] | null; treasury: bigint | null };
@@ -11,14 +13,21 @@ const impl = vi.hoisted(() => ({
   calls: 0,
 }));
 vi.mock('../data/network', () => ({ loadNetwork: () => { impl.calls++; return impl.load(); } }));
+// The switch itself (storage + reload) is tested in src/config/network.test.ts; here only that it is asked for.
+const sw = vi.hoisted(() => ({ calls: [] as string[], ok: true }));
+vi.mock('../config/network', async (orig) => ({
+  ...(await orig<typeof import('../config/network')>()),
+  switchNetwork: (to: string) => { sw.calls.push(to); return sw.ok; },
+}));
 
+const ALICE = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const full: Overview = { live: true, validators: 4, votes: [], treasury: 7_000_000_000_000n };
-const renderIt = () => render(<MemoryRouter><Network /></MemoryRouter>);
+const renderIt = () => render(<MemoryRouter><AccountProvider><Network /></AccountProvider></MemoryRouter>);
 const card = (name: string) => screen.getByRole('heading', { name }).closest('section') as HTMLElement;
 
 describe('Network', () => {
   beforeEach(async () => {
-    await i18n.changeLanguage('en'); impl.calls = 0;
+    await i18n.changeLanguage('en'); impl.calls = 0; sw.calls = []; sw.ok = true; localStorage.clear();
     impl.load = () => Promise.resolve(full);
   });
 
@@ -121,5 +130,62 @@ describe('Network', () => {
     renderIt();
     expect(await screen.findByText('١٢ چالاک')).toBeInTheDocument();
     await i18n.changeLanguage('en');
+  });
+
+  describe('mainnet / testnet switch', () => {
+    const group = () => screen.getByRole('radiogroup', { name: 'Network' });
+    it('shows both networks at the top, the one being read checked (a first visit reads mainnet)', () => {
+      renderIt();
+      const radios = within(group()).getAllByRole('radio');
+      expect(radios.map((r) => r.textContent)).toEqual(['Mainnet', 'Testnet (Zagros)']);
+      expect(within(group()).getByRole('radio', { name: 'Mainnet' })).toHaveAttribute('aria-checked', 'true');
+      expect(within(group()).getByRole('radio', { name: 'Testnet (Zagros)' })).toHaveAttribute('aria-checked', 'false');
+      // First thing in the screen, above the live light.
+      expect(document.querySelector('.screen.network')!.firstElementChild).toBe(group());
+    });
+    it('choosing the network already read does nothing', () => {
+      renderIt();
+      fireEvent.click(within(group()).getByRole('radio', { name: 'Mainnet' }));
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(sw.calls).toEqual([]);
+    });
+    it('asks before switching, because the page reloads; Cancel keeps the network', () => {
+      renderIt();
+      fireEvent.click(within(group()).getByRole('radio', { name: 'Testnet (Zagros)' }));
+      const d = screen.getByRole('dialog', { name: 'Change the network?' });
+      expect(d).toHaveTextContent('The page reloads');
+      expect(d).toHaveTextContent('i-Wallet always stays on the mainnet');
+      expect(d).not.toHaveTextContent('signed out');
+      fireEvent.click(within(d).getByRole('button', { name: 'Cancel' }));
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(sw.calls).toEqual([]);
+    });
+    it('confirming switches to the chosen network; a pasted address stays open (both networks use SS58 42)', async () => {
+      storage.set('account', ALICE); storage.set('account-source', 'address');
+      renderIt();
+      fireEvent.click(within(group()).getByRole('radio', { name: 'Testnet (Zagros)' }));
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Change and reload' }));
+      await waitFor(() => expect(sw.calls).toEqual(['zagros']));
+      expect(storage.get('account')).toBe(ALICE);
+    });
+    it('a signed-in wallet is told, and signed out before the reload', async () => {
+      storage.set('account', ALICE); storage.set('account-source', 'extension');
+      renderIt();
+      fireEvent.click(within(group()).getByRole('radio', { name: 'Testnet (Zagros)' }));
+      const d = screen.getByRole('dialog');
+      expect(d).toHaveTextContent('Your wallet is signed out first; connect it again afterwards.');
+      fireEvent.click(within(d).getByRole('button', { name: 'Change and reload' }));
+      await waitFor(() => expect(sw.calls).toEqual(['zagros']));
+      expect(storage.get('account')).toBeNull();
+      expect(storage.get('account-source')).toBeNull();
+    });
+    it('says so when the browser would not keep the choice', async () => {
+      sw.ok = false;
+      renderIt();
+      fireEvent.click(within(group()).getByRole('radio', { name: 'Testnet (Zagros)' }));
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Change and reload' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('This browser would not keep the choice');
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
   });
 });

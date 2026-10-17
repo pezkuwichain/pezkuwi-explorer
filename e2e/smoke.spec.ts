@@ -19,7 +19,11 @@ async function pasteAndOpen(page: Page, address: string) {
   await expect(page.getByText(/\bHEZ\b/).first()).toBeVisible({ timeout: 30_000 });
 }
 
-test.beforeEach(({ page }) => useLanguage(page, 'en'));
+// SMOKE_ADDRESS is a Zagros account and the checks below read Zagros, so the page is pinned to it (a first visit
+// would read mainnet, src/config/network.ts).
+const useZagros = (page: Page) => page.addInitScript(() => localStorage.setItem('pezkuwi-explorer:network', 'zagros'));
+
+test.beforeEach(async ({ page }) => { await useLanguage(page, 'en'); await useZagros(page); });
 
 test('home shows the four tiles, the way in, the tabs and the experts link, and the network light resolves', async ({ page }) => {
   await page.goto('/');

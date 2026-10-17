@@ -1,16 +1,103 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { NETWORK, ZAGROS_HISTORY_URL, caip2 } from './network';
+import {
+  MAINNET, MAINNET_HISTORY_URL, NETWORK, NETWORKS, NETWORK_ID, NETWORK_KEY, ZAGROS, ZAGROS_HISTORY_URL,
+  caip2, caip2For, resolveNetworkId, switchNetwork,
+} from './network';
+import { IWALLET_NETWORK } from './iwallet-network';
+
+const STORED = 'pezkuwi-explorer:' + NETWORK_KEY;
+// A fresh copy of the module, resolved from whatever is stored now (NETWORK is resolved once per page load).
+const fresh = async () => { vi.resetModules(); return import('./network'); };
+
+describe('which network the explorer reads', () => {
+  afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); vi.restoreAllMocks(); });
+  const blocked = () => { throw new DOMException('blocked'); };
+
+  it('a first visit reads mainnet', async () => {
+    expect(NETWORK_ID).toBe('mainnet');
+    expect(NETWORK).toBe(MAINNET);
+    localStorage.clear();
+    const m = await fresh();
+    expect(m.NETWORK_ID).toBe('mainnet');
+    expect(m.NETWORK.chains.relay.genesis).toBe(IWALLET_NETWORK.chains.relay.genesis);
+  });
+  it('a stored "zagros" reads Zagros', async () => {
+    localStorage.setItem(STORED, 'zagros');
+    const m = await fresh();
+    expect(m.NETWORK_ID).toBe('zagros');
+    expect(m.NETWORK.name).toBe('Zagros');
+    expect(m.NETWORK.history.assetHub).toBe(ZAGROS_HISTORY_URL);
+    expect(m.caip2('relay')).toBe('polkadot:1b0b4727bbb5e44ed587d1056b4ad537');
+  });
+  it('anything else stored reads mainnet', async () => {
+    for (const v of ['Zagros', 'testnet', '', ' zagros', 'null']) expect(resolveNetworkId(v)).toBe('mainnet');
+    expect(resolveNetworkId(null)).toBe('mainnet');
+    expect(resolveNetworkId('mainnet')).toBe('mainnet');
+    localStorage.setItem(STORED, 'kusama');
+    expect((await fresh()).NETWORK_ID).toBe('mainnet');
+  });
+  it('a browser that blocks storage reads mainnet', async () => {
+    localStorage.setItem(STORED, 'zagros');
+    vi.stubGlobal('localStorage', { getItem: blocked, setItem: blocked, removeItem: blocked });
+    expect((await fresh()).NETWORK_ID).toBe('mainnet');
+  });
+  it('switching remembers the choice, then reloads', () => {
+    const reload = vi.fn();
+    expect(switchNetwork('zagros', reload)).toBe(true);
+    expect(localStorage.getItem(STORED)).toBe('zagros');
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(switchNetwork('mainnet', reload)).toBe(true);
+    expect(localStorage.getItem(STORED)).toBe('mainnet');
+    expect(reload).toHaveBeenCalledTimes(2);
+  });
+  it('switching does not reload when the browser would not keep the choice', () => {
+    vi.stubGlobal('localStorage', { getItem: blocked, setItem: blocked, removeItem: blocked });
+    const reload = vi.fn();
+    expect(switchNetwork('zagros', reload)).toBe(false);
+    expect(reload).not.toHaveBeenCalled();
+  });
+  it('the default reload is the page reload', () => {
+    const reload = vi.fn();
+    vi.spyOn(window, 'location', 'get').mockReturnValue({ ...window.location, reload } as Location);
+    switchNetwork('zagros');
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+  it('i-Wallet stays on mainnet whatever the explorer reads', async () => {
+    const before = structuredClone(IWALLET_NETWORK);
+    localStorage.setItem(STORED, 'zagros');
+    vi.resetModules();
+    const zagrosPage = await import('./network');
+    const iw = await import('./iwallet-network');
+    expect(zagrosPage.NETWORK_ID).toBe('zagros');
+    expect(iw.IWALLET_NETWORK).toEqual(before);
+    expect(iw.IWALLET_NETWORK.chains.relay.rpc).toEqual(['wss://rpc.pezkuwichain.io']);
+    expect(iw.IWALLET_NETWORK.chains.assetHub.genesis).toBe('0xe7c15092dcbe3f320260ddbbc685bfceed9125a3b3d8436db2766201dec3b949');
+    switchNetwork('zagros', () => {});
+    expect(IWALLET_NETWORK).toEqual(before);
+  });
+  it('mainnet reuses the i-Wallet chains and has its own history indexer', () => {
+    expect(MAINNET.chains).toEqual(IWALLET_NETWORK.chains);
+    expect(MAINNET.ss58).toBe(42);
+    expect(ZAGROS.ss58).toBe(42);
+    expect(MAINNET.history).toEqual({ assetHub: MAINNET_HISTORY_URL, relay: null });
+    expect(ZAGROS.history).toEqual({ assetHub: ZAGROS_HISTORY_URL, relay: null });
+    // History tests set NETWORK.history.*: the i-Wallet's own object must not be the one they change.
+    expect(MAINNET.history).not.toBe(IWALLET_NETWORK.history);
+  });
+});
 
 describe('network config', () => {
-  it('builds CAIP-2 ids from the first 16 genesis bytes', () => {
-    expect(caip2('relay')).toBe('polkadot:1b0b4727bbb5e44ed587d1056b4ad537');
+  it('builds CAIP-2 ids from the first 16 genesis bytes, for the network being read', () => {
+    expect(caip2For(ZAGROS, 'relay')).toBe('polkadot:1b0b4727bbb5e44ed587d1056b4ad537');
+    expect(caip2For(MAINNET, 'relay')).toBe('polkadot:1aa94987791a5544e9667ec249d2cef1');
+    expect(caip2('relay')).toBe(caip2For(NETWORK, 'relay'));
   });
   it('uses only wss endpoints', () => {
-    for (const c of Object.values(NETWORK.chains)) for (const u of c.rpc) expect(u.startsWith('wss://')).toBe(true);
+    for (const n of Object.values(NETWORKS)) for (const c of Object.values(n.chains)) for (const u of c.rpc) expect(u.startsWith('wss://')).toBe(true);
   });
   it('lists the Pezkuwi Wallet tokens: PEZ and USDT (PEZ-20), with measured decimals', () => {
-    expect(NETWORK.assets).toEqual([
+    for (const n of Object.values(NETWORKS)) expect(n.assets).toEqual([
       { id: 1, symbol: 'PEZ', decimals: 12 },
       { id: 1000, symbol: 'USDT', decimals: 6, standard: 'PEZ-20' },
     ]);
@@ -47,8 +134,11 @@ describe('network config', () => {
 
   it('every configured origin is a token of the deployed connect-src', () => {
     const tokens = connectSrc();
-    for (const c of Object.values(NETWORK.chains)) for (const u of c.rpc) expect(tokens.has(u)).toBe(true);
-    for (const u of Object.values(NETWORK.history)) if (u) expect(allowed(tokens, u)).toBe(true);
+    for (const n of Object.values(NETWORKS)) {
+      for (const c of Object.values(n.chains)) for (const u of c.rpc) expect(tokens.has(u)).toBe(true);
+      for (const u of Object.values(n.history)) if (u) expect(allowed(tokens, u)).toBe(true);
+    }
+    expect(tokens.has(new URL(MAINNET_HISTORY_URL).origin)).toBe(true);
     for (const u of ['wss://relay.walletconnect.org', 'https://verify.walletconnect.org']) expect(tokens.has(u)).toBe(true);
   });
 

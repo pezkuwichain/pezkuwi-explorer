@@ -579,3 +579,33 @@ completed referrals, read from the chain) and approves the ones still waiting. T
 - PR #22 review (2026-10-17): `refs.state.left` is a person who was a citizen through this referral and is not one
   now (renounced, or applying again under another referrer); kmr "Êdî ne welatî ye" (Welatî for a person; "êdî"
   flagged for native reading). `refs.more` pages the list 50 rows at a time. ckb, fa and ar are drafts.
+
+### Mainnet / testnet switch (2026-10-17, Serok)
+
+The Network tab chooses which network every explorer tab reads (i-Wallet always stays on mainnet); the same two
+labels are the chip in each screen's header. `mascot.say3` now names the network being read (`{{network}}`: "Pezkuwi"
+or "Zagros") instead of a fixed Zagros. tr and en are the source texts.
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `network.mainnet` | Ana ağ | Mainnet | Tora sereke | تۆڕی سەرەکی | شبکه اصلی | الشبكة الرئيسية |
+| `network.testnet` | Test ağı (Zagros) | Testnet (Zagros) | Tora ceribandinê (Zagros) | تۆڕی تاقیکردنەوە (Zagros) | شبکه آزمایشی (Zagros) | شبكة الاختبار (Zagros) |
+| `network.switchTitle` | Ağ değiştirilsin mi? | Change the network? | Tor were guhertin? | تۆڕ بگۆڕدرێت؟ | شبکه تغییر کند؟ | تغيير الشبكة؟ |
+| `network.switchBody` | Sayfa yeniden yüklenir, ardından Pezkuwi Explorer seçtiğin ağı gösterir. i-Wallet her zaman ana ağda kalır. | The page reloads, and Pezkuwi Explorer then shows the network you chose. i-Wallet always stays on the mainnet. | Rûpel ji nû ve tê barkirin, paşê Pezkuwi Explorer tora ku te hilbijart nîşan dide. i-Wallet herdem li ser tora sereke dimîne. | پەڕەکە دووبارە بار دەکرێتەوە، پاشان Pezkuwi Explorer ئەو تۆڕە پیشان دەدات کە هەڵتبژارد. i-Wallet هەمیشە لەسەر تۆڕی سەرەکی دەمێنێتەوە. | صفحه دوباره بارگذاری می‌شود و سپس Pezkuwi Explorer شبکه‌ای را که انتخاب کردید نشان می‌دهد. i-Wallet همیشه روی شبکه اصلی می‌ماند. | يُعاد تحميل الصفحة، ثم يعرض Pezkuwi Explorer الشبكة التي اخترتها. يبقى i-Wallet دائماً على الشبكة الرئيسية. |
+| `network.switchSignOut` | Önce cüzdanından çıkış yapılır; ardından yeniden bağlarsın. | Your wallet is signed out first; connect it again afterwards. | Pêşî tu ji cuzdanê xwe derdikevî; paşê wî dîsa girêbide. | سەرەتا لە جزدانەکەت دەردەچیت؛ دواتر دووبارە پەیوەستی بکەرەوە. | ابتدا از کیف پول خود خارج می‌شوید؛ سپس دوباره آن را متصل کنید. | سيُسجَّل خروجك من محفظتك أولاً؛ صِلها مجدداً بعد ذلك. |
+| `network.switchConfirm` | Değiştir ve yenile | Change and reload | Biguherîne | بیگۆڕە | تغییر و بارگذاری دوباره | غيّر وأعد التحميل |
+| `network.switchCancel` | Vazgeç | Cancel | Betal bike | هەڵوەشاندنەوە | انصراف | إلغاء |
+| `network.switchFailed` | Bu tarayıcı seçimi saklamadı, bu yüzden ağ değiştirilmedi. | This browser would not keep the choice, so the network was not changed. | Vê gerokê hilbijartina te negirt, loma tor nehat guhertin. | ئەم وێبگەڕە هەڵبژاردنەکەی هەڵنەگرت، بۆیە تۆڕ نەگۆڕدرا. | این مرورگر انتخاب شما را نگه نداشت، بنابراین شبکه تغییر نکرد. | لم يحتفظ هذا المتصفح باختيارك، لذا لم تتغير الشبكة. |
+| `mascot.say3` | Ağ çalışıyor — {{network}} canlı. | The network is working — {{network}} is live. | Tor dixebite — {{network}} zindî ye. | تۆڕ کار دەکات — {{network}} زیندووە. | شبکه کار می‌کند — {{network}} زنده است. | الشبكة تعمل — {{network}} حيّة. |
+
+- kmr "Tor" is the explorer's word for the Network tab (`network.title`, pwap); "Tora sereke" is the i-Wallet's
+  "Tora sereke ya Pezkuwi" (`iwallet.mainnet`) without the name. "Ceribandin" is in the Ferheng (Zeynelabidin):
+  "Ceribandin/m. Sihêtkirin, hêçandin, azmûn, test, …" and is used feminine there ("Ceribandina tiştekî"), so its
+  oblique is "ceribandinê": "Tora ceribandinê" = the test network (the word is already in the Ferheng table above).
+- kmr `switchTitle` follows `iwallet.import.confirmTitle` ("… were guhertin?"); `switchConfirm` is
+  `iwallet.send.change` and `switchCancel` is `iwallet.import.confirmNo`, both verbatim; `switchFailed` follows
+  `iwallet.citizen.form.notSaved` ("Vê gerokê … negirt, loma …"); `switchSignOut` uses walletModal's "girêbide".
+  "Herdem" (Ferheng: "Herdem/m. Her zeman, her an") and "paşê" (Ferheng: "Paşê/m. Piştre, ji niha û şûnde") are
+  Ferheng words. The kmr `switchBody` and `switchSignOut` sentences are new wording: flagged for native reading.
+- ckb, fa and ar are drafts. In those scripts `{{network}}` in `mascot.say3` is now the Latin network name (it was
+  the transliterated "زاگرۆس" / "زاگرس" / "زاغروس"); a native reader may prefer a localised name per network.

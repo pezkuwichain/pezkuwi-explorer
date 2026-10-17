@@ -1,4 +1,8 @@
-// The only file that changes when the explorer moves from Zagros to mainnet.
+// The two networks the explorer can read, and the one it reads on this page load. i-Wallet never reads this
+// choice: it imports its own mainnet config (src/config/iwallet-network.ts) and stays on mainnet.
+import { storage } from '../lib/storage';
+import { IWALLET_NETWORK } from './iwallet-network';
+
 export type ChainKey = 'relay' | 'assetHub' | 'people';
 
 export type NetworkConfig = {
@@ -14,13 +18,24 @@ export type NetworkConfig = {
   walletConnectProjectId: string;
 };
 
+export type NetworkId = 'mainnet' | 'zagros';
+// The storage key (src/lib/storage.ts) that remembers the choice in this browser.
+export const NETWORK_KEY = 'network';
+
 // The Asset Hub history indexer for Zagros, served by the explorer's own nginx (deploy/nginx-explorer.conf,
 // `location = /history/assethub`: POST only, rate-limited, proxied to the indexer's GraphQL on the host).
 // Same origin as the site, so the CSP's connect-src 'self' already allows it. Enabled below: the
 // indexer caught up with the chain on 2026-10-15 (last processed = target = 197855).
 export const ZAGROS_HISTORY_URL = 'https://explorer.pezkuwichain.io/history/assethub';
+// The mainnet Asset Hub indexer (the one the Pezkuwi Wallet reads). Measured 2026-10-17: _metadata.chain
+// "Pezkuwichain Asset Hub", genesisHash = MAINNET.chains.assetHub.genesis, last processed = target = 2794057;
+// its HistoryElement type has the same fields as the Zagros indexer's, and the address, extrinsicHash and
+// _metadata queries of src/data/history.ts answer unchanged. connect-src lists its origin.
+export const MAINNET_HISTORY_URL = 'https://subquery.pezkuwichain.io/assethub';
 
-export const NETWORK: NetworkConfig = {
+const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? '';
+
+export const ZAGROS: NetworkConfig = {
   name: 'Zagros',
   ss58: 42,
   native: { symbol: 'HEZ', decimals: 12 },
@@ -46,7 +61,39 @@ export const NETWORK: NetworkConfig = {
   //   8. History test isolation: tests that set NETWORK.history.* restore it.
   // src/screens/HistoryEnabled.test.tsx runs the screens end to end with assetHub = ZAGROS_HISTORY_URL.
   history: { assetHub: ZAGROS_HISTORY_URL, relay: null },
-  walletConnectProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? '',
+  walletConnectProjectId,
 };
 
-export const caip2 = (chain: ChainKey) => `polkadot:${NETWORK.chains[chain].genesis.slice(2, 34)}`;
+// Mainnet: the chains, ss58, native token and assets are the i-Wallet's (one place for the mainnet genesis
+// hashes and endpoints); the history indexer and the WalletConnect project id are the explorer's own.
+export const MAINNET: NetworkConfig = {
+  name: IWALLET_NETWORK.name,
+  ss58: IWALLET_NETWORK.ss58,
+  native: IWALLET_NETWORK.native,
+  chains: IWALLET_NETWORK.chains,
+  assets: IWALLET_NETWORK.assets,
+  history: { assetHub: MAINNET_HISTORY_URL, relay: null },
+  walletConnectProjectId,
+};
+
+export const NETWORKS: Record<NetworkId, NetworkConfig> = { mainnet: MAINNET, zagros: ZAGROS };
+
+// A first visit, or anything stored that is not a known network, reads mainnet.
+export const resolveNetworkId = (stored: string | null): NetworkId => (stored === 'zagros' ? 'zagros' : 'mainnet');
+
+// Resolved once, when the page loads: every connection, query and wallet session of this page belongs to it.
+export const NETWORK_ID: NetworkId = resolveNetworkId(storage.get(NETWORK_KEY));
+export const NETWORK: NetworkConfig = NETWORKS[NETWORK_ID];
+
+// Remembers the choice and reloads the page. A reload is the simplest way to drop everything that belongs to the
+// network being left: the cached ApiPromise connections (src/chain/connections.ts), the WalletConnect client and
+// its session, and every loaded query; the next page load resolves NETWORK again. false (and no reload) when this
+// browser would not keep the choice, because the reload would come back on the same network.
+export function switchNetwork(to: NetworkId, reload: () => void = () => window.location.reload()): boolean {
+  if (!storage.set(NETWORK_KEY, to)) return false;
+  reload();
+  return true;
+}
+
+export const caip2For = (network: NetworkConfig, chain: ChainKey) => `polkadot:${network.chains[chain].genesis.slice(2, 34)}`;
+export const caip2 = (chain: ChainKey) => caip2For(NETWORK, chain);

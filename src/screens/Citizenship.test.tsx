@@ -6,6 +6,10 @@ import { AccountProvider } from '../account/AccountContext';
 import { storage } from '../lib/storage';
 import Citizenship from './Citizenship';
 
+// The card names the network it reads; these assertions were written for Zagros, so the page is pinned to it
+// (stored before any import resolves NETWORK).
+vi.hoisted(() => localStorage.setItem('pezkuwi-explorer:network', 'zagros'));
+
 const ALICE = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const impl = vi.hoisted(() => ({
   load: (): Promise<unknown> => Promise.resolve({ stage: 'approved', roles: ['Welati'], trust: 12n }),

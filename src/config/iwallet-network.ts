@@ -1,5 +1,5 @@
-// i-Wallet runs on mainnet while the rest of the explorer stays on Zagros (src/config/network.ts).
-// This is the only file that changes at the genesis reset. Values: spec §3, measured 2026-10-16.
+// i-Wallet always runs on mainnet, whichever network the rest of the explorer reads (src/config/network.ts, which
+// builds its own MAINNET from these values). This is the only file that changes at the genesis reset. Values: spec §3, measured 2026-10-16.
 import type { NetworkConfig } from './network';
 
 export type IWalletNetworkConfig = NetworkConfig & { xcm: { peopleParaId: number } };

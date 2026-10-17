@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { NETWORK } from '../../config/network';
+import { ZAGROS as ZAGROS_NETWORK } from '../../config/network';
 
 // A stand-in for sign-client: records the proposal, hands out an approval the test settles, keeps handlers.
 const wc = vi.hoisted(() => {
@@ -25,7 +25,7 @@ const wc = vi.hoisted(() => {
 });
 vi.mock('@walletconnect/sign-client', () => ({ SignClient: { init: async () => { wc.state.init++; return wc.client; } } }));
 
-const ZAGROS = ['relay', 'assetHub', 'people'] as const;
+const CHAIN_KEYS = ['relay', 'assetHub', 'people'] as const;
 const ALICE = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const CHAINS = ['1aa94987791a5544e9667ec249d2cef1', 'e7c15092dcbe3f320260ddbbc685bfce', '69a8d025ab7b63363935d7d9397e0f65'];
 const session = (topic: string, expiry = Math.floor(Date.now() / 1000) + 3600, chains = CHAINS) => ({
@@ -63,8 +63,20 @@ describe('walletconnect proposal', () => {
   });
   it('never names a Zagros chain (the wallet registry has none, so it could not approve)', async () => {
     const m = await load();
-    const zagros = ZAGROS.map((c) => `polkadot:${NETWORK.chains[c].genesis.slice(2, 34)}`);
+    const zagros = CHAIN_KEYS.map((c) => `polkadot:${ZAGROS_NETWORK.chains[c].genesis.slice(2, 34)}`);
     for (const id of zagros) expect(m.wcRequiredNamespaces().polkadot.chains).not.toContain(id);
+  });
+  it('asks for the same mainnet chains whichever network the explorer reads; caip2 follows the network', async () => {
+    const onMainnet = (await load()).wcRequiredNamespaces();
+    expect((await import('../../config/network')).caip2('relay')).toBe(`polkadot:${CHAINS[0]}`);
+    localStorage.setItem('pezkuwi-explorer:network', 'zagros');
+    const m = await load();
+    const net = await import('../../config/network');
+    expect(net.NETWORK_ID).toBe('zagros');
+    expect(net.caip2('relay')).toBe('polkadot:1b0b4727bbb5e44ed587d1056b4ad537');
+    expect(m.wcRequiredNamespaces()).toEqual(onMainnet);
+    expect(m.wcRequiredNamespaces().polkadot.chains).toEqual(CHAINS.map((c) => `polkadot:${c}`));
+    expect(m.PEZKUWI_CHAINS).toEqual(CHAIN_KEYS.map((c) => net.caip2For(net.MAINNET, c)));
   });
   it('gives the Pezkuwi Wallet deep link for the pairing', async () => {
     const m = await load();

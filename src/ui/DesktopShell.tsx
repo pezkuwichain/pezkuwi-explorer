@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMedia } from '../hooks/useMedia';
 import { IconExternal } from './icons';
+import { NETWORK } from '../config/network';
 import './desktop.css';
 
 export const DESKTOP = '(min-width: 900px)';
@@ -24,7 +25,7 @@ function Mascot({ m, i }: { m: (typeof MASCOTS)[number]; i: number }) {
       {/* Only rendered on desktop, and lazy: a phone never asks for these pictures. */}
       <img src={`/mascots/${m.img}.jpg`} alt={t(`mascot.${m.alt}`)} loading="lazy" decoding="async" width={640} height={470} />
       <figcaption className={`bubble bubble-${m.tone}`}>
-        {m.text.length === 2 ? <><strong>{t(`mascot.${m.text[0]}`)}</strong><br /><span>{t(`mascot.${m.text[1]}`)}</span></> : t(`mascot.${m.text[0]}`)}
+        {m.text.length === 2 ? <><strong>{t(`mascot.${m.text[0]}`)}</strong><br /><span>{t(`mascot.${m.text[1]}`)}</span></> : t(`mascot.${m.text[0]}`, { network: NETWORK.name })}
       </figcaption>
     </figure>
   );

@@ -8,7 +8,7 @@ export type Holding = { symbol: string; decimals: number; amount: bigint; perCha
 // Fail-closed by design: if any chain fails or times out this rejects, and the
 // card shows "could not load". Never return a partial HEZ total; a too-low money
 // figure is worse than an error.
-// The explorer reads Zagros (the defaults); the i-Wallet passes its mainnet connections and config, and keeps the
+// The explorer reads the network chosen on the Network tab (the defaults, src/config/network.ts NETWORK); the i-Wallet passes its mainnet connections and config, and keeps the
 // assets it can send listed at zero (keepZero) so a new wallet still sees what it can hold.
 export async function loadBalances(
   address: string,

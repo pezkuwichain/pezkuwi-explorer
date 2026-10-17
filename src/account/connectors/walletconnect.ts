@@ -16,6 +16,8 @@ export const WC_EVENTS = ['chainChanged', 'accountsChanged'] as const;
 // are NETWORK's own, on Zagros they are the only ones the wallet can approve. The account (public key) does not
 // depend on the chain: pair on these three, take the SS58 address, and normaliseAddress turns it into the form
 // of the network the explorer reads (both networks use SS58 42).
+// Never use these as a signing request's chain on a Zagros page: it would sign on mainnet (see caip2 in
+// src/config/network.ts for the guard any future signing needs).
 export const PEZKUWI_CHAINS = [
   caip2For(MAINNET, 'relay'), // polkadot:1aa94987791a5544e9667ec249d2cef1
   caip2For(MAINNET, 'assetHub'), // polkadot:e7c15092dcbe3f320260ddbbc685bfce

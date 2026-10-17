@@ -31,6 +31,9 @@ export const ZAGROS_HISTORY_URL = 'https://explorer.pezkuwichain.io/history/asse
 // "Pezkuwichain Asset Hub", genesisHash = MAINNET.chains.assetHub.genesis, last processed = target = 2794057;
 // its HistoryElement type has the same fields as the Zagros indexer's, and the address, extrinsicHash and
 // _metadata queries of src/data/history.ts answer unchanged. connect-src lists its origin.
+// The browser calls it directly (it allows every origin, as the Pezkuwi Wallet already reads it); there is no
+// explorer-side proxy or rate limit as for Zagros. Any rate limit or query limit for it belongs on the indexer's own
+// host (its nginx and SubQuery's query options), where it protects the wallet and the explorer alike.
 export const MAINNET_HISTORY_URL = 'https://subquery.pezkuwichain.io/assethub';
 
 const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? '';
@@ -85,15 +88,28 @@ export const resolveNetworkId = (stored: string | null): NetworkId => (stored ==
 export const NETWORK_ID: NetworkId = resolveNetworkId(storage.get(NETWORK_KEY));
 export const NETWORK: NetworkConfig = NETWORKS[NETWORK_ID];
 
-// Remembers the choice and reloads the page. A reload is the simplest way to drop everything that belongs to the
-// network being left: the cached ApiPromise connections (src/chain/connections.ts), the WalletConnect client and
-// its session, and every loaded query; the next page load resolves NETWORK again. false (and no reload) when this
-// browser would not keep the choice, because the reload would come back on the same network.
-export function switchNetwork(to: NetworkId, reload: () => void = () => window.location.reload()): boolean {
-  if (!storage.set(NETWORK_KEY, to)) return false;
+// The i18n key of the network's name as people read it ("Mainnet" / "Testnet (Zagros)", localised). UI text uses
+// this; `name` stays for logic and the chain's own naming.
+export const networkLabelKey = (id: NetworkId) => (id === 'zagros' ? 'network.testnet' : 'network.mainnet');
+
+// Remembers the choice for the next page load. false when this browser would not keep it: then a reload would come
+// back on the same network, so nothing else should happen.
+export const rememberNetwork = (to: NetworkId): boolean => storage.set(NETWORK_KEY, to);
+// A reload is the simplest way to drop everything that belongs to the network being left: the cached ApiPromise
+// connections (src/chain/connections.ts), the WalletConnect client and its session, and every loaded query; the
+// next page load resolves NETWORK again.
+export const reloadPage = (): void => { window.location.reload(); };
+
+// Remembers the choice and reloads; false (and no reload) when the browser would not keep it.
+export function switchNetwork(to: NetworkId, reload: () => void = reloadPage): boolean {
+  if (!rememberNetwork(to)) return false;
   reload();
   return true;
 }
 
 export const caip2For = (network: NetworkConfig, chain: ChainKey) => `polkadot:${network.chains[chain].genesis.slice(2, 34)}`;
+// The CAIP-2 id of a chain of the network this page reads. Not used to sign today (the explorer never signs). If
+// signing is added: refuse it unless NETWORK_ID === 'mainnet', because the WalletConnect session always holds the
+// mainnet chains (src/account/connectors/walletconnect.ts) and a request on PEZKUWI_CHAINS from a Zagros page would
+// sign on mainnet; a request on caip2() from a Zagros page fails safely (the session has no Zagros chain).
 export const caip2 = (chain: ChainKey) => caip2For(NETWORK, chain);

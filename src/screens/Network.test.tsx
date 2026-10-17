@@ -13,12 +13,25 @@ const impl = vi.hoisted(() => ({
   calls: 0,
 }));
 vi.mock('../data/network', () => ({ loadNetwork: () => { impl.calls++; return impl.load(); } }));
-// The switch itself (storage + reload) is tested in src/config/network.test.ts; here only that it is asked for.
-const sw = vi.hoisted(() => ({ calls: [] as string[], ok: true }));
+// Writing the choice and reloading are tested in src/config/network.test.ts; here only that, and in which order,
+// the screen asks for them. `events` records the order of write, disconnect and reload.
+const sw = vi.hoisted(() => ({ events: [] as string[], ok: true, disconnect: (): Promise<void> => Promise.resolve() }));
 vi.mock('../config/network', async (orig) => ({
   ...(await orig<typeof import('../config/network')>()),
-  switchNetwork: (to: string) => { sw.calls.push(to); return sw.ok; },
+  rememberNetwork: (to: string) => { sw.events.push(`write:${to}`); return sw.ok; },
+  reloadPage: () => { sw.events.push('reload'); },
 }));
+vi.mock('../account/connectors/walletconnect', async (orig) => ({
+  ...(await orig<typeof import('../account/connectors/walletconnect')>()),
+  // Like the real one: the first call forgets the session at once, so a later call (forget's own) has nothing to end.
+  disconnectWalletConnect: () => {
+    if (sw.events.includes('disconnect')) return Promise.resolve();
+    sw.events.push('disconnect');
+    return sw.disconnect().then(() => { sw.events.push('disconnected'); });
+  },
+  restoreWalletConnect: () => Promise.resolve({ state: 'live', accounts: ['5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY'], peerName: 'pezWallet' }),
+}));
+const switched = () => sw.events.filter((e) => e.startsWith('write') || e === 'reload');
 
 const ALICE = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const full: Overview = { live: true, validators: 4, votes: [], treasury: 7_000_000_000_000n };
@@ -27,7 +40,7 @@ const card = (name: string) => screen.getByRole('heading', { name }).closest('se
 
 describe('Network', () => {
   beforeEach(async () => {
-    await i18n.changeLanguage('en'); impl.calls = 0; sw.calls = []; sw.ok = true; localStorage.clear();
+    await i18n.changeLanguage('en'); impl.calls = 0; sw.events = []; sw.ok = true; sw.disconnect = () => Promise.resolve(); localStorage.clear(); vi.useRealTimers();
     impl.load = () => Promise.resolve(full);
   });
 
@@ -147,7 +160,7 @@ describe('Network', () => {
       renderIt();
       fireEvent.click(within(group()).getByRole('radio', { name: 'Mainnet' }));
       expect(screen.queryByRole('dialog')).toBeNull();
-      expect(sw.calls).toEqual([]);
+      expect(sw.events).toEqual([]);
     });
     it('asks before switching, because the page reloads; Cancel keeps the network', () => {
       renderIt();
@@ -158,14 +171,14 @@ describe('Network', () => {
       expect(d).not.toHaveTextContent('signed out');
       fireEvent.click(within(d).getByRole('button', { name: 'Cancel' }));
       expect(screen.queryByRole('dialog')).toBeNull();
-      expect(sw.calls).toEqual([]);
+      expect(sw.events).toEqual([]);
     });
     it('confirming switches to the chosen network; a pasted address stays open (both networks use SS58 42)', async () => {
       storage.set('account', ALICE); storage.set('account-source', 'address');
       renderIt();
       fireEvent.click(within(group()).getByRole('radio', { name: 'Testnet (Zagros)' }));
       fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Change and reload' }));
-      await waitFor(() => expect(sw.calls).toEqual(['zagros']));
+      await waitFor(() => expect(switched()).toEqual(['write:zagros', 'reload']));
       expect(storage.get('account')).toBe(ALICE);
     });
     it('a signed-in wallet is told, and signed out before the reload', async () => {
@@ -175,17 +188,92 @@ describe('Network', () => {
       const d = screen.getByRole('dialog');
       expect(d).toHaveTextContent('Your wallet is signed out first; connect it again afterwards.');
       fireEvent.click(within(d).getByRole('button', { name: 'Change and reload' }));
-      await waitFor(() => expect(sw.calls).toEqual(['zagros']));
+      await waitFor(() => expect(switched()).toEqual(['write:zagros', 'reload']));
       expect(storage.get('account')).toBeNull();
       expect(storage.get('account-source')).toBeNull();
     });
-    it('says so when the browser would not keep the choice', async () => {
+    it('says so when the browser would not keep the choice, and signs nobody out', async () => {
       sw.ok = false;
+      storage.set('account', ALICE); storage.set('account-source', 'extension');
       renderIt();
       fireEvent.click(within(group()).getByRole('radio', { name: 'Testnet (Zagros)' }));
       fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Change and reload' }));
       expect(await screen.findByRole('alert')).toHaveTextContent('This browser would not keep the choice');
       expect(screen.queryByRole('dialog')).toBeNull();
+      expect(sw.events).toEqual(['write:zagros']);
+      expect(storage.get('account')).toBe(ALICE);
+    });
+    it('WalletConnect: writes the choice, then waits for the disconnect, then reloads', async () => {
+      storage.set('account', ALICE); storage.set('account-source', 'walletconnect'); storage.set('wc-session', 'topic');
+      let end!: () => void;
+      sw.disconnect = () => new Promise<void>((r) => { end = r; });
+      renderIt();
+      fireEvent.click(within(group()).getByRole('radio', { name: 'Testnet (Zagros)' }));
+      const d = screen.getByRole('dialog');
+      expect(d).toHaveTextContent('Your wallet is signed out first');
+      fireEvent.click(within(d).getByRole('button', { name: 'Change and reload' }));
+      await waitFor(() => expect(sw.events[0]).toBe('write:zagros'));
+      expect(sw.events[1]).toBe('disconnect');
+      expect(sw.events).not.toContain('reload');
+      expect(storage.get('account')).toBeNull();
+      end();
+      await waitFor(() => expect(sw.events).toContain('reload'));
+      expect(sw.events.indexOf('disconnected')).toBeLessThan(sw.events.indexOf('reload'));
+    });
+    it('WalletConnect: a disconnect that never answers delays the reload by at most 2 s', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      storage.set('account', ALICE); storage.set('account-source', 'walletconnect'); storage.set('wc-session', 'topic');
+      sw.disconnect = () => new Promise<void>(() => {});
+      renderIt();
+      fireEvent.click(within(group()).getByRole('radio', { name: 'Testnet (Zagros)' }));
+      vi.useFakeTimers();
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Change and reload' }));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(sw.events.slice(0, 2)).toEqual(['write:zagros', 'disconnect']);
+      await vi.advanceTimersByTimeAsync(1999);
+      expect(sw.events).not.toContain('reload');
+      await vi.advanceTimersByTimeAsync(1);
+      expect(sw.events).toContain('reload');
+      expect(sw.events).not.toContain('disconnected');
+      vi.useRealTimers();
+    });
+  });
+
+  describe('keyboard', () => {
+    const group = () => screen.getByRole('radiogroup', { name: 'Network' });
+    const radio = (name: string) => within(group()).getByRole('radio', { name });
+    it('one tab stop: only the checked radio is in the tab order', () => {
+      renderIt();
+      expect(radio('Mainnet')).toHaveAttribute('tabindex', '0');
+      expect(radio('Testnet (Zagros)')).toHaveAttribute('tabindex', '-1');
+    });
+    it.each(['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'End'])('%s moves to the other network and asks to switch', (key) => {
+      renderIt();
+      radio('Mainnet').focus();
+      fireEvent.keyDown(radio('Mainnet'), { key });
+      expect(radio('Testnet (Zagros)')).toHaveFocus();
+      expect(screen.getByRole('dialog', { name: 'Change the network?' })).toBeInTheDocument();
+    });
+    it('Home stays on the first (current) network: no question', () => {
+      renderIt();
+      radio('Mainnet').focus();
+      fireEvent.keyDown(radio('Mainnet'), { key: 'Home' });
+      expect(radio('Mainnet')).toHaveFocus();
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    it('other keys do nothing', () => {
+      renderIt();
+      fireEvent.keyDown(radio('Mainnet'), { key: 'a' });
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    it('right to left: ArrowLeft moves forward', () => {
+      document.documentElement.dir = 'rtl';
+      try {
+        renderIt();
+        radio('Mainnet').focus();
+        fireEvent.keyDown(radio('Mainnet'), { key: 'ArrowLeft' });
+        expect(radio('Testnet (Zagros)')).toHaveFocus();
+      } finally { document.documentElement.dir = 'ltr'; }
     });
   });
 });

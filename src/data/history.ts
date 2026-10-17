@@ -47,16 +47,27 @@ function validNode(n: unknown): n is Node {
   return true;
 }
 
-// `returned` is how many nodes the indexer sent, before malformed ones were dropped: equal to `first` means the page was full.
-async function query(filter: string, fetcher: typeof fetch, first = 25): Promise<{ nodes: Node[]; returned: number }> {
+// `returned` is how many nodes the indexer sent, before malformed ones were dropped. `next` is the cursor of the
+// following page when the indexer says there is one; null when it says there is none; undefined when it gave no
+// page info (then a page as long as `first` has to be read as "there may be more").
+type Page = { nodes: Node[]; returned: number; next: string | null | undefined };
+async function query(filter: string, fetcher: typeof fetch, first = 25, page?: { orderBy: string; after: string | null }): Promise<Page> {
   const url = NETWORK.history.assetHub;
   if (!url) throw new NotIndexedError();
-  const body = JSON.stringify({ query: `{historyElements(first:${first},orderBy:TIMESTAMP_DESC,filter:${filter}){nodes{${FIELDS}}}}` });
+  const order = page ? page.orderBy : 'TIMESTAMP_DESC';
+  const after = page?.after ? `,after:${JSON.stringify(page.after)}` : '';
+  const info = page ? ' pageInfo{hasNextPage endCursor}' : '';
+  const body = JSON.stringify({ query: `{historyElements(first:${first},orderBy:${order}${after},filter:${filter}){nodes{${FIELDS}}${info}}}` });
   const res = await withTimeout(fetcher(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body }), REQUEST_TIMEOUT_MS);
   if (!res.ok) throw new Error(`history ${res.status}`);
-  const nodes = (await res.json())?.data?.historyElements?.nodes;
+  const conn = (await res.json())?.data?.historyElements;
+  const nodes = conn?.nodes;
   if (!Array.isArray(nodes)) throw new Error('history: malformed indexer response');
-  return { nodes: nodes.filter(validNode), returned: nodes.length };
+  const pi = conn?.pageInfo;
+  const next = pi && typeof pi.hasNextPage === 'boolean'
+    ? (pi.hasNextPage ? (typeof pi.endCursor === 'string' && pi.endCursor ? pi.endCursor : undefined) : null)
+    : undefined;
+  return { nodes: nodes.filter(validNode), returned: nodes.length, next };
 }
 
 // The indexer's extrinsicHash is shown to people as the transaction code: only 0x + 64 hex digits is one.
@@ -123,15 +134,36 @@ function firstOfEachEvent(sorted: Node[]): Node[] {
 // How many recent transfers an address lookup shows.
 export const RECENT_LIMIT = 5;
 
-// How many indexer nodes a code lookup reads. A full page means there may be more: the answer is then incomplete.
-export const CODE_PAGE = 200;
+// A code lookup reads the indexer in pages of CODE_PAGE nodes, the most the indexers return in one answer (measured
+// 2026-10-17 on both: `first:200` and `first:500` come back with 100 nodes and no error). It follows the cursor until
+// the indexer says there is no more, for at most CODE_MAX_PAGES pages; past that the answer is incomplete.
+export const CODE_PAGE = 100;
+export const CODE_MAX_PAGES = 10;
+
+// Every node of one transaction code, in pages (ID_ASC is unique, so a cursor never skips or repeats a node).
+// complete = false when there may be more than were read.
+async function codeNodes(code: string, fetcher: typeof fetch): Promise<{ nodes: Node[]; complete: boolean }> {
+  const filter = `{extrinsicHash:{equalTo:${JSON.stringify(code)}}}`;
+  const all: Node[] = [];
+  let after: string | null = null;
+  for (let i = 0; i < CODE_MAX_PAGES; i++) {
+    const page = await query(filter, fetcher, CODE_PAGE, { orderBy: 'ID_ASC', after });
+    all.push(...page.nodes);
+    // No page info: a short page is the last one; a full one may not be.
+    if (page.next === undefined) return { nodes: all, complete: page.returned < CODE_PAGE };
+    if (page.next === null) return { nodes: all, complete: true };
+    after = page.next;
+  }
+  return { nodes: all, complete: false };
+}
 
 export type PaymentLookup =
   | { status: 'notFound' }
   // A transaction code: one entry per transfer it made (a batch makes several), each from the sender's side.
   //   arrived / failed: exactly one transfer, or (failed) several and none went through: a verdict is true.
   //   several: more than one transfer and at least one went through: no single verdict, the list says who got what.
-  //   incomplete: the page was full, so the list may be missing transfers: no verdict at all.
+  //   incomplete: more than CODE_MAX_PAGES pages (or a full page with no page info), so the list may be missing
+//     transfers: no verdict at all.
   //   notAPayment / failedNotAPayment: the code made no transfer (and, for the latter, did not go through).
   | { kind: 'code'; status: 'arrived' | 'failed' | 'several' | 'incomplete' | 'notAPayment' | 'failedNotAPayment'; transfers: Activity[] }
   // An address: its most recent transfers, each relative to that address. No single verdict: the newest
@@ -141,12 +173,12 @@ export type PaymentLookup =
 export async function findPayment(input: string, fetcher: typeof fetch = fetch): Promise<PaymentLookup> {
   const text = input.trim();
   if (CODE_RE.test(text)) {
-    const { nodes, returned } = await query(`{extrinsicHash:{equalTo:${JSON.stringify(text.toLowerCase())}}}`, fetcher, CODE_PAGE);
+    const { nodes, complete } = await codeNodes(text.toLowerCase(), fetcher);
     const transfers = firstOfEachEvent(nodes.filter((n) => n.transfer || n.assetTransfer).sort(byEvent))
       // Always the sender's perspective, so the answer does not depend on which node of a pair came first.
       .map((n) => toActivity(n, (n.transfer ?? n.assetTransfer)!.from));
-    // A full page (counted before malformed nodes were dropped): the indexer may hold more than these, so no verdict.
-    if (returned >= CODE_PAGE) return { kind: 'code', status: 'incomplete', transfers };
+    // The indexer may hold more than were read: no verdict.
+    if (!complete) return { kind: 'code', status: 'incomplete', transfers };
     if (nodes.length === 0) return { status: 'notFound' };
     if (transfers.length === 0) {
       const ex = nodes.find((n) => n.extrinsic) ?? nodes[0];

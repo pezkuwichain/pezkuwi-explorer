@@ -56,7 +56,8 @@ describe('Citizenship', () => {
     expect(numberRow).toHaveTextContent('Citizen no.DK-000057');
     expect(front().querySelector('.cid-chip')).toHaveTextContent('✓ Approved');
     expect(within(back()).getByText(ALICE)).toBeInTheDocument();
-    expect(back()).toHaveTextContent('Zagros');
+    expect(back()).toHaveTextContent('Testnet (Zagros)');
+    expect(front().querySelector('.cid-net')).toHaveTextContent('PEZKUWICHAIN · ZAGROS');
     expect(back()).toHaveTextContent('ON-CHAIN · NFT 57');
     expect(back().querySelector('.cid-qr svg path')!.getAttribute('d')!.length).toBeGreaterThan(100);
     const mrz = [...back().querySelectorAll('.cid-mrz > div')].map((d) => d.textContent);

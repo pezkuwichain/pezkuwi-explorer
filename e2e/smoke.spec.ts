@@ -41,6 +41,19 @@ test('home shows the four tiles, the way in, the tabs and the experts link, and 
   const light = page.getByRole('status');
   await expect(light).not.toHaveText(/Checking/, { timeout: 30_000 });
   await expect(light).toHaveText(/The network is working/);
+  // The pin took: this page reads Zagros (so every check here is about Zagros).
+  await expect(page.locator('header.brand .net-chip-zagros')).toHaveText('Testnet (Zagros)');
+});
+
+test('a first visit reads mainnet and the live mainnet network answers', async ({ page }) => {
+  // Runs after the Zagros pin of beforeEach: removes it again, as on a first visit.
+  await page.addInitScript(() => localStorage.removeItem('pezkuwi-explorer:network'));
+  await page.goto('/network');
+  await expect(page.locator('.page-header .net-chip-mainnet')).toHaveText('Mainnet');
+  await expect(page.getByRole('radio', { name: 'Mainnet' })).toHaveAttribute('aria-checked', 'true');
+  const light = page.locator('section.live');
+  await expect(light).not.toHaveText(/Checking/, { timeout: 30_000 });
+  await expect(light).toHaveText(/The network is working/);
 });
 
 test('the wallet way opens the wallet dialog; Escape closes it and gives focus back', async ({ page }) => {

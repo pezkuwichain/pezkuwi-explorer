@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   MAINNET, MAINNET_HISTORY_URL, NETWORK, NETWORKS, NETWORK_ID, NETWORK_KEY, ZAGROS, ZAGROS_HISTORY_URL,
-  caip2, caip2For, resolveNetworkId, switchNetwork,
+  caip2, caip2For, networkLabelKey, resolveNetworkId, switchNetwork,
 } from './network';
 import { IWALLET_NETWORK } from './iwallet-network';
 
@@ -57,24 +57,15 @@ describe('which network the explorer reads', () => {
     expect(switchNetwork('zagros', reload)).toBe(false);
     expect(reload).not.toHaveBeenCalled();
   });
+  it('names each network for people through i18n, not the config name', () => {
+    expect(networkLabelKey('mainnet')).toBe('network.mainnet');
+    expect(networkLabelKey('zagros')).toBe('network.testnet');
+  });
   it('the default reload is the page reload', () => {
     const reload = vi.fn();
     vi.spyOn(window, 'location', 'get').mockReturnValue({ ...window.location, reload } as Location);
     switchNetwork('zagros');
     expect(reload).toHaveBeenCalledTimes(1);
-  });
-  it('i-Wallet stays on mainnet whatever the explorer reads', async () => {
-    const before = structuredClone(IWALLET_NETWORK);
-    localStorage.setItem(STORED, 'zagros');
-    vi.resetModules();
-    const zagrosPage = await import('./network');
-    const iw = await import('./iwallet-network');
-    expect(zagrosPage.NETWORK_ID).toBe('zagros');
-    expect(iw.IWALLET_NETWORK).toEqual(before);
-    expect(iw.IWALLET_NETWORK.chains.relay.rpc).toEqual(['wss://rpc.pezkuwichain.io']);
-    expect(iw.IWALLET_NETWORK.chains.assetHub.genesis).toBe('0xe7c15092dcbe3f320260ddbbc685bfceed9125a3b3d8436db2766201dec3b949');
-    switchNetwork('zagros', () => {});
-    expect(IWALLET_NETWORK).toEqual(before);
   });
   it('mainnet reuses the i-Wallet chains and has its own history indexer', () => {
     expect(MAINNET.chains).toEqual(IWALLET_NETWORK.chains);

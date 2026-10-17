@@ -22,7 +22,7 @@ import {
 } from '../tx';
 import { useSignedTx } from '../useSignedTx';
 import { AuthConfirm } from '../AuthConfirm';
-import { TxResult, txSettled } from '../TxResult';
+import { TxProgress, TxResult, txSettled } from '../TxResult';
 import RequireUnlocked from '../RequireUnlocked';
 import '../iwallet.css';
 
@@ -278,10 +278,9 @@ function SendBody({ address }: { address: string }) {
   const review = (e: FormEvent) => { e.preventDefault(); if (canReview) { signer.setAuthError(null); setPhase('confirm'); } };
   const doSend = (password: string) => {
     if (!api || toNorm === null || amount === null) return;
-    void signer.run(api, () => buildTransfer(api, token, toNorm, amount), password).then((o) => {
-      // The old "Available" and Max are stale once anything may have left: read them again.
-      if (o !== null) setBalanceRun((n) => n + 1);
-    });
+    // The old "Available" and Max are stale once anything may have left: read them again, and again when a late final
+    // answer replaces "slow".
+    void signer.run(api, () => buildTransfer(api, token, toNorm, amount), password, () => setBalanceRun((n) => n + 1));
   };
   const pickToken = (tk: SendToken) => {
     if (tk !== token) { setAmountText(''); setAck(false); }
@@ -294,14 +293,18 @@ function SendBody({ address }: { address: string }) {
     signer.reset(); setPhase('form'); setTo(''); setAmountText(''); setAck(false); setMaxBusy(false); setScanError(false); setScanning(false);
   };
 
+  // First child of both the confirm form and the result, so the overlay stays one from the password to the answer.
+  const overlay = <TxProgress progress={signer.progress} />;
   if (outcome.kind !== 'idle') {
-    return (
+    return (<>
+      {overlay}
       <TxResult
         title={t('iwallet.send.title', { token })}
         outcome={outcome}
         doneTitle={t('iwallet.send.doneTitle')}
         failedTitle={t('iwallet.send.failedTitle')}
         interrupted={t('iwallet.send.interrupted')}
+        unknown={t('iwallet.send.unknown')}
         detail={outcome.kind === 'finalized' && <>
           <p className="iw-lead">{amount !== null ? money(amount) : ''} → <bdi dir="ltr">{shortAddress(toNorm ?? '')}</bdi></p>
           <p className="iw-lead">{t('iwallet.send.network')}: {chainName}</p>
@@ -313,11 +316,12 @@ function SendBody({ address }: { address: string }) {
           {txSettled(outcome) && <button type="button" className="iw-secondary" onClick={reset}>{t('iwallet.send.another')}</button>}
         </>}
       />
-    );
+    </>);
   }
 
   if (phase === 'confirm') {
-    return (
+    return (<>
+      {overlay}
       <div className="iw">
         <PageHeader title={t('iwallet.send.confirmTitle')} />
         <AuthConfirm
@@ -338,7 +342,7 @@ function SendBody({ address }: { address: string }) {
           submitLabel={t('iwallet.send.confirm')}
         />
       </div>
-    );
+    </>);
   }
 
   if (phase === 'token') return <TokenStep onPick={pickToken} />;

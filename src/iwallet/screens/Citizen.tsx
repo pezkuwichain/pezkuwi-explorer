@@ -21,7 +21,7 @@ import {
 import { AuthConfirm } from '../AuthConfirm';
 import { useSignedTx } from '../useSignedTx';
 import CopyAddress from '../CopyAddress';
-import { TxResult, txSettled } from '../TxResult';
+import { TxProgress, TxResult, txSettled } from '../TxResult';
 import RequireUnlocked from '../RequireUnlocked';
 import '../iwallet.css';
 
@@ -186,13 +186,20 @@ function CitizenBody({ address }: { address: string }) {
 
   const sign = async (password: string) => {
     if (!loaded || !action) return;
-    // The result screen shows once the password has decrypted the key (the outcome leaves 'idle').
-    const result = await signer.run(apiFor(action, loaded), txFor(action, loaded), password);
-    if (result === null) return;
-    // Unless the teleport is proven failed (ExtrinsicFailed, or refused before it left), it may still land: poll People
-    // and keep the teleport button away, so an unknown outcome never invites a second teleport.
-    if (action.kind === 'teleport' && result.kind !== 'failed') { markTeleportSent(address); setFunding('waiting'); }
-    if (action.kind === 'approve') refsFresh.current = false;
+    // The result screen shows once the password has decrypted the key (the outcome leaves 'idle'). Follow-ups run on
+    // every settled outcome: the first (perhaps "slow") and a late final answer that replaces it.
+    const kind = action.kind;
+    let waiting = false;
+    await signer.run(apiFor(action, loaded), txFor(action, loaded), password, (o) => {
+      // Unless the teleport is proven failed (ExtrinsicFailed, or refused before it left), it may still land: poll
+      // People and keep the teleport button away, so an unknown outcome never invites a second teleport. A late proven
+      // failure lifts that again.
+      if (kind === 'teleport') {
+        if (o.kind === 'failed') { if (waiting) { waiting = false; clearTeleportSent(address); setFunding('idle'); } }
+        else if (!waiting) { waiting = true; markTeleportSent(address); setFunding('waiting'); }
+      }
+      if (kind === 'approve') refsFresh.current = false;
+    });
   };
 
   const backToMain = () => { setPhase('main'); setAction(null); signer.reset(); refresh(); };
@@ -204,23 +211,28 @@ function CitizenBody({ address }: { address: string }) {
     review({ kind: 'apply', hash: identityHash(form, address), referrer: referrer.value });
   };
 
+  // First child of both the confirm form and the result, so the overlay stays one from the password to the answer.
+  const overlay = <TxProgress progress={signer.progress} />;
   if (signer.outcome.kind !== 'idle' && action) {
     const o = signer.outcome;
-    return (
+    return (<>
+      {overlay}
       <TxResult
         title={t('iwallet.citizen.title')}
         outcome={o}
         doneTitle={t(`iwallet.citizen.done.${action.kind}`)}
         failedTitle={t('iwallet.citizen.failedTitle')}
         interrupted={t('iwallet.citizen.interrupted')}
+        unknown={t('iwallet.citizen.unknown')}
         actions={txSettled(o) && <button type="button" className="iw-primary" onClick={backToMain}>{t('iwallet.citizen.back')}</button>}
       />
-    );
+    </>);
   }
 
   if (phase === 'confirm' && action && loaded) {
     const chain = action.kind === 'teleport' ? 'assetHub' : 'people';
-    return (
+    return (<>
+      {overlay}
       <div className="iw">
         <PageHeader title={t('iwallet.citizen.confirmTitle')} />
         <AuthConfirm
@@ -261,7 +273,7 @@ function CitizenBody({ address }: { address: string }) {
           submitLabel={t('iwallet.citizen.sign')}
         />
       </div>
-    );
+    </>);
   }
 
   if (data === null) {

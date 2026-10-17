@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { KurdistanSun } from './KurdistanSun';
 import './ProgressOverlay.css';
 
 const usable = (el: Element | null): el is HTMLElement =>
-  el instanceof HTMLElement && el.isConnected && !(el as HTMLButtonElement).disabled && !el.closest('[inert]');
+  el instanceof HTMLElement && el !== document.body && el.isConnected && !(el as HTMLButtonElement).disabled && !el.closest('[inert]');
 
 // After a failure (a wrong password) the person types again: the first enabled field near where they were, or the
 // error itself when there is no field.
@@ -21,11 +21,23 @@ function fieldOrError(before: HTMLElement | null): HTMLElement | null {
 // while it shows, including what is added to <body> meanwhile. It takes focus and keeps it. When it goes, focus
 // returns where it was; after a failure (`failed()`) the screen behind focuses its own field (AuthConfirm, Unlock),
 // and this only falls back to the first usable field or the error.
-export function ProgressOverlay({ message, failed = () => false }: { message: string; failed?: () => boolean }) {
+// The message may change while it shows (a transaction's steps); the card is a polite live region, so each new line is
+// announced once. `dismiss` offers a way out that cancels nothing (the wait goes on behind): `dismiss.ready` shows its
+// button, and while `dismiss` is given Escape does the same.
+export function ProgressOverlay({ message, failed = () => false, dismiss, focusAfter }: {
+  message: string;
+  failed?: () => boolean;
+  /** Where focus goes on close (not after a failure) when the element focused before is gone, e.g. a result heading. */
+  focusAfter?: () => HTMLElement | null;
+  dismiss?: { label: string; ready: boolean; onDismiss: () => void };
+}) {
   const host = useRef<HTMLDivElement>(null);
   const card = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   const failedRef = useRef(failed);
-  useEffect(() => { failedRef.current = failed; });
+  const dismissRef = useRef(dismiss);
+  const focusAfterRef = useRef(focusAfter);
+  useEffect(() => { failedRef.current = failed; dismissRef.current = dismiss; focusAfterRef.current = focusAfter; });
   useEffect(() => {
     const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const hostEl = host.current;
@@ -41,9 +53,15 @@ export function ProgressOverlay({ message, failed = () => false }: { message: st
       for (const r of records) r.addedNodes.forEach((n) => { if (n instanceof Element && n.parentNode === document.body) hide(n); });
     });
     watch.observe(document.body, { childList: true });
+    // On the document, so it works wherever focus is (a click on the backdrop leaves it on <body>).
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && dismissRef.current) { e.preventDefault(); dismissRef.current.onDismiss(); }
+    };
+    document.addEventListener('keydown', onKey);
     card.current?.focus();
     return () => {
       watch.disconnect();
+      document.removeEventListener('keydown', onKey);
       for (const { el, aria } of hidden) {
         el.removeAttribute('inert');
         if (aria === null) el.removeAttribute('aria-hidden'); else el.setAttribute('aria-hidden', aria);
@@ -53,19 +71,28 @@ export function ProgressOverlay({ message, failed = () => false }: { message: st
       setTimeout(() => {
         const now = document.activeElement;
         if (now && now !== document.body && now.isConnected && !hostEl?.contains(now)) return; // already placed
-        const target = wasFailure ? fieldOrError(before) : (usable(before) ? before : null);
+        const target = wasFailure ? fieldOrError(before) : (usable(before) ? before : (focusAfterRef.current?.() ?? null));
+        // A heading is not focusable by itself.
+        if (target && !wasFailure && target !== before && !target.hasAttribute('tabindex')) target.tabIndex = -1;
         target?.focus();
       }, 0);
     };
   }, []);
+  // Focus stays in the card: Tab moves only between the card and its button, when there is one.
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    const b = button.current;
+    if (b) (document.activeElement === b ? card.current : b)?.focus();
+  };
   return createPortal(
     <div ref={host} className="progress-overlay">
-      <div
-        ref={card} className="progress-card" role="status" aria-live="polite" tabIndex={-1}
-        onKeyDown={(e) => { if (e.key === 'Tab') e.preventDefault(); }}
-      >
+      <div ref={card} className="progress-card" role="status" aria-live="polite" tabIndex={-1} onKeyDown={onKeyDown}>
         <KurdistanSun size={100} />
         <p className="progress-message">{message}</p>
+        {dismiss?.ready && (
+          <button ref={button} type="button" className="progress-dismiss" onClick={() => dismiss.onDismiss()}>{dismiss.label}</button>
+        )}
       </div>
     </div>,
     document.body,

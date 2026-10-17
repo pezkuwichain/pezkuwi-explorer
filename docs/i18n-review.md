@@ -623,6 +623,53 @@ labels are the chip in each screen's header. `mascot.say3` now names the network
 - ckb, fa and ar are drafts. In those scripts `{{network}}` in `mascot.say3` is now the localised network label (it was
   the transliterated "زاگرۆس" / "زاگرس" / "زاغروس"); a native reader may prefer a localised name per network.
 
+### Overlay while a transaction reaches the chain (2026-10-17, Serok)
+
+The Kurdistan-sun overlay of a signed action now stays up from the password until the chain's answer: "Signing…"
+(`iwallet.signing`), then "Sending to the network…", then the existing `iwallet.send.inBlock` text (reused, not
+duplicated). After 8 s with the network it offers a way to hide it; the transfer carries on and the result screen keeps
+following it. Two new keys, all six files:
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `iwallet.broadcasting` | Ağa gönderiliyor… | Sending to the network… | Ji torê re tê şandin… | بۆ تۆڕ دەنێردرێت… | در حال ارسال به شبکه… | جارٍ الإرسال إلى الشبكة… |
+| `iwallet.background` | Arka planda devam et | Continue in background | Li paş bidomîne | لە پاشبنەمادا بەردەوام بە | ادامه در پس‌زمینه | المتابعة في الخلفية |
+
+- kmr `broadcasting`: Ferheng Tor/m. (the explorer's "Tor" for the network, `network.title`) and Şandin/m. "Şeyandin,
+  hewale, hinartin"; "ji … re tê şandin" as in `iwallet.create.body` ("ji serverên me re nayê şandin"), "torê" the
+  feminine oblique as in "Tora sereke". Draft for a native reading.
+- kmr `background`: "Bidomîne" is pwap verbatim (`continue`), from Domandin/m. "Dewamkirin, domkirin, … nesekinandin";
+  "li paş" is Paş/m. "Vajiyê pêş". The Ferheng has no word for a computer "background", so "Li paş bidomîne" ("carry on
+  behind") is new wording: **flagged for native reading**.
+- ckb, fa and ar are drafts. ckb "تۆڕ" and "دەنێردرێت" as in `send.working` / `send.inBlock`; "پاشبنەما" (background) is
+  not attested in pwap or the explorer.
+
+New key (PR #27 review): an error seen in a block that is not final yet is shown as "likely failed" until finality
+decides (the block may be retracted and the transaction included again).
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `iwallet.send.likelyFailed` | Büyük olasılıkla başarısız oldu. Kesinleşmesi bekleniyor… | Likely failed. Waiting for final confirmation… | Dibe ku bi ser neketibe. Li benda piştrastkirina dawî… | ڕەنگە سەرکەوتوو نەبووبێت. چاوەڕێی پشتڕاستکردنەوەی کۆتایی… | احتمالاً ناموفق بود. در انتظار تأیید نهایی… | على الأرجح فشلت. بانتظار التأكيد النهائي… |
+
+- kmr: "bi ser neket" is pwap verbatim (`account.failed`), here in the subjunctive perfect after "dibe ku" (as in
+  `send.interrupted` "Dibe ku … temam bibe"); the second sentence is `send.inBlock` verbatim. Flagged for native reading.
+- ckb, fa, ar: drafts; the second sentence follows each locale's `send.inBlock`.
+
+New keys (PR #27 re-review). Each is assembled from sentences that already exist in the same locale, so no new wording:
+
+- `iwallet.send.unknown` / `iwallet.citizen.unknown`: the second sentence of `send.interrupted` / `citizen.interrupted`
+  without "The connection dropped." Shown when no connection dropped: no block within two minutes, or an unknown result.
+- `iwallet.send.slowLikelyFailed`: the first sentence of `send.likelyFailed` + `send.slow` without its first sentence
+  ("Accepted by the network."). Shown when a likely failure then turns slow.
+
+| key | tr | en | kmr |
+|---|---|---|---|
+| `iwallet.send.unknown` | Gönderim yine de tamamlanabilir: tekrar göndermeden önce bakiyeni kontrol et. | The transfer may still go through: check your balance before sending again. | Dibe ku şandin dîsa jî temam bibe: berî ku dîsa bişînî balansa xwe kontrol bike. |
+| `iwallet.citizen.unknown` | İşlem yine de gerçekleşebilir: tekrar denemeden önce bir dakika sonra bu sayfaya yeniden bak. | It may still go through: check this page again in a minute before trying again. | Dibe ku dîsa jî temam bibe: berî ku dîsa biceribînî, piştî deqeyekê li vê rûpelê binêre. |
+| `iwallet.send.slowLikelyFailed` | Büyük olasılıkla başarısız oldu. Son onay yavaş: yine de tamamlanabilir, bakiyeni sonra kontrol et. | Likely failed. Final confirmation is slow: it may still complete, check your balance later. | Dibe ku bi ser neketibe. Piştrastkirina dawî hêdî ye: dibe ku dîsa jî temam bibe, paşê balansa xwe kontrol bike. |
+
+ckb, fa and ar are built the same way from their own existing texts. They are drafts, like their sources.
+
 ### Privacy and terms pages and footer (2026-10-17, Serok)
 
 The `/privacy` and `/terms` pages and the footer links. The long text is not in the locale files: it is in

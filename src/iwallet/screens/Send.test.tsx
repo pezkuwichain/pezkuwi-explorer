@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { user } from '../test-user';
 import i18n from '../../i18n';
 import { IWalletProvider } from '../IWalletContext';
 import IWalletShell, { IWalletIndex } from '../IWalletRoutes';
 import Send from './Send';
+import { BACKGROUND_AFTER_MS } from '../useSignedTx';
+import { FINALITY_POLL_MS, SEND_WAIT_MS } from '../tx';
 import type { KvStore } from '../idb';
 
 const ADDR = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
@@ -22,6 +24,10 @@ const impl = vi.hoisted(() => ({
   // connection, fee estimate and signature was made on.
   spendBy: {} as Record<string, bigint>, spendFail: [] as string[], feeBy: {} as Record<string, bigint>, metaErrBy: {} as Record<string, string>,
   apiChains: [] as string[], signedOn: [] as string[], feeOn: [] as string[], unlockGate: null as null | Promise<void>,
+  // Manual: the status subscription reports only what a test pushes, when it pushes it.
+  manual: false, push: null as null | ((kind: string) => void),
+  // Calls to send (anything handed to the node), a gate on signing, and the chain's finalized number and its reads.
+  sends: 0, signGate: null as null | Promise<void>, finalizedN: 0, finReads: 0,
 }));
 
 vi.mock('../data', () => ({
@@ -63,10 +69,13 @@ const result = (kind: string) => {
   if (kind === 'inBlock') return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } } };
   if (kind === 'finalized') return { ...base, status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb2' } } };
   if (kind === 'timeout') return { ...base, status: { ...base.status, isFinalityTimeout: true } };
+  if (kind === 'retracted') return { ...base, status: { ...base.status, isRetracted: true } };
   if (kind === 'finalizedNoEvents') return { ...base, events: [], internalError: new Error('events'), status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb2' } } };
   if (kind === 'dropped') return { ...base, status: { ...base.status, isDropped: true } };
   if (kind === 'invalid') return { ...base, status: { ...base.status, isInvalid: true } };
-  return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } }, dispatchError: { isModule: kind === 'failed', asModule: {} } };
+  // In a block with an error: likely failed, not final. 'failed' / 'failedOther': finalized with the error.
+  if (kind === 'inBlockFailed') return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } }, dispatchError: { isModule: true, asModule: {} } };
+  return { ...base, status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb1' } }, dispatchError: { isModule: kind === 'failed', asModule: {} } };
 };
 const mkTx = (chain: string, name: string, args: unknown[]) => ({
   paymentInfo: () => {
@@ -75,10 +84,12 @@ const mkTx = (chain: string, name: string, args: unknown[]) => ({
     const fee = impl.feeFn ? impl.feeFn(args[args.length - 1] as bigint) : (impl.feeBy[chain] ?? impl.fee);
     return (impl.feeGate ?? Promise.resolve()).then(() => ({ partialFee: { toBigInt: () => fee } }));
   },
-  signAsync: vi.fn(() => { impl.signed.push({ name, args }); impl.signedOn.push(chain); return Promise.resolve(); }),
+  signAsync: vi.fn(() => { impl.signed.push({ name, args }); impl.signedOn.push(chain); return impl.signGate ?? Promise.resolve(); }),
   send: (cb: (r: unknown) => void) => {
+    impl.sends++;
     if (impl.sendRejects) return Promise.reject(impl.rejectWith ?? new Error('ws closed'));
-    impl.script.forEach((k) => cb(result(k)));
+    if (impl.manual) impl.push = (k) => cb(result(k));
+    else impl.script.forEach((k) => cb(result(k)));
     return Promise.resolve(() => { impl.unsubs++; });
   },
 });
@@ -92,7 +103,17 @@ const mkApi = (chain: string) => ({
     // send routed to People would build and sign there, and only signedOn shows the mistake.
     ...(chain !== 'relay' ? { assets: { transfer: (...a: unknown[]) => mkTx(chain, 'assets.transfer', a) } } : {}),
   },
-  rpc: { chain: { getHeader: () => Promise.resolve({ number: { toNumber: () => (chain === 'assetHub' ? 77 : chain === 'relay' ? 88 : 99) } }) } },
+  // What the finality watcher reads: the finalized head ('0xfin', at impl.finalizedN), the canonical hash (the stub's
+  // in-block '0xb1'), the block's extrinsics and its events (index 0, this transfer, succeeded).
+  rpc: { chain: {
+    getHeader: (h: string) => Promise.resolve({ number: { toNumber: () => (h === '0xfin' ? impl.finalizedN : chain === 'assetHub' ? 77 : chain === 'relay' ? 88 : 99) } }),
+    getFinalizedHead: () => { impl.finReads++; return Promise.resolve('0xfin'); },
+    getBlockHash: () => Promise.resolve({ toHex: () => '0xb1' }),
+    getBlock: () => Promise.resolve({ block: { extrinsics: [{ hash: { toHex: () => '0xabc123' } }] } }),
+  } },
+  at: () => Promise.resolve({ query: { system: { events: () => Promise.resolve([
+    { phase: { isApplyExtrinsic: true, asApplyExtrinsic: { toNumber: () => 0 } }, event: { section: 'system', method: 'ExtrinsicSuccess', data: [] } },
+  ]) } } }),
   registry: { findMetaError: () => ({ section: 'balances', name: impl.metaErrBy[chain] ?? 'InsufficientBalance' }) },
   on, off,
 });
@@ -153,6 +174,12 @@ const confirmWith = async (pw: string) => {
   await user.type(await screen.findByLabelText('Parola'), pw);
   await user.click(screen.getByRole('button', { name: 'Gönder' }));
 };
+// The progress overlay's card (the only status left in the accessibility tree while it shows), and the result behind it.
+const overlay = () => document.querySelector<HTMLElement>('.progress-card');
+const inline = () => document.querySelector<HTMLElement>('.iw-result');
+const ACCEPTED = /Ağ tarafından kabul edildi/;
+const accepted = () => waitFor(() => expect(inline()).toHaveTextContent(ACCEPTED));
+const push = async (kind: string) => { await act(async () => { impl.push!(kind); }); };
 // The sign-in pair is created first; the transfer decrypts its own, which is the last one.
 const signPair = () => impl.pairs[impl.pairs.length - 1];
 
@@ -163,6 +190,7 @@ describe('i-Wallet send', () => {
     Object.assign(impl, { spendBy: {}, spendFail: [], feeBy: {}, metaErrBy: {}, apiChains: [], signedOn: [], feeOn: [], unlockGate: null });
     Object.assign(impl, { hezSpendable: 5000n * T, assets: { 1: 20n * T, 1000: 9_000_000_000n }, fee: 2_000_000_000n, script: ['inBlock', 'finalized'], sendRejects: false, faceOn: false, face: null, scanned: null, scanFails: false, feeFn: null, feeGate: null, unsubs: 0, rejectWith: null });
     impl.signed = []; impl.pairs = []; impl.unlockPw = []; impl.balanceReads = [];
+    impl.manual = false; impl.push = null; impl.sends = 0; impl.signGate = null; impl.finalizedN = 0; impl.finReads = 0;
   });
 
   it('gates HEZ above 1000 behind the orange alert and its checkbox, and only then enables confirm', async () => {
@@ -318,7 +346,9 @@ describe('i-Wallet send', () => {
     renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
-    expect(await screen.findByText(/Ağ tarafından kabul edildi/)).toBeInTheDocument();
+    await accepted();
+    // The overlay says the same over the screen until the answer comes.
+    expect(overlay()).toHaveTextContent(ACCEPTED);
     expect(screen.queryByText('Gönderildi')).toBeNull();
     // The secret key is already gone while the transfer is still waiting.
     expect(signPair().lock).toHaveBeenCalled();
@@ -345,7 +375,8 @@ describe('i-Wallet send', () => {
     const form = screen.getByLabelText('Parola').closest('form')!;
     fireEvent.submit(form); fireEvent.submit(form);
     await waitFor(() => expect(impl.signed).toHaveLength(1));
-    await waitFor(() => expect(document.querySelector('.progress-overlay')).toBeNull());
+    // Handed to the network, no answer yet: the overlay stays up with that step.
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
     expect(impl.signed).toHaveLength(1);
     expect(impl.unlockPw.filter((p) => p === 'right-pass1')).toHaveLength(2); // sign-in + one transfer
   });
@@ -384,12 +415,194 @@ describe('i-Wallet send', () => {
     renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
-    await screen.findByText(/Ağ tarafından kabul edildi/);
+    await accepted();
     const onDisconnect = stubApi.on.mock.calls.find((c) => c[0] === 'disconnected')![1] as () => void;
-    onDisconnect();
-    expect(await screen.findByText(/yine de tamamlanabilir/)).toBeInTheDocument();
+    act(() => onDisconnect());
+    // "May still complete" is an answer: the overlay closes on it. A real disconnect says so.
+    expect(await screen.findByText(/^Bağlantı koptu\. Gönderim yine de tamamlanabilir/)).toBeInTheDocument();
+    expect(overlay()).toBeNull();
     // The status subscription is released when the disconnect wins, not left running.
     await waitFor(() => expect(impl.unsubs).toBe(1));
+  });
+
+  it('releases the status subscription and the finality watcher when the screen goes away', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      impl.script = ['inBlock'];
+      const view = renderSend(); await login();
+      await fill(BOB, '1');
+      await confirmWith('right-pass1');
+      await accepted();
+      // The watcher is running (the chain is not final there yet).
+      await act(async () => { await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS); });
+      const reads = impl.finReads;
+      expect(reads).toBeGreaterThan(0);
+      expect(impl.unsubs).toBe(0);
+      view.unmount();
+      await waitFor(() => expect(impl.unsubs).toBe(1));
+      await act(async () => { await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS * 3); });
+      expect(impl.finReads).toBe(reads);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('leaving while the key is being opened sends nothing', async () => {
+    renderSend(); await login();
+    await fill(BOB, '1');
+    let open: () => void = () => undefined;
+    impl.unlockGate = new Promise<void>((r) => { open = r; });
+    const before = impl.pairs.length;
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(impl.pairs.length).toBe(before + 1));
+    cleanup();
+    await act(async () => { open(); });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(impl.signed).toEqual([]);
+    expect(impl.sends).toBe(0);
+    expect(signPair().lock).toHaveBeenCalled();
+  });
+
+  it('leaving while the transfer is being signed sends nothing', async () => {
+    renderSend(); await login();
+    await fill(BOB, '1');
+    let signed: () => void = () => undefined;
+    impl.signGate = new Promise<void>((r) => { signed = r; });
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(impl.signed).toHaveLength(1));
+    cleanup();
+    await act(async () => { signed(); });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(impl.sends).toBe(0);
+    expect(signPair().lock).toHaveBeenCalled();
+  });
+
+  it('confirms finality from the chain when the status subscription goes quiet', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      impl.script = ['inBlock'];
+      renderSend(); await login();
+      await fill(BOB, '1');
+      await confirmWith('right-pass1');
+      await accepted();
+      impl.finalizedN = 1_000;
+      await act(async () => { await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS); });
+      expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+      expect(overlay()).toBeNull();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('slow is not the end: another transfer is allowed, and a later finality still shows', async () => {
+    impl.manual = true;
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    await push('inBlock');
+    await push('timeout'); // the node gives up on finality
+    expect(overlay()).toBeNull();
+    expect(screen.getByText(/Son onay yavaş: yine de tamamlanabilir/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bir gönderim daha' })).toBeInTheDocument();
+    await push('finalized');
+    expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+  });
+
+  it('after slow, a retraction and a new block change nothing on screen; the late final answer does, and re-reads the balance', async () => {
+    impl.manual = true;
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    const reads0 = impl.balanceReads.length;
+    await push('inBlock');
+    await push('timeout');
+    await waitFor(() => expect(impl.balanceReads).toHaveLength(reads0 + 1)); // read again at "slow"
+    await push('retracted');
+    await push('inBlock');
+    // No overlay over the result, still "slow", still free to send another.
+    expect(overlay()).toBeNull();
+    expect(document.querySelector('[inert]')).toBeNull();
+    expect(inline()).toHaveTextContent(/Son onay yavaş/);
+    expect(inline()).not.toHaveTextContent(ACCEPTED);
+    expect(screen.getByRole('button', { name: 'Bir gönderim daha' })).toBeInTheDocument();
+    await push('finalized');
+    expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+    // The late answer re-reads the balance too.
+    await waitFor(() => expect(impl.balanceReads).toHaveLength(reads0 + 2));
+  });
+
+  it('keeps the likely-failed warning when final confirmation then turns slow', async () => {
+    impl.manual = true;
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    await push('inBlockFailed');
+    await push('timeout');
+    expect(inline()).toHaveTextContent('Büyük olasılıkla başarısız oldu. Son onay yavaş: yine de tamamlanabilir, bakiyeni sonra kontrol et.');
+  });
+
+  it('after slow and "send another", the old attempt can no longer touch the new screen', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      impl.manual = true;
+      renderSend(); await login();
+      await fill(BOB, '1');
+      await confirmWith('right-pass1');
+      await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+      await push('inBlock');
+      await push('timeout');
+      const oldPush = impl.push!;
+      const oldDisconnect = stubApi.on.mock.calls.findLast((c) => c[0] === 'disconnected')![1] as () => void;
+      // The watcher is reading for the old attempt.
+      await act(async () => { await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS); });
+      expect(impl.finReads).toBeGreaterThan(0);
+      await user.click(screen.getByRole('button', { name: 'Bir gönderim daha' }));
+      // The old attempt is let go: its subscription is released and its watcher stops reading.
+      await waitFor(() => expect(impl.unsubs).toBe(1));
+      const reads = impl.finReads;
+      await act(async () => { await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS * 3); });
+      expect(impl.finReads).toBe(reads);
+      // Late news for it (its connection drops, a final answer) changes nothing on the new screen.
+      act(() => oldDisconnect());
+      await act(async () => { oldPush('finalized'); });
+      // The new form, untouched.
+      expect(screen.getByLabelText('Alıcı adresi')).toBeInTheDocument();
+      expect(screen.queryByText('Gönderildi')).toBeNull();
+      expect(screen.queryByText(/yine de tamamlanabilir/)).toBeNull();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('says "likely failed" for an error in a block that is not final, and failed once it is', async () => {
+    impl.manual = true;
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    await push('inBlockFailed');
+    expect(overlay()).toHaveTextContent('Büyük olasılıkla başarısız oldu. Kesinleşmesi bekleniyor…');
+    expect(inline()).toHaveTextContent('Büyük olasılıkla başarısız oldu');
+    expect(screen.queryByText('Gönderim başarısız')).toBeNull();
+    await push('failed');
+    expect(overlay()).toBeNull();
+    expect(await screen.findByText('Gönderim başarısız')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Gönderim başarısız' })).toHaveFocus());
+  });
+
+  it('with no block two minutes after the hand-off, says it may still complete and frees the screen', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      impl.manual = true;
+      renderSend(); await login();
+      await fill(BOB, '1');
+      await confirmWith('right-pass1');
+      await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+      await act(async () => { await vi.advanceTimersByTimeAsync(SEND_WAIT_MS); });
+      // Nothing dropped here: the neutral wording, without "the connection dropped".
+      expect(await screen.findByText('Gönderim yine de tamamlanabilir: tekrar göndermeden önce bakiyeni kontrol et.')).toBeInTheDocument();
+      expect(screen.queryByText(/Bağlantı koptu/)).toBeNull();
+      expect(overlay()).toBeNull();
+      expect(screen.getByRole('button', { name: 'Bir gönderim daha' })).toBeInTheDocument();
+      expect(impl.unsubs).toBe(1);
+    } finally { vi.useRealTimers(); }
   });
 
   it('reports a transaction the pool refused as invalid (before any block) as not sent', async () => {
@@ -438,17 +651,23 @@ describe('i-Wallet send', () => {
     renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
-    await screen.findByText(/Ağ tarafından kabul edildi/);
+    await accepted();
     // The wallet locks (5 idle minutes, seen on the wall clock when the window regains focus).
     const now = Date.now();
     const spy = vi.spyOn(Date, 'now').mockImplementation(() => now + 5 * 60_000 + 1);
     fireEvent(window, new Event('focus'));
     spy.mockRestore();
-    // Still the result, not the unlock form.
-    expect(screen.getByText(/Ağ tarafından kabul edildi/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Kilidi aç' })).toBeNull();
+    // Still the result (and the overlay over it), not the unlock form.
+    expect(inline()).toHaveTextContent(ACCEPTED);
+    expect(overlay()).toHaveTextContent(ACCEPTED);
+    expect(document.querySelector('input[type="password"]')).toBeNull();
+    // Hidden by the person, the overlay leaves the result usable; leaving it shows the lock, which nothing covers.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(overlay()).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Bitti' }));
-    expect(await screen.findByRole('button', { name: 'Kilidi aç' })).toBeInTheDocument();
+    const unlock = await screen.findByRole('button', { name: 'Kilidi aç' });
+    expect(document.querySelector('[inert]')).toBeNull();
+    expect(unlock.closest('[aria-hidden="true"]')).toBeNull();
   });
 
   it('Max prices the call at the balance-sized amount and keeps a margin, so a fee that grows with the amount never overshoots', async () => {
@@ -508,6 +727,10 @@ describe('i-Wallet send', () => {
     const first = renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
+    // Behind the overlay until the person hides it (Escape at once, once it is with the network).
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    expect(screen.queryByRole('button', { name: 'Bitti' })).toBeNull();
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(await screen.findByRole('button', { name: 'Bitti' })).toBeInTheDocument();
     first.unmount();
     impl.script = ['inBlock', 'timeout'];
@@ -515,7 +738,98 @@ describe('i-Wallet send', () => {
     await fill(BOB, '1');
     await confirmWith('right-pass1');
     expect(await screen.findByText(/Son onay yavaş/)).toBeInTheDocument();
+    // Slow is an answer: the overlay has closed by itself.
+    expect(overlay()).toBeNull();
     expect(screen.getByRole('button', { name: 'Bitti' })).toBeInTheDocument();
+  });
+
+  // One overlay from the password to the chain's answer: each step said once, in order, then the result.
+  it('keeps one overlay up through signing, sending and acceptance, and closes it on the final answer', async () => {
+    impl.manual = true;
+    renderSend(); await login();
+    await fill(BOB, '1');
+    // Only the transfer's own decrypt is held (sign-in has already opened the key once).
+    let open: () => void = () => undefined;
+    impl.unlockGate = new Promise<void>((r) => { open = r; });
+    const said: string[] = [];
+    const watch = new MutationObserver(() => {
+      const m = document.querySelector('.progress-message')?.textContent ?? null;
+      if (m !== null && said.at(-1) !== m) said.push(m);
+    });
+    watch.observe(document.body, { subtree: true, childList: true, characterData: true });
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(overlay()).toHaveTextContent('İmzalanıyor…'));
+    const card = overlay()!;
+    expect(screen.getByRole('status')).toBe(card);
+    expect(card).toHaveFocus();
+    // Escape does nothing while the key is being opened.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(overlay()).toBe(card);
+    await act(async () => { open(); });
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    await push('inBlock');
+    expect(overlay()).toHaveTextContent(ACCEPTED);
+    // The same overlay all along, never closed and reopened.
+    expect(overlay()).toBe(card);
+    expect(document.querySelectorAll('.progress-overlay')).toHaveLength(1);
+    await push('finalized');
+    expect(overlay()).toBeNull();
+    expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+    // Focus goes to the result's heading.
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Gönderildi' })).toHaveFocus());
+    watch.disconnect();
+    expect(said).toEqual(['İmzalanıyor…', 'Ağa gönderiliyor…', 'Ağ tarafından kabul edildi. Kesinleşmesi bekleniyor…']);
+    // Nothing behind it stays inert.
+    expect(document.querySelector('[inert]')).toBeNull();
+  });
+
+  it('closes the overlay on a wrong password, shows the error inline and puts focus back in the field', async () => {
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('wrong');
+    expect(await screen.findByText('Parola yanlış. Tekrar dene.')).toBeInTheDocument();
+    expect(overlay()).toBeNull();
+    await waitFor(() => expect(screen.getByLabelText('Parola')).toHaveFocus());
+    expect(impl.signed).toEqual([]);
+  });
+
+  it('closes the overlay with "may still complete" when the connection drops after sending', async () => {
+    impl.manual = true;
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    const onDisconnect = stubApi.on.mock.calls.findLast((c) => c[0] === 'disconnected')![1] as () => void;
+    act(() => onDisconnect());
+    await waitFor(() => expect(overlay()).toBeNull());
+    expect(screen.getByText(/yine de tamamlanabilir/)).toBeInTheDocument();
+  });
+
+  it('offers "continue in background" after 8 s with the network; hiding cancels nothing', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      impl.manual = true;
+      renderSend(); await login();
+      await fill(BOB, '1');
+      await confirmWith('right-pass1');
+      await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+      const bg = () => screen.queryByRole('button', { name: 'Arka planda devam et' });
+      expect(bg()).toBeNull();
+      await act(async () => { vi.advanceTimersByTime(BACKGROUND_AFTER_MS - 1_000); });
+      expect(bg()).toBeNull();
+      await push('inBlock'); // the wait is counted from the hand-off, not again from the block
+      await act(async () => { vi.advanceTimersByTime(1_000); });
+      expect(bg()).toBeInTheDocument();
+      await user.click(bg()!);
+      expect(overlay()).toBeNull();
+      // The result screen carries on following the transfer.
+      expect(inline()).toHaveTextContent(ACCEPTED);
+      expect(screen.getByRole('button', { name: 'Bitti' })).toBeInTheDocument();
+      await push('finalized');
+      expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+      expect(overlay()).toBeNull();
+      expect(impl.unsubs).toBe(1);
+    } finally { vi.useRealTimers(); }
   });
 
   it('"another" resets the form and a second transfer can be sent', async () => {

@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { decodeAddress, encodeAddress } from '@pezkuwi/util-crypto';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { user } from '../test-user';
 import i18n from '../../i18n';
 import { IWalletProvider } from '../IWalletContext';
 import IWalletShell, { IWalletIndex } from '../IWalletRoutes';
-import { FUNDING_POLL, identityHash, loadForm, type CitizenForm } from '../citizen';
+import { FUNDING_POLL, identityHash, loadForm, teleportGuardActive, type CitizenForm } from '../citizen';
 import Citizen from './Citizen';
 import { shortAddress } from '../../lib/address';
 import type { KvStore } from '../idb';
@@ -28,6 +28,8 @@ const impl = vi.hoisted(() => ({
   fail: null as null | 'refs' | 'apps' | 'kycMulti' | 'nftMulti', refsGate: null as null | Promise<void>,
   script: ['inBlock', 'finalized'] as string[], dropAfterSend: false, scans: 0, feeFail: false,
   signed: [] as Array<{ name: string; args: unknown[] }>, pairs: [] as Array<{ lock: ReturnType<typeof vi.fn> }>,
+  // Manual: the status subscription reports only what a test pushes.
+  manual: false, push: null as null | ((kind: string) => void),
 }));
 
 vi.mock('../faceid', () => ({
@@ -55,7 +57,9 @@ const result = (kind: string) => {
   const base = { events: [{ event: { section: 'system', method: 'ExtrinsicSuccess' } }], internalError: undefined as unknown, dispatchError: undefined as unknown, txHash: { toHex: () => '0xabc123' }, status: { isInBlock: false, isFinalized: false, isDropped: false, isInvalid: false, isUsurped: false } };
   if (kind === 'inBlock') return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } } };
   if (kind === 'finalized') return { ...base, status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb2' } } };
-  return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } }, dispatchError: { isModule: true, asModule: {} } };
+  if (kind === 'timeout') return { ...base, status: { ...base.status, isFinalityTimeout: true } };
+  // Finalized with a dispatch error (a final failure).
+  return { ...base, status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb1' } }, dispatchError: { isModule: true, asModule: {} } };
 };
 const mkTx = (name: string, args: unknown[]) => ({
   // An apply with Some(referrer) is 32 bytes longer and costs REF_EXTRA more, as measured on mainnet.
@@ -64,7 +68,8 @@ const mkTx = (name: string, args: unknown[]) => ({
   send: (cb: (r: unknown) => void) => {
     // A dropped connection after the hand-off: the node may already hold the extrinsic.
     if (impl.dropAfterSend) return Promise.reject(new Error('ws closed'));
-    impl.script.forEach((k) => cb(result(k)));
+    if (impl.manual) impl.push = (k) => cb(result(k));
+    else impl.script.forEach((k) => cb(result(k)));
     return Promise.resolve(() => undefined);
   },
 });
@@ -156,7 +161,7 @@ describe('i-Wallet citizenship', () => {
     localStorage.clear(); sessionStorage.clear();
     store = new Map<string, unknown>([['keystore', {}], ['words', {}]]);
     Object.assign(impl, { status: 'NotStarted', nft: null, people: 0n, peopleAfter: [], assetHub: 10n * T, apps: [], refs: [], fail: null, refsGate: null, script: ['inBlock', 'finalized'], dropAfterSend: false, scans: 0, feeFail: false });
-    impl.signed = []; impl.pairs = [];
+    impl.signed = []; impl.pairs = []; impl.manual = false; impl.push = null;
     Object.assign(FUNDING_POLL, { everyMs: 20, forMs: 2_000 });
   });
   afterEach(() => { Object.assign(FUNDING_POLL, { everyMs: 6_000, forMs: 120_000 }); });
@@ -468,6 +473,74 @@ describe('i-Wallet citizenship', () => {
     expect(await screen.findByText('Referans onaylandı')).toBeInTheDocument();
     expect(impl.signed).toEqual([{ name: 'identityKyc.approveReferral', args: [BOB] }]);
   });
+  // Every signed citizenship action keeps the progress overlay up until the chain's answer, then shows the result.
+  const overlay = () => document.querySelector<HTMLElement>('.progress-card');
+  const starts: Record<string, { setup: () => void; open: () => Promise<void>; done: string }> = {
+    apply: {
+      setup: () => { impl.people = 2n * T; seedForm(FORM); },
+      open: async () => { await user.click(await screen.findByRole('checkbox')); await user.click(applyBtn()); },
+      done: 'Başvuru gönderildi',
+    },
+    confirm: {
+      setup: () => { impl.people = T; impl.status = 'ReferrerApproved'; },
+      open: async () => { await user.click(await screen.findByRole('button', { name: 'Vatandaşlığı Onayla' })); },
+      done: 'Vatandaşlık onaylandı',
+    },
+    cancel: {
+      setup: () => { impl.people = T; impl.status = 'PendingReferral'; },
+      open: async () => { await user.click(await screen.findByRole('button', { name: 'Başvuruyu İptal Et' })); },
+      done: 'Başvuru iptal edildi',
+    },
+    approve: {
+      setup: () => { impl.status = 'Approved'; impl.nft = 1n; impl.people = T; impl.apps = [{ applicant: BOB, referrer: ADDR, status: 'PendingReferral' }]; },
+      open: async () => { await user.click(await screen.findByRole('button', { name: `${BOB} onayla` })); },
+      done: 'Referans onaylandı',
+    },
+    teleport: {
+      setup: () => { seedForm(FORM); },
+      open: async () => { await user.click(await screen.findByRole('button', { name: /1,5 HEZ taşı/ })); },
+      done: 'HEZ yolda',
+    },
+  };
+  for (const [kind, a] of Object.entries(starts)) {
+    it(`keeps the overlay up while the ${kind} reaches the chain, and closes it on the answer`, async () => {
+      a.setup();
+      impl.manual = true;
+      renderCitizen(); await login();
+      await a.open();
+      await user.type(await screen.findByLabelText('Parola'), 'right-pass1');
+      await user.click(screen.getByRole('button', { name: 'İmzala ve gönder' }));
+      await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+      const card = overlay();
+      await act(async () => { impl.push!('inBlock'); });
+      expect(overlay()).toHaveTextContent('Ağ tarafından kabul edildi');
+      expect(overlay()).toBe(card);
+      await act(async () => { impl.push!('finalized'); });
+      expect(overlay()).toBeNull();
+      expect(await screen.findByText(a.done)).toBeInTheDocument();
+      expect(document.querySelector('[inert]')).toBeNull();
+    });
+  }
+
+  it('a slow teleport keeps the teleport away; a late proven failure brings it back', async () => {
+    seedForm(FORM);
+    impl.manual = true;
+    renderCitizen(); await login();
+    await user.click(await screen.findByRole('button', { name: /1,5 HEZ taşı/ }));
+    await user.type(await screen.findByLabelText('Parola'), 'right-pass1');
+    await user.click(screen.getByRole('button', { name: 'İmzala ve gönder' }));
+    await waitFor(() => expect(document.querySelector('.progress-card')).toHaveTextContent('Ağa gönderiliyor…'));
+    await act(async () => { impl.push!('inBlock'); });
+    await act(async () => { impl.push!('timeout'); });
+    // Slow: it may still land, so a second teleport is not offered.
+    await waitFor(() => expect(teleportGuardActive(ADDR)).toBe(true));
+    await act(async () => { impl.push!('failed'); });
+    expect(await screen.findByText('İşlem gerçekleşmedi')).toBeInTheDocument();
+    expect(teleportGuardActive(ADDR)).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Vatandaşlığa dön' }));
+    expect(await screen.findByRole('button', { name: /1,5 HEZ taşı/ })).toBeInTheDocument();
+  });
+
   it('keeps polling after a teleport whose outcome is unknown, and never offers a second teleport', async () => {
     impl.dropAfterSend = true;
     renderCitizen(); await login();

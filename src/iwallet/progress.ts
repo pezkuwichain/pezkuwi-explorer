@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react';
 
 // The key is opened and sealed with scrypt (N = 2^17), which takes seconds on a phone. While any of that runs the
-// i-Wallet shows one overlay (IWalletShell) saying what it is doing: opening the key, saving a new wallet, or signing.
-// Only the password work is wrapped, never storage I/O (IndexedDB has no timeout, and a stuck transaction must not
-// leave the screen covered).
+// i-Wallet shows one overlay (IWalletShell) saying what it is doing: opening the key or saving a new wallet. Only the
+// password work is wrapped, never storage I/O (IndexedDB has no timeout, and a stuck transaction must not leave the
+// screen covered). A signed action shows its own overlay from the password until the chain's answer (useSignedTx,
+// TxProgress), so it does not go through here; 'sign' is kept for IWalletShell's message table.
 export type KeyWork = 'open' | 'save' | 'sign';
 const running: KeyWork[] = [];
 let lastFailed = false;
@@ -17,7 +18,7 @@ export const lastKeyWorkFailed = (): boolean => lastFailed;
 
 // Lets the browser paint (the overlay) before the main thread is taken: a frame, or a short timeout when frames do
 // not run (a background tab).
-const nextPaint = () => new Promise<void>((resolve) => {
+export const nextPaint = () => new Promise<void>((resolve) => {
   let done = false;
   const go = () => { if (!done) { done = true; resolve(); } };
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => setTimeout(go, 0));

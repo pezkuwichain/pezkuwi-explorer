@@ -32,8 +32,8 @@ export function formatInteger(value: bigint, locale: string): string {
   return numberFormat(locale).format(value);
 }
 
-// What people read: at most 4 fractional digits once the whole part is non-zero. Digits are cut, never
-// rounded, and a figure that lost digits is marked "≈" so it is never mistaken for the exact amount.
+// What people read: at most 4 fractional digits. Digits are cut, never rounded, and a figure that lost digits is
+// marked "≈" so it is never mistaken for the exact amount; a non-zero amount below 0.0001 reads "<0.0001".
 export function formatAmount(value: bigint, decimals: number, symbol: string, locale: string): string {
   return `${formatUnits(value, decimals, locale, false)} ${symbol}`;
 }
@@ -51,10 +51,14 @@ function formatUnits(value: bigint, decimals: number, locale: string, exact: boo
   const base = 10n ** BigInt(decimals);
   const whole = abs / base;
   let frac = (abs % base).toString().padStart(decimals, '0').replace(/0+$/, '');
-  const cut = !exact && whole > 0n && frac.length > 4;
+  const cut = !exact && frac.length > 4;
   if (cut) frac = frac.slice(0, 4).replace(/0+$/, '');
   const nf = numberFormat(locale);
   const sep = nf.formatToParts(1.5).find((p) => p.type === 'decimal')?.value ?? '.';
+  if (cut && whole === 0n && !frac) {
+    const tiny = `${nf.format(0n)}${sep}${'0001'.replace(/[0-9]/g, (d) => nf.format(BigInt(d)))}`;
+    return `${neg ? '>-' : '<'}${tiny}`;
+  }
   // Localise fraction digits with the same formatter as the whole part (truncation, not rounding, keeps exactness).
   const localFrac = frac.replace(/[0-9]/g, (d) => nf.format(BigInt(d)));
   const wholeText = nf.format(whole);

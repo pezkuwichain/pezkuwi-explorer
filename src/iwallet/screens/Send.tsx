@@ -22,7 +22,7 @@ import {
 } from '../tx';
 import { useSignedTx } from '../useSignedTx';
 import { AuthConfirm } from '../AuthConfirm';
-import { TxResult, txSettled } from '../TxResult';
+import { TxProgress, TxResult, txSettled } from '../TxResult';
 import RequireUnlocked from '../RequireUnlocked';
 import '../iwallet.css';
 
@@ -294,8 +294,11 @@ function SendBody({ address }: { address: string }) {
     signer.reset(); setPhase('form'); setTo(''); setAmountText(''); setAck(false); setMaxBusy(false); setScanError(false); setScanning(false);
   };
 
+  // First child of both the confirm form and the result, so the overlay stays one from the password to the answer.
+  const overlay = <TxProgress progress={signer.progress} />;
   if (outcome.kind !== 'idle') {
-    return (
+    return (<>
+      {overlay}
       <TxResult
         title={t('iwallet.send.title', { token })}
         outcome={outcome}
@@ -313,11 +316,12 @@ function SendBody({ address }: { address: string }) {
           {txSettled(outcome) && <button type="button" className="iw-secondary" onClick={reset}>{t('iwallet.send.another')}</button>}
         </>}
       />
-    );
+    </>);
   }
 
   if (phase === 'confirm') {
-    return (
+    return (<>
+      {overlay}
       <div className="iw">
         <PageHeader title={t('iwallet.send.confirmTitle')} />
         <AuthConfirm
@@ -338,7 +342,7 @@ function SendBody({ address }: { address: string }) {
           submitLabel={t('iwallet.send.confirm')}
         />
       </div>
-    );
+    </>);
   }
 
   if (phase === 'token') return <TokenStep onPick={pickToken} />;

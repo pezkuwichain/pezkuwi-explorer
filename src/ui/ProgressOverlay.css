@@ -10,3 +10,10 @@
 }
 .progress-card:focus { outline: none; }
 .progress-message { margin: 0; font-size: 17px; font-weight: 600; text-align: center; }
+/* A quiet way out on the hero surface: outlined, white text, full width like the i-Wallet's secondary buttons. */
+.progress-dismiss {
+  inline-size: 100%; box-sizing: border-box; min-block-size: var(--tap, 44px); padding: 8px 14px; border-radius: 14px;
+  background: transparent; color: var(--hero-text); border: 1px solid var(--hero-outline);
+  font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.progress-dismiss:focus-visible { outline: 2px solid var(--hero-text); outline-offset: 2px; }

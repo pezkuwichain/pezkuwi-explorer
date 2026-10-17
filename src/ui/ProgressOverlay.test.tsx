@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ProgressOverlay } from './ProgressOverlay';
 
 describe('ProgressOverlay', () => {
@@ -37,5 +37,38 @@ describe('ProgressOverlay', () => {
     await Promise.resolve();
     expect(after).not.toHaveAttribute('inert');
     late.remove(); after.remove();
+  });
+
+  it('announces a new message in place, in the same card', () => {
+    const view = render(<ProgressOverlay message="Signing…" />);
+    const card = screen.getByRole('status');
+    view.rerender(<ProgressOverlay message="Sending to the network…" />);
+    expect(screen.getByRole('status')).toBe(card);
+    expect(card).toHaveTextContent('Sending to the network…');
+  });
+
+  it('Escape dismisses only when a dismiss is offered; its button only when ready, and Tab stays in the card', () => {
+    const onDismiss = vi.fn();
+    const view = render(<ProgressOverlay message="x" />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onDismiss).not.toHaveBeenCalled();
+    view.rerender(<ProgressOverlay message="x" dismiss={{ label: 'Continue in background', ready: false, onDismiss }} />);
+    expect(screen.queryByRole('button')).toBeNull();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    view.rerender(<ProgressOverlay message="x" dismiss={{ label: 'Continue in background', ready: true, onDismiss }} />);
+    const card = screen.getByRole('status');
+    const button = screen.getByRole('button', { name: 'Continue in background' });
+    expect(card).toContainElement(button);
+    card.focus();
+    fireEvent.keyDown(card, { key: 'Tab' });
+    expect(button).toHaveFocus();
+    fireEvent.keyDown(button, { key: 'Tab' });
+    expect(card).toHaveFocus();
+    fireEvent.click(button);
+    expect(onDismiss).toHaveBeenCalledTimes(2);
+    view.unmount();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onDismiss).toHaveBeenCalledTimes(2);
   });
 });

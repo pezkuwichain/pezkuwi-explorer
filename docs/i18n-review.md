@@ -622,3 +622,24 @@ labels are the chip in each screen's header. `mascot.say3` now names the network
   Ferheng words. The kmr `switchBody` and `switchSignOut` sentences are new wording: flagged for native reading.
 - ckb, fa and ar are drafts. In those scripts `{{network}}` in `mascot.say3` is now the localised network label (it was
   the transliterated "زاگرۆس" / "زاگرس" / "زاغروس"); a native reader may prefer a localised name per network.
+
+### Overlay while a transaction reaches the chain (2026-10-17, Serok)
+
+The Kurdistan-sun overlay of a signed action now stays up from the password until the chain's answer: "Signing…"
+(`iwallet.signing`), then "Sending to the network…", then the existing `iwallet.send.inBlock` text (reused, not
+duplicated). After 8 s with the network it offers a way to hide it; the transfer carries on and the result screen keeps
+following it. Two new keys, all six files:
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `iwallet.broadcasting` | Ağa gönderiliyor… | Sending to the network… | Ji torê re tê şandin… | بۆ تۆڕ دەنێردرێت… | در حال ارسال به شبکه… | جارٍ الإرسال إلى الشبكة… |
+| `iwallet.background` | Arka planda devam et | Continue in background | Li paş bidomîne | لە پاشبنەمادا بەردەوام بە | ادامه در پس‌زمینه | المتابعة في الخلفية |
+
+- kmr `broadcasting`: Ferheng Tor/m. (the explorer's "Tor" for the network, `network.title`) and Şandin/m. "Şeyandin,
+  hewale, hinartin"; "ji … re tê şandin" as in `iwallet.create.body` ("ji serverên me re nayê şandin"), "torê" the
+  feminine oblique as in "Tora sereke". Draft for a native reading.
+- kmr `background`: "Bidomîne" is pwap verbatim (`continue`), from Domandin/m. "Dewamkirin, domkirin, … nesekinandin";
+  "li paş" is Paş/m. "Vajiyê pêş". The Ferheng has no word for a computer "background", so "Li paş bidomîne" ("carry on
+  behind") is new wording: **flagged for native reading**.
+- ckb, fa and ar are drafts. ckb "تۆڕ" and "دەنێردرێت" as in `send.working` / `send.inBlock`; "پاشبنەما" (background) is
+  not attested in pwap or the explorer.

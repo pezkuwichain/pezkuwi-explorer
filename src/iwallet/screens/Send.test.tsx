@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { user } from '../test-user';
 import i18n from '../../i18n';
 import { IWalletProvider } from '../IWalletContext';
 import IWalletShell, { IWalletIndex } from '../IWalletRoutes';
 import Send from './Send';
+import { BACKGROUND_AFTER_MS } from '../useSignedTx';
 import type { KvStore } from '../idb';
 
 const ADDR = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
@@ -22,6 +23,8 @@ const impl = vi.hoisted(() => ({
   // connection, fee estimate and signature was made on.
   spendBy: {} as Record<string, bigint>, spendFail: [] as string[], feeBy: {} as Record<string, bigint>, metaErrBy: {} as Record<string, string>,
   apiChains: [] as string[], signedOn: [] as string[], feeOn: [] as string[], unlockGate: null as null | Promise<void>,
+  // Manual: the status subscription reports only what a test pushes, when it pushes it.
+  manual: false, push: null as null | ((kind: string) => void),
 }));
 
 vi.mock('../data', () => ({
@@ -78,7 +81,8 @@ const mkTx = (chain: string, name: string, args: unknown[]) => ({
   signAsync: vi.fn(() => { impl.signed.push({ name, args }); impl.signedOn.push(chain); return Promise.resolve(); }),
   send: (cb: (r: unknown) => void) => {
     if (impl.sendRejects) return Promise.reject(impl.rejectWith ?? new Error('ws closed'));
-    impl.script.forEach((k) => cb(result(k)));
+    if (impl.manual) impl.push = (k) => cb(result(k));
+    else impl.script.forEach((k) => cb(result(k)));
     return Promise.resolve(() => { impl.unsubs++; });
   },
 });
@@ -153,6 +157,12 @@ const confirmWith = async (pw: string) => {
   await user.type(await screen.findByLabelText('Parola'), pw);
   await user.click(screen.getByRole('button', { name: 'Gönder' }));
 };
+// The progress overlay's card (the only status left in the accessibility tree while it shows), and the result behind it.
+const overlay = () => document.querySelector<HTMLElement>('.progress-card');
+const inline = () => document.querySelector<HTMLElement>('.iw-result');
+const ACCEPTED = /Ağ tarafından kabul edildi/;
+const accepted = () => waitFor(() => expect(inline()).toHaveTextContent(ACCEPTED));
+const push = async (kind: string) => { await act(async () => { impl.push!(kind); }); };
 // The sign-in pair is created first; the transfer decrypts its own, which is the last one.
 const signPair = () => impl.pairs[impl.pairs.length - 1];
 
@@ -163,6 +173,7 @@ describe('i-Wallet send', () => {
     Object.assign(impl, { spendBy: {}, spendFail: [], feeBy: {}, metaErrBy: {}, apiChains: [], signedOn: [], feeOn: [], unlockGate: null });
     Object.assign(impl, { hezSpendable: 5000n * T, assets: { 1: 20n * T, 1000: 9_000_000_000n }, fee: 2_000_000_000n, script: ['inBlock', 'finalized'], sendRejects: false, faceOn: false, face: null, scanned: null, scanFails: false, feeFn: null, feeGate: null, unsubs: 0, rejectWith: null });
     impl.signed = []; impl.pairs = []; impl.unlockPw = []; impl.balanceReads = [];
+    impl.manual = false; impl.push = null;
   });
 
   it('gates HEZ above 1000 behind the orange alert and its checkbox, and only then enables confirm', async () => {
@@ -318,7 +329,9 @@ describe('i-Wallet send', () => {
     renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
-    expect(await screen.findByText(/Ağ tarafından kabul edildi/)).toBeInTheDocument();
+    await accepted();
+    // The overlay says the same over the screen until the answer comes.
+    expect(overlay()).toHaveTextContent(ACCEPTED);
     expect(screen.queryByText('Gönderildi')).toBeNull();
     // The secret key is already gone while the transfer is still waiting.
     expect(signPair().lock).toHaveBeenCalled();
@@ -345,7 +358,8 @@ describe('i-Wallet send', () => {
     const form = screen.getByLabelText('Parola').closest('form')!;
     fireEvent.submit(form); fireEvent.submit(form);
     await waitFor(() => expect(impl.signed).toHaveLength(1));
-    await waitFor(() => expect(document.querySelector('.progress-overlay')).toBeNull());
+    // Handed to the network, no answer yet: the overlay stays up with that step.
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
     expect(impl.signed).toHaveLength(1);
     expect(impl.unlockPw.filter((p) => p === 'right-pass1')).toHaveLength(2); // sign-in + one transfer
   });
@@ -384,10 +398,12 @@ describe('i-Wallet send', () => {
     renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
-    await screen.findByText(/Ağ tarafından kabul edildi/);
+    await accepted();
     const onDisconnect = stubApi.on.mock.calls.find((c) => c[0] === 'disconnected')![1] as () => void;
-    onDisconnect();
+    act(() => onDisconnect());
+    // "May still complete" is an answer: the overlay closes on it.
     expect(await screen.findByText(/yine de tamamlanabilir/)).toBeInTheDocument();
+    expect(overlay()).toBeNull();
     // The status subscription is released when the disconnect wins, not left running.
     await waitFor(() => expect(impl.unsubs).toBe(1));
   });
@@ -397,7 +413,7 @@ describe('i-Wallet send', () => {
     const view = renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
-    await screen.findByText(/Ağ tarafından kabul edildi/);
+    await accepted();
     expect(impl.unsubs).toBe(0);
     view.unmount();
     await waitFor(() => expect(impl.unsubs).toBe(1));
@@ -449,17 +465,23 @@ describe('i-Wallet send', () => {
     renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
-    await screen.findByText(/Ağ tarafından kabul edildi/);
+    await accepted();
     // The wallet locks (5 idle minutes, seen on the wall clock when the window regains focus).
     const now = Date.now();
     const spy = vi.spyOn(Date, 'now').mockImplementation(() => now + 5 * 60_000 + 1);
     fireEvent(window, new Event('focus'));
     spy.mockRestore();
-    // Still the result, not the unlock form.
-    expect(screen.getByText(/Ağ tarafından kabul edildi/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Kilidi aç' })).toBeNull();
+    // Still the result (and the overlay over it), not the unlock form.
+    expect(inline()).toHaveTextContent(ACCEPTED);
+    expect(overlay()).toHaveTextContent(ACCEPTED);
+    expect(document.querySelector('input[type="password"]')).toBeNull();
+    // Hidden by the person, the overlay leaves the result usable; leaving it shows the lock, which nothing covers.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(overlay()).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Bitti' }));
-    expect(await screen.findByRole('button', { name: 'Kilidi aç' })).toBeInTheDocument();
+    const unlock = await screen.findByRole('button', { name: 'Kilidi aç' });
+    expect(document.querySelector('[inert]')).toBeNull();
+    expect(unlock.closest('[aria-hidden="true"]')).toBeNull();
   });
 
   it('Max prices the call at the balance-sized amount and keeps a margin, so a fee that grows with the amount never overshoots', async () => {
@@ -519,6 +541,10 @@ describe('i-Wallet send', () => {
     const first = renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
+    // Behind the overlay until the person hides it (Escape at once, once it is with the network).
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    expect(screen.queryByRole('button', { name: 'Bitti' })).toBeNull();
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(await screen.findByRole('button', { name: 'Bitti' })).toBeInTheDocument();
     first.unmount();
     impl.script = ['inBlock', 'timeout'];
@@ -526,7 +552,96 @@ describe('i-Wallet send', () => {
     await fill(BOB, '1');
     await confirmWith('right-pass1');
     expect(await screen.findByText(/Son onay yavaş/)).toBeInTheDocument();
+    // Slow is an answer: the overlay has closed by itself.
+    expect(overlay()).toBeNull();
     expect(screen.getByRole('button', { name: 'Bitti' })).toBeInTheDocument();
+  });
+
+  // One overlay from the password to the chain's answer: each step said once, in order, then the result.
+  it('keeps one overlay up through signing, sending and acceptance, and closes it on the final answer', async () => {
+    impl.manual = true;
+    renderSend(); await login();
+    await fill(BOB, '1');
+    // Only the transfer's own decrypt is held (sign-in has already opened the key once).
+    let open: () => void = () => undefined;
+    impl.unlockGate = new Promise<void>((r) => { open = r; });
+    const said: string[] = [];
+    const watch = new MutationObserver(() => {
+      const m = document.querySelector('.progress-message')?.textContent ?? null;
+      if (m !== null && said.at(-1) !== m) said.push(m);
+    });
+    watch.observe(document.body, { subtree: true, childList: true, characterData: true });
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(overlay()).toHaveTextContent('İmzalanıyor…'));
+    const card = overlay()!;
+    expect(screen.getByRole('status')).toBe(card);
+    expect(card).toHaveFocus();
+    // Escape does nothing while the key is being opened.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(overlay()).toBe(card);
+    await act(async () => { open(); });
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    await push('inBlock');
+    expect(overlay()).toHaveTextContent(ACCEPTED);
+    // The same overlay all along, never closed and reopened.
+    expect(overlay()).toBe(card);
+    expect(document.querySelectorAll('.progress-overlay')).toHaveLength(1);
+    await push('finalized');
+    expect(overlay()).toBeNull();
+    expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+    watch.disconnect();
+    expect(said).toEqual(['İmzalanıyor…', 'Ağa gönderiliyor…', 'Ağ tarafından kabul edildi. Kesinleşmesi bekleniyor…']);
+    // Nothing behind it stays inert.
+    expect(document.querySelector('[inert]')).toBeNull();
+  });
+
+  it('closes the overlay on a wrong password, shows the error inline and puts focus back in the field', async () => {
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('wrong');
+    expect(await screen.findByText('Parola yanlış. Tekrar dene.')).toBeInTheDocument();
+    expect(overlay()).toBeNull();
+    await waitFor(() => expect(screen.getByLabelText('Parola')).toHaveFocus());
+    expect(impl.signed).toEqual([]);
+  });
+
+  it('closes the overlay with "may still complete" when the connection drops after sending', async () => {
+    impl.manual = true;
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    const onDisconnect = stubApi.on.mock.calls.findLast((c) => c[0] === 'disconnected')![1] as () => void;
+    act(() => onDisconnect());
+    await waitFor(() => expect(overlay()).toBeNull());
+    expect(screen.getByText(/yine de tamamlanabilir/)).toBeInTheDocument();
+  });
+
+  it('offers "continue in background" after 8 s with the network; hiding cancels nothing', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      impl.manual = true;
+      renderSend(); await login();
+      await fill(BOB, '1');
+      await confirmWith('right-pass1');
+      await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+      const bg = () => screen.queryByRole('button', { name: 'Arka planda devam et' });
+      expect(bg()).toBeNull();
+      await act(async () => { vi.advanceTimersByTime(BACKGROUND_AFTER_MS - 1_000); });
+      expect(bg()).toBeNull();
+      await push('inBlock'); // the wait is counted from the hand-off, not again from the block
+      await act(async () => { vi.advanceTimersByTime(1_000); });
+      expect(bg()).toBeInTheDocument();
+      await user.click(bg()!);
+      expect(overlay()).toBeNull();
+      // The result screen carries on following the transfer.
+      expect(inline()).toHaveTextContent(ACCEPTED);
+      expect(screen.getByRole('button', { name: 'Bitti' })).toBeInTheDocument();
+      await push('finalized');
+      expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+      expect(overlay()).toBeNull();
+      expect(impl.unsubs).toBe(1);
+    } finally { vi.useRealTimers(); }
   });
 
   it('"another" resets the form and a second transfer can be sent', async () => {

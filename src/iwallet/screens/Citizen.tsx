@@ -21,7 +21,7 @@ import {
 import { AuthConfirm } from '../AuthConfirm';
 import { useSignedTx } from '../useSignedTx';
 import CopyAddress from '../CopyAddress';
-import { TxResult, txSettled } from '../TxResult';
+import { TxProgress, TxResult, txSettled } from '../TxResult';
 import RequireUnlocked from '../RequireUnlocked';
 import '../iwallet.css';
 
@@ -204,9 +204,12 @@ function CitizenBody({ address }: { address: string }) {
     review({ kind: 'apply', hash: identityHash(form, address), referrer: referrer.value });
   };
 
+  // First child of both the confirm form and the result, so the overlay stays one from the password to the answer.
+  const overlay = <TxProgress progress={signer.progress} />;
   if (signer.outcome.kind !== 'idle' && action) {
     const o = signer.outcome;
-    return (
+    return (<>
+      {overlay}
       <TxResult
         title={t('iwallet.citizen.title')}
         outcome={o}
@@ -215,12 +218,13 @@ function CitizenBody({ address }: { address: string }) {
         interrupted={t('iwallet.citizen.interrupted')}
         actions={txSettled(o) && <button type="button" className="iw-primary" onClick={backToMain}>{t('iwallet.citizen.back')}</button>}
       />
-    );
+    </>);
   }
 
   if (phase === 'confirm' && action && loaded) {
     const chain = action.kind === 'teleport' ? 'assetHub' : 'people';
-    return (
+    return (<>
+      {overlay}
       <div className="iw">
         <PageHeader title={t('iwallet.citizen.confirmTitle')} />
         <AuthConfirm
@@ -261,7 +265,7 @@ function CitizenBody({ address }: { address: string }) {
           submitLabel={t('iwallet.citizen.sign')}
         />
       </div>
-    );
+    </>);
   }
 
   if (data === null) {

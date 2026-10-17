@@ -4,7 +4,7 @@ import type { ApiPromise } from '@pezkuwi/api';
 import type { SubmittableExtrinsic } from '@pezkuwi/api/types';
 import { CorruptKeystoreError, WrongPasswordError, unlock as decrypt } from './keystore';
 import { useHoldOpen, useIWallet } from './IWalletContext';
-import { withKeyProgress } from './progress';
+import { nextPaint } from './progress';
 import { finalityReader, friendlyError, isNodeRefusal, submit, type SubmitEvent } from './tx';
 
 // The signing step shared by the citizenship actions, with the same rule as Send (Task 7): each action decrypts a
@@ -22,6 +22,12 @@ export type TxOutcome =
 
 type Tx = SubmittableExtrinsic<'promise'>;
 
+/** What the progress overlay says while an action is under way: decrypting and signing, handing it to the network,
+ *  then waiting for finality once a block has it. */
+export type TxPhase = 'signing' | 'sending' | 'inBlock';
+/** How long the overlay holds the person before it offers to carry on in the background. */
+export const BACKGROUND_AFTER_MS = 8_000;
+
 export function useSignedTx() {
   const { t } = useTranslation();
   const { keystore } = useIWallet();
@@ -35,21 +41,43 @@ export function useSignedTx() {
   // From the first decrypt to leaving the result, an auto-lock must not swap this screen for the unlock form: the
   // attempt carries on regardless, and its outcome (no secret in it) is what tells the person whether money left.
   useHoldOpen(busy || outcome.kind !== 'idle');
+  // One overlay from the password to a final answer (TxProgress). Hiding it cancels nothing: the result screen
+  // behind keeps following the attempt.
+  const [phase, setPhase] = useState<TxPhase | null>(null);
+  const [hidden, setHidden] = useState(false);
+  const [canHide, setCanHide] = useState(false);
+  const authFailed = useRef(false);
+  const onChain = phase === 'sending' || phase === 'inBlock';
+  // Counted once from the hand-off (not again at the block); reset when the next attempt starts.
+  useEffect(() => {
+    if (!onChain) return;
+    const timer = setTimeout(() => setCanHide(true), BACKGROUND_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [onChain]);
 
   // Resolves with the final outcome so the caller can follow up (reload, start polling); null when the password failed.
   const run = useCallback(async (api: ApiPromise, build: () => Tx, password: string): Promise<TxOutcome | null> => {
     if (busyRef.current || !keystore) return null;
     busyRef.current = true; setBusy(true); setAuthError(null);
+    authFailed.current = false; setHidden(false); setCanHide(false); setPhase('signing');
     let pair;
     try {
-      pair = await withKeyProgress('sign', () => decrypt(keystore, password));
+      // The overlay is painted before scrypt takes the main thread.
+      await nextPaint();
+      pair = await decrypt(keystore, password);
     } catch (err) {
+      authFailed.current = true;
       setAuthError(t(err instanceof WrongPasswordError ? 'iwallet.error.wrongPassword' : err instanceof CorruptKeystoreError ? 'iwallet.unlock.corrupt' : 'iwallet.error.generic'));
+      setPhase(null);
       busyRef.current = false; setBusy(false);
       return null;
     }
     let last: TxOutcome = { kind: 'pending' };
-    const set = (o: TxOutcome) => { last = o; setOutcome(o); };
+    // Every outcome past "in a block" is final for the overlay: it closes and the result screen tells the rest.
+    const set = (o: TxOutcome) => {
+      last = o; setOutcome(o);
+      if (o.kind === 'inBlock') setPhase('inBlock'); else if (o.kind !== 'pending') setPhase(null);
+    };
     set({ kind: 'pending' });
     let terminal = false;
     let handedOff = false;
@@ -64,7 +92,7 @@ export function useSignedTx() {
     api.on('disconnected', onDisconnect);
     const onStatus = (ev: SubmitEvent) => {
       if (terminal) return;
-      if (ev.type === 'submitted') handedOff = true;
+      if (ev.type === 'submitted') { handedOff = true; setPhase('sending'); }
       else if (ev.type === 'inBlock') set({ kind: 'inBlock' });
       else if (ev.type === 'finalized') { terminal = true; set({ kind: 'finalized', hash: ev.extrinsicHash, blockHash: ev.blockHash }); }
       else if (ev.type === 'failed') { terminal = true; set({ kind: 'failed', message: friendlyError(api, ev.dispatchError, t) }); }
@@ -83,11 +111,16 @@ export function useSignedTx() {
     } finally {
       try { pair.lock(); } catch { /* already locked */ }
       api.off('disconnected', onDisconnect);
+      setPhase(null);
       busyRef.current = false; setBusy(false);
     }
     return last;
   }, [keystore, t]);
 
   const reset = useCallback(() => { setOutcome({ kind: 'idle' }); setAuthError(null); }, []);
-  return { busy, authError, setAuthError, outcome, run, reset };
+  const hide = useCallback(() => setHidden(true), []);
+  const failed = useCallback(() => authFailed.current, []);
+  /** The overlay to show now, or null: its step, whether it may be hidden yet, and how. */
+  const progress = phase && !hidden ? { phase, canHide, hide, failed } : null;
+  return { busy, authError, setAuthError, outcome, run, reset, progress };
 }

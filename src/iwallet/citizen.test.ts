@@ -195,10 +195,25 @@ describe('myReferrals', () => {
     expect(kycMulti.mock.calls[0][0]).toEqual([EVE, FERDIE, GONE, BOB, CHARLIE]);
   });
 
-  it('never marks a completed referral as waiting, so it never gets an Approve', async () => {
-    // Drift guard: a referral.referrals row whose status reads PendingReferral is still a completed referral.
+  // renounce_citizenship (live on mainnet) sets NotStarted and burns the NFT but leaves the referral.referrals row.
+  it('shows a citizen who renounced as no longer a citizen, with the record number', async () => {
     const { deps } = mk([], [[key(DAVE), ref(me0, 10)]]);
-    expect((await myReferrals(ADDR, deps)).map((r) => r.state)).toEqual(['citizen']);
+    status[DAVE] = 'NotStarted';
+    try {
+      expect(await myReferrals(ADDR, deps)).toEqual([{ address: DAVE, state: 'left', createdAt: 10, nftId: null }]);
+    } finally { status[DAVE] = 'PendingReferral'; }
+  });
+
+  it('offers Approve again when someone who renounced applies again naming this account (one row, matched by public key)', async () => {
+    // The application key comes back in another SS58 prefix than the referral row: still the same person.
+    const { deps, kycMulti } = mk([[key(encodeAddress(decodeAddress(DAVE), 0)), app(ADDR)]], [[key(DAVE), ref(me0, 10)]]);
+    expect(await myReferrals(ADDR, deps)).toEqual([{ address: DAVE, state: 'waiting', createdAt: null, nftId: null }]);
+    expect(kycMulti.mock.calls[0][0]).toEqual([DAVE]);
+  });
+
+  it('shows no longer a citizen, without Approve, when someone who renounced applies again under another referrer', async () => {
+    const { deps } = mk([[key(DAVE), app(OTHER)]], [[key(DAVE), ref(me0, 10)]]);
+    expect(await myReferrals(ADDR, deps)).toEqual([{ address: DAVE, state: 'left', createdAt: 10, nftId: null }]);
   });
 
   it('lists an Approved application as a citizen without a record number and skips one that reads NotStarted', async () => {
@@ -214,9 +229,9 @@ describe('myReferrals', () => {
   });
 
   it('orders newest first within a group and puts an unknown record number last', () => {
-    const r = (address: string, state: 'citizen' | 'revoked' | 'waiting', createdAt: number | null) => ({ address, state, createdAt, nftId: null });
-    expect(orderReferrals([r('a', 'revoked', 9), r('b', 'citizen', null), r('c', 'citizen', 5), r('d', 'waiting', null), r('e', 'citizen', 7)]).map((x) => x.address))
-      .toEqual(['d', 'e', 'c', 'b', 'a']);
+    const r = (address: string, state: 'citizen' | 'left' | 'revoked' | 'waiting', createdAt: number | null) => ({ address, state, createdAt, nftId: null });
+    expect(orderReferrals([r('a', 'revoked', 9), r('f', 'left', 99), r('b', 'citizen', null), r('c', 'citizen', 5), r('d', 'waiting', null), r('e', 'citizen', 7)]).map((x) => x.address))
+      .toEqual(['d', 'e', 'c', 'b', 'f', 'a']);
   });
 
   it('builds the short referral link', () => {

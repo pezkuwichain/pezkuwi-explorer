@@ -153,18 +153,24 @@ export function stageOf(s: CitizenStatus): Stage {
 //  - identityKyc.applications: open applications only, { identityHash, referrer }. PendingReferral waits for this
 //    account's approve_referral; ReferrerApproved waits for the applicant's confirm_citizenship.
 //  - referral.referrals: referred -> { referrer, createdAt (block) }, written by the referral pallet when a citizenship
-//    is approved and kept when it is revoked (on_citizenship_revoked only charges the referrer). Measured on mainnet
-//    People 2026-10-17: 97 entries, the same 97 accounts and referrers as identityKyc.citizenReferrers (which has no
-//    block number, so it is not read), every one Approved, and per referrer the count equals referral.referralCount.
-// Approve is offered only for an open application that names this account and reads PendingReferral, which is exactly
-// what approve_referral accepts; a completed referral never gets one.
-// Cost: two full-map scans (hundreds of entries today) plus one batched status read and one batched NFT read. At a
-// large scale (millions of citizens) this needs an indexer (SubQuery) keyed by referrer instead of entries() scans.
-export type ReferralState = 'waiting' | 'signing' | 'citizen' | 'revoked';
+//    is approved and never removed: not on revoke (on_citizenship_revoked only charges the referrer) and not on
+//    renounce_citizenship (live on mainnet: status back to NotStarted, NFT burnt; the person may apply again). Measured
+//    on mainnet People 2026-10-17: 97 entries, the same 97 accounts and referrers as identityKyc.citizenReferrers
+//    (which has no block number, so it is not read), every one Approved, and per referrer the count equals
+//    referral.referralCount.
+// So a row says what the person is NOW (kycStatuses + citizenNft), not what the referral map remembers: an open
+// application that names this account wins (waiting / signing), otherwise a completed referral is a citizen
+// (Approved), revoked (Revoked) or no longer a citizen (renounced, or re-applied under another referrer). The two maps
+// are merged by public key. Approve is offered only for an open application that names this account and reads
+// PendingReferral, which is exactly what approve_referral accepts.
+// Cost: two full-map scans plus one batched status read and one batched NFT read per page view (4 + 97 entries in
+// ~0.3 s on 2026-10-17). Move this to the People indexer (SubQuery, keyed by referrer) when referral.referrals passes
+// 5,000 entries or the scan takes over 2 s on a phone (docs/deploy.md).
+export type ReferralState = 'waiting' | 'signing' | 'citizen' | 'left' | 'revoked';
 export type MyReferral = { address: string; state: ReferralState; createdAt: number | null; nftId: bigint | null };
-const STATE_ORDER: Record<ReferralState, number> = { waiting: 0, signing: 1, citizen: 2, revoked: 3 };
-// Waiting for me first, then waiting for their signature, then citizens, then revoked; newest record first within a
-// group (an unknown record number last), then by address so the order is stable.
+const STATE_ORDER: Record<ReferralState, number> = { waiting: 0, signing: 1, citizen: 2, left: 3, revoked: 4 };
+// Waiting for me first, then waiting for their signature, then citizens, then those who left, then revoked; newest
+// record first within a group (an unknown record number last), then by address so the order is stable.
 export function orderReferrals(list: MyReferral[]): MyReferral[] {
   return [...list].sort((a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state]
     || (b.createdAt ?? -1) - (a.createdAt ?? -1)
@@ -181,6 +187,7 @@ function unwrapOpt<T>(v: Opt<T>, has: (x: Partial<T>) => boolean): T | null {
   if (typeof v.isSome === 'boolean') return v.isSome && v.unwrap ? (v.unwrap() as T) : null;
   return has(v) ? (v as T) : null;
 }
+const pubKey = (a: string): string | null => { try { return u8aToHex(decodeAddress(a)); } catch { return null; } };
 
 export async function myReferrals(address: string, deps: Deps = real): Promise<MyReferral[]> {
   const api = await deps.getApi('people');
@@ -192,33 +199,48 @@ export async function myReferrals(address: string, deps: Deps = real): Promise<M
     referral: { referrals: { entries(): Promise<Array<[Key, Opt<RefValue>]>> } };
     tiki: { citizenNft: { multi(a: string[]): Promise<Array<{ isSome: boolean; unwrap(): { toBigInt(): bigint } }>> } };
   };
-  const me = decodeAddress(address);
-  const isMe = (a: Str) => { try { return u8aEq(decodeAddress(a.toString()), me); } catch { return false; } };
+  const me = pubKey(address);
+  const isMe = (a: Str) => me !== null && pubKey(a.toString()) === me;
   const [apps, refs] = await withTimeout(Promise.all([q.identityKyc.applications.entries(), q.referral.referrals.entries()]), REQUEST_TIMEOUT_MS);
-  const created = new Map<string, number>();
+  // One entry per public key: the address as the chain spells it, the record number of a completed referral, and
+  // whether an open application names this account.
+  const people = new Map<string, { address: string; createdAt: number | null; open: boolean }>();
   for (const [k, v] of refs) {
     const r = unwrapOpt<RefValue>(v, (x) => !!x.referrer && !!x.createdAt);
-    if (r && isMe(r.referrer)) created.set(k.args[0].toString(), r.createdAt.toNumber());
+    const a = k.args[0].toString(), pk = pubKey(a);
+    if (r && pk && isMe(r.referrer)) people.set(pk, { address: a, createdAt: r.createdAt.toNumber(), open: false });
   }
-  const applicants = apps
-    .filter(([, v]) => { const a = unwrapOpt<AppValue>(v, (x) => !!x.identityHash && !!x.referrer); return a !== null && isMe(a.referrer); })
-    .map(([k]) => k.args[0].toString())
-    .filter((a) => !created.has(a));
-  const all = [...created.keys(), ...applicants];
+  for (const [k, v] of apps) {
+    const app = unwrapOpt<AppValue>(v, (x) => !!x.identityHash && !!x.referrer);
+    const a = k.args[0].toString(), pk = pubKey(a);
+    if (!app || !pk || !isMe(app.referrer)) continue;
+    const known = people.get(pk);
+    people.set(pk, known ? { ...known, open: true } : { address: a, createdAt: null, open: true });
+  }
+  const all = [...people.values()];
   if (all.length === 0) return [];
-  const [statuses, nfts] = await withTimeout(Promise.all([q.identityKyc.kycStatuses.multi(all), q.tiki.citizenNft.multi(all)]), REQUEST_TIMEOUT_MS);
+  const addrs = all.map((p) => p.address);
+  const [statuses, nfts] = await withTimeout(Promise.all([q.identityKyc.kycStatuses.multi(addrs), q.tiki.citizenNft.multi(addrs)]), REQUEST_TIMEOUT_MS);
   const list: MyReferral[] = [];
-  all.forEach((a, i) => {
+  all.forEach((p, i) => {
     const kyc = toKycStatus(statuses[i].type);
     const nftId = nfts[i].isSome ? nfts[i].unwrap().toBigInt() : null;
-    const createdAt = created.get(a) ?? null;
     let state: ReferralState | null;
-    if (createdAt !== null) state = kyc === 'Revoked' ? 'revoked' : 'citizen';
-    else state = ({ PendingReferral: 'waiting', ReferrerApproved: 'signing', Approved: 'citizen', Revoked: 'revoked', NotStarted: null } as const)[kyc];
-    if (state) list.push({ address: a, state, createdAt, nftId: state === 'citizen' ? nftId : null });
+    if (p.open && kyc === 'PendingReferral') state = 'waiting';
+    else if (p.open && kyc === 'ReferrerApproved') state = 'signing';
+    else if (kyc === 'Approved') state = 'citizen';
+    else if (kyc === 'Revoked') state = 'revoked';
+    // Once a citizen and no longer one: renounced, or applying again under another referrer.
+    else state = p.createdAt !== null ? 'left' : null;
+    if (!state) return;
+    const completed = state === 'citizen' || state === 'left' || state === 'revoked';
+    list.push({ address: p.address, state, createdAt: completed ? p.createdAt : null, nftId: state === 'citizen' ? nftId : null });
   });
   return orderReferrals(list);
 }
+
+// Rows shown at first and added by each "Show more" (the founder's list alone held 72 rows on 2026-10-17).
+export const REFERRALS_PAGE = 50;
 
 // The link a citizen shares: the short address redirects to /i-wallet with the query kept, and the citizenship form
 // fills its referrer field from ?ref= (rememberReferrer above).

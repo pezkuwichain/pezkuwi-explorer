@@ -558,12 +558,14 @@ completed referrals, read from the chain) and approves the ones still waiting. T
 | `refs.state.waiting` | Onayını bekliyor | Waiting for your approval | Li benda pejirandina te ye | چاوەڕێی پەسەندکردنی تۆیە | در انتظار تأیید شما | بانتظار موافقتك |
 | `refs.state.signing` | Onayladın · imzası bekleniyor | You approved · waiting for their signature | Te pejirand · li benda îmzeyê ye | پەسەندت کرد · چاوەڕێی واژۆکەیەتی | تأیید کردید · در انتظار امضای او | وافقت · بانتظار توقيعه |
 | `refs.state.citizen` | Vatandaş | Citizen | Welatî | هاوڵاتی | شهروند | مواطن |
+| `refs.state.left` | Artık vatandaş değil | No longer a citizen | Êdî ne welatî ye | ئیتر هاوڵاتی نییە | دیگر شهروند نیست | لم يعد مواطناً |
 | `refs.state.revoked` | İptal edildi | Revoked | Hat rakirin | هەڵوەشێنرایەوە | لغو شد | أُلغيت |
 | `refs.empty` | Henüz kimseye referans olmadın. | You have not referred anyone yet. | Tu hîn ji kesî re nebûyî referans. | هێشتا بۆ کەس نەبوویتە ئاماژەکار. | هنوز معرف کسی نشده‌اید. | لم تُحِل أحداً بعد. |
 | `refs.how` | Referans olmak için adresini ya da aşağıdaki bağlantıyı paylaş. Biri vatandaşlık başvurusunda seni referans gösterdiğinde burada görünür ve onayını bekler. | To refer someone, share your address or the link below. When someone names you as referrer in their citizenship application, it shows here and waits for your approval. | Ji bo ku tu bibî referans, navnîşana xwe an lînka li jêr parve bike. Dema ku kesek di serlêdana welatîbûnê de te wekî referans nîşan bide, ew li vir xuya dibe û li benda pejirandina te dimîne. | بۆ ئەوەی ببیتە ئاماژەکار، ناونیشانەکەت یان لینکی خوارەوە هاوبەش بکە. کاتێک کەسێک لە داواکاری هاوڵاتیبووندا تۆ وەک ئاماژەکار ناو دەبات، لێرە دەردەکەوێت و چاوەڕێی پەسەندکردنی تۆ دەبێت. | برای معرفی کسی، آدرس خود یا لینک زیر را به اشتراک بگذارید. وقتی کسی در درخواست شهروندی خود شما را به‌عنوان معرف نام ببرد، اینجا نمایش داده می‌شود و منتظر تأیید شما می‌ماند. | لتُحيل أحداً، شارك عنوانك أو الرابط أدناه. عندما يسمّيك أحد محيلاً في طلب المواطنة، يظهر هنا وينتظر موافقتك. |
 | `refs.linkLabel` | Referans bağlantın: | Your referral link: | Lînka te ya referansê: | لینکی ئاماژەدانەکەت: | لینک ارجاع شما: | رابط الإحالة الخاص بك: |
 | `refs.copyLink` | Referans bağlantımı kopyala | Copy my referral link | Lînka min a referansê kopî bike | لینکی ئاماژەدانەکەم کۆپی بکە | کپی لینک ارجاع من | انسخ رابط الإحالة الخاص بي |
 | `refs.copyFor` | {{address}} adresini kopyala | Copy {{address}} | {{address}} kopî bike | {{address}} کۆپی بکە | کپی {{address}} | انسخ {{address}} |
+| `refs.more` | Daha fazla göster ({{shown, number}} / {{count, number}}) | Show more ({{shown, number}} of {{count, number}}) | Zêdetir nîşan bide ({{shown, number}} / {{count, number}}) | زیاتر پیشان بدە ({{shown, number}} / {{count, number}}) | نمایش بیشتر ({{shown, number}} از {{count, number}}) | عرض المزيد ({{shown, number}} من {{count, number}}) |
 
 - kmr follows the citizen-word rule: the row of a citizen is a person, so "Welatî"; the process words stay
   "serlêdana welatîbûnê". "Referans" is feminine as in `pending.body` / `approved.title` ("referansa te"); "lînk" is
@@ -574,3 +576,6 @@ completed referrals, read from the chain) and approves the ones still waiting. T
   flagged for native reading, as are `refs.title` ("Cuzdanên ku tu referansa wan î") and `refs.how`.
 - ckb `linkLabel`/`copyLink` and fa/ar `linkLabel` start from pwap `referralTab.link` (ar verbatim); ckb uses pwap's
   "ئاماژەدان" for the link and the glossary's "ئاماژەکار" for the person. Everything else in ckb, fa and ar is a draft.
+- PR #22 review (2026-10-17): `refs.state.left` is a person who was a citizen through this referral and is not one
+  now (renounced, or applying again under another referrer); kmr "Êdî ne welatî ye" (Welatî for a person; "êdî"
+  flagged for native reading). `refs.more` pages the list 50 rows at a time. ckb, fa and ar are drafts.

@@ -14,7 +14,7 @@ import { parseRecipient } from '../address';
 import {
   FUNDING_POLL, assetHubNeed, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, chainSpendable,
   clearTeleportSent, formProblems, identityHash, kycDeposit, loadForm, loadStatus, markTeleportSent, needsFunding, parseReferrer,
-  canRefer, myReferrals, referralLink, rememberedReferrer, saveForm, stageOf, teleportAmount, teleportGuardActive,
+  REFERRALS_PAGE, canRefer, myReferrals, referralLink, rememberedReferrer, saveForm, stageOf, teleportAmount, teleportGuardActive,
   type CitizenForm, type CitizenStatus, type MyReferral,
 } from '../citizen';
 import { AuthConfirm } from '../AuthConfirm';
@@ -26,7 +26,7 @@ import '../iwallet.css';
 
 type Loaded = {
   people: ApiPromise; assetHub: ApiPromise;
-  status: CitizenStatus; referrals: MyReferral[] | 'failed';
+  status: CitizenStatus;
   deposit: bigint; peopleFree: bigint; ahFree: bigint;
   // The apply fee without and with a referrer (Some adds 32 bytes; any address prices the same).
   applyFee: { none: bigint | null; some: bigint | null }; teleportFee: bigint | null;
@@ -41,8 +41,9 @@ const ZERO_HASH = `0x${'0'.repeat(64)}`;
 // A referrer is a mainnet account: the same SS58 rule as a Send recipient (checksum + prefix 42), never the Zagros helper.
 const mainnetAddress = (text: string): string | null => { const r = parseRecipient(text); return r.ok ? r.address : null; };
 
-// `cachedReferrals` is the referral scan from earlier in this page view; it is reused instead of scanning again.
-async function load(address: string, cachedReferrals: MyReferral[] | null): Promise<Loaded> {
+// The citizenship status, balances and fees. The referral list loads on its own after this (CitizenBody), so a slow
+// or failed scan never holds back or replaces the citizen card.
+async function load(address: string): Promise<Loaded> {
   const [people, assetHub] = await Promise.all([getMainnetApi('people'), getMainnetApi('assetHub')]);
   const deposit = kycDeposit(people);
   const [status, peopleFree, ahFree, feeNone, feeSome, teleportFee] = await Promise.all([
@@ -53,10 +54,7 @@ async function load(address: string, cachedReferrals: MyReferral[] | null): Prom
     estimateFee(buildApply(people, ZERO_HASH, address), address),
     estimateFee(buildTeleportToPeople(assetHub, address, teleportAmount(deposit)), address),
   ]);
-  // Only an Approved account can be a referrer (the pallet's rule), so nobody else pays for the scan or sees the list.
-  const referrals: Loaded['referrals'] = !canRefer(status) ? []
-    : cachedReferrals ?? await myReferrals(address).catch((): 'failed' => 'failed');
-  return { people, assetHub, status, referrals, deposit, peopleFree, ahFree, applyFee: { none: feeNone, some: feeSome }, teleportFee };
+  return { people, assetHub, status, deposit, peopleFree, ahFree, applyFee: { none: feeNone, some: feeSome }, teleportFee };
 }
 
 function CitizenBody({ address }: { address: string }) {
@@ -91,18 +89,31 @@ function CitizenBody({ address }: { address: string }) {
 
   // Each load cancels the one before it, so an older load can never overwrite newer data.
   const cancelLoad = useRef<() => void>(() => undefined);
-  const referralCache = useRef<MyReferral[] | null>(null);
+  // The referral list: read once per page view and kept across refreshes, read again after a failure, after any
+  // approve (a refused one means the row was stale), or on Retry. Only an Approved account can be a referrer (the
+  // pallet's rule), so nobody else pays for the scan or sees the list.
+  const [refs, setRefs] = useState<MyReferral[] | 'loading' | 'failed'>('loading');
+  const refsFresh = useRef(false);
+  const cancelRefs = useRef<() => void>(() => undefined);
+  const loadRefs = useCallback(() => {
+    cancelRefs.current();
+    let live = true;
+    cancelRefs.current = () => { live = false; };
+    refsFresh.current = true;
+    setRefs('loading');
+    myReferrals(address).then((l) => { if (live) setRefs(l); }, () => { if (live) { refsFresh.current = false; setRefs('failed'); } });
+  }, [address]);
   const fetchData = useCallback(() => {
     cancelLoad.current();
     let live = true;
     cancelLoad.current = () => { live = false; };
-    load(address, referralCache.current).then((d) => {
+    load(address).then((d) => {
       if (!live) return;
-      if (canRefer(d.status) && d.referrals !== 'failed') referralCache.current = d.referrals;
       setData(d);
+      if (canRefer(d.status) && !refsFresh.current) loadRefs();
     }, () => { if (live) setData('failed'); });
-  }, [address]);
-  useEffect(() => { fetchData(); return () => cancelLoad.current(); }, [fetchData]);
+  }, [address, loadRefs]);
+  useEffect(() => { fetchData(); return () => { cancelLoad.current(); cancelRefs.current(); }; }, [fetchData]);
   const refresh = () => { setData(null); fetchData(); };
   useEffect(() => {
     let live = true;
@@ -180,7 +191,7 @@ function CitizenBody({ address }: { address: string }) {
     // Unless the teleport is proven failed (ExtrinsicFailed, or refused before it left), it may still land: poll People
     // and keep the teleport button away, so an unknown outcome never invites a second teleport.
     if (action.kind === 'teleport' && result.kind !== 'failed') { markTeleportSent(address); setFunding('waiting'); }
-    if (action.kind === 'approve' && result.kind !== 'failed') referralCache.current = null;
+    if (action.kind === 'approve') refsFresh.current = false;
   };
 
   const backToMain = () => { setPhase('main'); setAction(null); signer.reset(); refresh(); };
@@ -371,9 +382,7 @@ function CitizenBody({ address }: { address: string }) {
 
         {stage === 'revoked' && <p className="iw-error" role="alert">{t('iwallet.citizen.revoked')}</p>}
 
-        {canRefer(status) && (data.referrals === 'failed'
-          ? <p className="iw-error" role="alert">{t('iwallet.citizen.refs.failed')}</p>
-          : <MyReferrals list={data.referrals} address={address} onApprove={(applicant) => review({ kind: 'approve', applicant })} />)}
+        {canRefer(status) && <MyReferrals list={refs} address={address} onRetry={loadRefs} onApprove={(applicant) => review({ kind: 'approve', applicant })} />}
       </div>
     </div>
   );
@@ -383,20 +392,28 @@ function CitizenBody({ address }: { address: string }) {
 // length, not referral.referralCount: that counter grows only when a referred citizenship is approved, while this list
 // also holds the open applications that name this account (on 2026-10-17 the counter equalled the completed rows for
 // every referrer).
-function MyReferrals({ list, address, onApprove }: { list: MyReferral[]; address: string; onApprove: (applicant: string) => void }) {
+// Rows are shown REFERRALS_PAGE at a time.
+function MyReferrals({ list, address, onApprove, onRetry }: {
+  list: MyReferral[] | 'loading' | 'failed'; address: string; onApprove: (applicant: string) => void; onRetry: () => void;
+}) {
   const { t } = useTranslation();
+  const [shown, setShown] = useState(REFERRALS_PAGE);
   const link = referralLink(address);
   return (
     <section className="iw-refs" aria-labelledby="iw-refs-title">
       <h2 id="iw-refs-title" className="iw-h">{t('iwallet.citizen.refs.title')}</h2>
-      {list.length === 0 ? <>
+      {list === 'loading' ? <p className="card-note" role="status">{t('state.loading')}</p>
+      : list === 'failed' ? <>
+        <p className="iw-error" role="alert">{t('iwallet.citizen.refs.failed')}</p>
+        <button type="button" className="iw-secondary" onClick={onRetry}>{t('state.retry')}</button>
+      </> : list.length === 0 ? <>
         <p className="iw-lead">{t('iwallet.citizen.refs.empty')}</p>
         <p className="iw-a2hs">{t('iwallet.citizen.refs.how')}</p>
       </> : <>
         <p className="iw-a2hs">{t('iwallet.citizen.refs.count', { count: list.length })}</p>
         {list.some((r) => r.state === 'waiting') && <p className="iw-a2hs">{t('iwallet.citizen.refs.body')}</p>}
         <ul className="iw-menu">
-          {list.map((r) => (
+          {list.slice(0, shown).map((r) => (
             <li key={r.address} className="iw-ref" data-state={r.state}>
               <div className="iw-ref-main">
                 <span className="iw-addr">
@@ -419,6 +436,11 @@ function MyReferrals({ list, address, onApprove }: { list: MyReferral[]; address
             </li>
           ))}
         </ul>
+        {list.length > shown && (
+          <button type="button" className="iw-secondary" onClick={() => setShown((n) => n + REFERRALS_PAGE)}>
+            {t('iwallet.citizen.refs.more', { shown, count: list.length })}
+          </button>
+        )}
       </>}
       <p className="iw-a2hs">{t('iwallet.citizen.refs.linkLabel')} <bdi dir="ltr" className="iw-addr-text">{link}</bdi></p>
       <CopyAddress address={link} className="iw-secondary iw-ref-copy" text={t('iwallet.citizen.refs.copyLink')} />

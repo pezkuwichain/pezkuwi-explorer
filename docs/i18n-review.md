@@ -135,19 +135,19 @@ Turkish and English are written directly and are not listed.
 | cid.clear | Ji vê cîhazê jê bibe | لەم ئامێرەدا بیسڕەوە | حذف از این دستگاه | احذف من هذا الجهاز | draft (citizen ID card) |
 | cid.notImage | Ev pel ne wêne ye. | ئەم فایلە وێنە نییە. | این فایل تصویر نیست. | هذا الملف ليس صورة. | draft (citizen ID card) |
 | cid.notSaved | Ev gerok wan nahêle; ew tenê heta ku tu rûpelê bigirî xuya dibin. | ئەم وێبگەڕە هەڵیان ناگرێت؛ تەنها تا داخستنی پەڕەکە دەردەکەون. | این مرورگر آن‌ها را نگه نمی‌دارد؛ فقط تا بستن صفحه دیده می‌شوند. | لا يحتفظ هذا المتصفح بها؛ تظهر فقط حتى تغلق الصفحة. | draft (citizen ID card) |
-| mascot.hello | Silav! Ez Pez im. | سڵاو! من پێزم. | سلام! من پز هستم. | مرحبًا! أنا بيز. | draft (desktop mascot speech bubble) |
+| mascot.hello | Silav! Ez Pezkuwi me. | سڵاو! ناوم Pezkuwi یە. | سلام! من Pezkuwi هستم. | مرحبًا! أنا Pezkuwi. | draft (desktop mascot speech bubble) |
 | mascot.say1 | Hesabê xwe bi yek tikandinê bibîne. | هەژمارەکەت بە یەک دەستلێدان ببینە. | حسابت را با یک لمس ببین. | شاهد حسابك بلمسة واحدة. | draft (desktop mascot speech bubble) |
 | mascot.say2 | Dayîna te gihîşt? Li vir bipirse. | پارەدانەکەت گەیشت؟ لێرە بپرسە. | پرداختت رسید؟ اینجا بپرس. | هل وصلت دفعتك؟ اسأل هنا. | draft (desktop mascot speech bubble) |
-| mascot.say3 | Tor dixebite — Zagros zindî ye. | تۆڕ کار دەکات — زاگرۆس زیندووە. | شبکه کار می‌کند — زاگرس زنده است. | الشبكة تعمل — زاغروس حيّة. | draft (desktop mascot speech bubble) |
+| mascot.say3 | Tor dixebite — {{network}} zindî ye. | تۆڕ کار دەکات — {{network}} زیندووە. | شبکه کار می‌کند — {{network}} زنده است. | الشبكة تعمل — {{network}} حيّة. | draft (desktop mascot speech bubble) |
 | mascot.say4 | Nasnameya te ya Dijital Kurdistanê li vir e. | ناسنامەی کوردستانی دیجیتاڵیت لێرەیە. | کارت شناسایی کردستان دیجیتال تو اینجاست. | هويتك في كردستان الرقمية هنا. | draft (desktop mascot speech bubble) |
 | mascot.say5 | HEZ û PEZ — pereyê Dijital Kurdistanê. | HEZ و PEZ — پارەی کوردستانی دیجیتاڵ. | HEZ و PEZ — پول کردستان دیجیتال. | HEZ و PEZ — مال كردستان الرقمية. | draft (desktop mascot speech bubble) |
 | mascot.say6 | Bi telefona xwe veke — QR-ê bişopîne. | لە مۆبایلەکەتدا بیکەرەوە — QR سکان بکە. | روی گوشی‌ات باز کن — QR را اسکن کن. | افتحه على هاتفك — امسح رمز QR. | draft (desktop mascot speech bubble) |
-| mascot.alt1 | Pez, maskota Pezkuwi, bi cilên kurdî | پێز، ماسکۆتی Pezkuwi، بە جلی کوردی | پز، نماد Pezkuwi، با لباس کردی | بيز، تميمة Pezkuwi، بملابس كردية | draft (desktop mascot picture description) |
-| mascot.alt2 | Pez rûniştî, bi êlekeke kurdî | پێز دانیشتووە، بە کەواوەیەکی کوردی | پز نشسته، با جلیقه کردی | بيز جالسًا بصدرية كردية | draft (desktop mascot picture description) |
-| mascot.alt3 | Pez bi cilên kevneşopî | پێز بە جلی نەریتی | پز با لباس سنتی | بيز بالزي التقليدي | draft (desktop mascot picture description) |
-| mascot.alt4 | Pez li ber bajarekî kevn û çiyayan | پێز لەبەردەم شارێکی کۆن و چیاکان | پز جلوی یک شهر قدیمی و کوه‌ها | بيز أمام مدينة قديمة وجبال | draft (desktop mascot picture description) |
-| mascot.alt5 | Pez li ber bircên nû | پێز لەبەردەم تاوەرە نوێیەکان | پز جلوی برج‌های مدرن | بيز أمام أبراج حديثة | draft (desktop mascot picture description) |
-| mascot.alt6 | Pez li ser piyan, li meydanekê | پێز لەسەر پێ، لە گۆڕەپانێکدا | پز ایستاده در یک میدان | بيز واقفًا في ساحة | draft (desktop mascot picture description) |
+| mascot.alt1 | Maskota Pezkuwi bi cilên kurdî | ماسکۆتی Pezkuwi بە جلی کوردی | نماد Pezkuwi با لباس کردی | تميمة Pezkuwi بملابس كردية | draft (desktop mascot picture description) |
+| mascot.alt2 | Pezkuwi rûniştî, bi êlekeke kurdî | Pezkuwi دانیشتووە، بە کەواوەیەکی کوردی | Pezkuwi نشسته، با جلیقه کردی | Pezkuwi جالسًا بصدرية كردية | draft (desktop mascot picture description) |
+| mascot.alt3 | Pezkuwi bi cilên kevneşopî | Pezkuwi بە جلی نەریتی | Pezkuwi با لباس سنتی | Pezkuwi بالزي التقليدي | draft (desktop mascot picture description) |
+| mascot.alt4 | Pezkuwi li ber bajarekî kevn û çiyayan | Pezkuwi لەبەردەم شارێکی کۆن و چیاکان | Pezkuwi جلوی یک شهر قدیمی و کوه‌ها | Pezkuwi أمام مدينة قديمة وجبال | draft (desktop mascot picture description) |
+| mascot.alt5 | Pezkuwi li ber bircên nû | Pezkuwi لەبەردەم تاوەرە نوێیەکان | Pezkuwi جلوی برج‌های مدرن | Pezkuwi أمام أبراج حديثة | draft (desktop mascot picture description) |
+| mascot.alt6 | Pezkuwi li ser piyan, li meydanekê | Pezkuwi لەسەر پێ، لە گۆڕەپانێکدا | Pezkuwi ایستاده در یک میدان | Pezkuwi واقفًا في ساحة | draft (desktop mascot picture description) |
 | walletModal.connect | Cuzdanê Girêbide | جزدان پەیوەست بکە | اتصال کیف پول | توصيل المحفظة | pwap (walletModal.connect; fa, ar draft) |
 | walletModal.connected | Cuzdan Girêdayî ye | جزدان پەیوەستە | کیف پول متصل شد | المحفظة متصلة | pwap (walletModal.connected; fa, ar draft) |
 | walletModal.connectDesc | Ji bo têkiliya bi PezkuwiChain re pêveka Pezkuwi.js girêbidin | پاشکۆی Pezkuwi.js پەیوەست بکە بۆ کارلێکردن لەگەڵ PezkuwiChain | افزونه Pezkuwi.js خود را متصل کنید تا با PezkuwiChain تعامل کنید | قم بتوصيل إضافة Pezkuwi.js للتفاعل مع PezkuwiChain | pwap (walletModal.connectDesc; fa, ar draft) |
@@ -207,7 +207,13 @@ ckb, fa and ar cells are drafts (kmr "Rûyê pêşîn/paşîn", "Wêne li cîhaz
 
 Desktop mascots (2026-10-15): mascot.hello and mascot.say1–say6 are the speech bubbles of the desktop layout; the kmr
 cells are the approved mockup's sentences (without its brackets) and are drafts like every ckb, fa and ar cell.
-mascot.alt1–alt6 describe the pictures. The name "Pez" is a placeholder until the owner names the mascot.
+mascot.alt1–alt6 describe the pictures. Owner decision (Serok, 2026-10-17, 09:16): the mascot is named "Pezkuwi"
+(was the placeholder "Pez"); kmr `mascot.hello` is exactly "Silav! Ez Pezkuwi me." (copula "me" after a vowel). Every
+locale writes the name in Latin letters, as `alt1` already wrote "Pezkuwi"; en "Hi! I’m Pezkuwi.", tr "Merhaba! Ben
+Pezkuwi'yim." (the old "Merhaba" kept), ckb "سڵاو! ناوم Pezkuwi یە." ("my name is", which reads better than a suffix on
+a Latin word), fa "سلام! من Pezkuwi هستم.", ar "مرحبًا! أنا Pezkuwi." `alt1` no longer says the name twice ("the
+Pezkuwi mascot in Kurdish clothes"); `alt2`–`alt6` start with "Pezkuwi". ckb, fa and ar remain drafts. The token
+symbol PEZ (`say5`) is unchanged.
 
 Wallet dialogs (2026-10-15): the walletModal.* rows are the texts of pwap's WalletModal and WalletConnectModal,
 copied verbatim from pwap web/src/i18n/locales/*.ts (tr and en too). The rows marked "draft (pwap fallback only)" are
@@ -585,8 +591,8 @@ completed referrals, read from the chain) and approves the ones still waiting. T
 ### Mainnet / testnet switch (2026-10-17, Serok)
 
 The Network tab chooses which network every explorer tab reads (i-Wallet always stays on mainnet); the same two
-labels are the chip in each screen's header. `mascot.say3` now names the network being read (`{{network}}`: "Pezkuwi"
-or "Zagros") instead of a fixed Zagros. tr and en are the source texts.
+labels are the chip in each screen's header. `mascot.say3` now names the network being read (`{{network}}`: the localised
+`network.mainnet` / `network.testnet` label, PR #23 review) instead of a fixed Zagros. tr and en are the source texts.
 
 | key | tr | en | kmr | ckb | fa | ar |
 |---|---|---|---|---|---|---|
@@ -614,5 +620,5 @@ or "Zagros") instead of a fixed Zagros. tr and en are the source texts.
   `iwallet.citizen.form.notSaved` ("Vê gerokê … negirt, loma …"); `switchSignOut` uses walletModal's "girêbide".
   "Herdem" (Ferheng: "Herdem/m. Her zeman, her an") and "paşê" (Ferheng: "Paşê/m. Piştre, ji niha û şûnde") are
   Ferheng words. The kmr `switchBody` and `switchSignOut` sentences are new wording: flagged for native reading.
-- ckb, fa and ar are drafts. In those scripts `{{network}}` in `mascot.say3` is now the Latin network name (it was
+- ckb, fa and ar are drafts. In those scripts `{{network}}` in `mascot.say3` is now the localised network label (it was
   the transliterated "زاگرۆس" / "زاگرس" / "زاغروس"); a native reader may prefer a localised name per network.

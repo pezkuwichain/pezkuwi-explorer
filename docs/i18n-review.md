@@ -9,6 +9,7 @@ Turkish and English are written directly and are not listed.
 - walletModal kmr: pwap verbatim except its "berîk" is written "cuzdan" (the owner's choice for this site, PR #8), masculine as in the Ferheng (Zeynelabidin): "Cuzdanê ku pere dixin navê" (Xelîtk), so "cuzdanê", never "cuzdana".
 - source "brand": the product name, identical in every locale.
 - **Owner decision (Serok, 2026-10-16): in Kurmancî, citizenship is "Welatîbûn" and a citizen is "welatî" everywhere in the explorer, never "Hemwelatî"** (the Ferheng gives Hemwelatî = compatriot). Changed: `home.citizenship` and `citizenship.title` → Welatîbûn, `citizenship.citizen` → Welatî, `citizenship.revoked` → Welatîbûn hat rakirin, `citizenship.card` → Karta welatîbûnê. `src/i18n/kmr-spelling.test.ts` bans "hemwelat" in kmr. The rows stay drafts for grammar only.
+  - Rationale (Serok, 2026-10-17): the Ferheng has Welatî/m. "Hemwelatî, kesên ji eynî welatê hev in." and Hevwelatî/m. "Hemwelatî, merivên ji welatekî, lê ne ji nijadekê." (Hemwelatî/m. "Hevwelatî, kesên ji eynî welatî ne, lê dibe ku ne ji nijadekê bin."). Hevwelatî / Hemwelatî name people who share a country, the hometown or compatriot sense: the spoken question "Tu hevwelatiyê kû yî?" (said "hewwelatî", written Hevwelatî) asks where someone is from. Welatîbûn and Hemwelatîbûn are not Ferheng entries; they are regular -bûn derivations. Citizenship as membership is therefore "Welatîbûn" and a citizen "Welatî", matching the chain role "Welati" and pwap. The UI is unchanged.
 - Row account.failed: the kmr cell is verbatim from pwap (settingsScreen.biometricAlerts.failedTitle, "Bi ser neket"); ckb, fa and ar are drafts. The row is therefore marked "draft (kmr: pwap verbatim)".
 
 | key | kmr | ckb | fa | ar | source |
@@ -427,3 +428,7 @@ People read "digital fingerprint" (parmak izi, şop, پەنجەمۆر, اثر ا
 - tr, en: source texts.
 - kmr: new words "kodeke", "çêkirin", "xwendin" are in common use in the explorer's kmr; the ezafe "zincîrê welatîbûnê" follows the note above. Still awaiting a native reading.
 - ckb, fa, ar: **flagged for native reading** (both keys), as before.
+
+### Progress while the key is opened (2026-10-17)
+
+New key `iwallet.unlocking`, shown in the Kurdistan-sun overlay while a password opens or saves the key: tr "Açılıyor…", en "Opening…". kmr "Tê vekirin…" (Ferheng Vekirin/m.; same as `unlock.working`). ckb "دەکرێتەوە…", fa "در حال باز کردن…", ar "جارٍ الفتح…" are the existing `unlock.working` texts reused, still drafts for a native reading.

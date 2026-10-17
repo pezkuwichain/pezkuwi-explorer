@@ -4,6 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { KeyringPair$Json } from '@pezkuwi/keyring/types';
 import { deleteKeystore, loadKeystore, loadWords, verifyPassword } from './keystore';
+import { withKeyProgress } from './progress';
 import { unlockWithFaceId } from './faceid';
 import { indexedDbStore, type KvStore } from './idb';
 import { clearAllForms, clearForm, clearTeleportSent } from './citizen';
@@ -65,7 +66,7 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
   const unlock = useCallback(async (password: string) => {
     const j = jsonRef.current;
     if (!j) return;
-    await verifyPassword(j, password);
+    await withKeyProgress(() => verifyPassword(j, password));
     setState('unlocked');
   }, []);
 
@@ -74,11 +75,11 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
     if (!j) return;
     const pw = await unlockWithFaceId(store);
     if (pw === null) return;
-    await verifyPassword(j, pw);
+    await withKeyProgress(() => verifyPassword(j, pw));
     setState('unlocked');
   }, [store]);
 
-  const readWords = useCallback((password: string) => loadWords(password, store), [store]);
+  const readWords = useCallback((password: string) => withKeyProgress(() => loadWords(password, store)), [store]);
 
   const lock = useCallback(() => {
     setState((s) => (s === 'unlocked' ? 'locked' : s));

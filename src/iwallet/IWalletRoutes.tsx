@@ -5,6 +5,8 @@ import PageHeader from '../ui/PageHeader';
 import { useIWallet } from './IWalletContext';
 import { networkChanged, subscribeNetworkChanged } from './chain';
 import { rememberReferrer } from './citizen';
+import { useDecrypting } from './progress';
+import { ProgressOverlay } from '../ui/ProgressOverlay';
 import Landing from './screens/Landing';
 import Unlock from './screens/Unlock';
 import Home from './screens/Home';
@@ -38,8 +40,11 @@ export default function IWalletShell() {
   useEffect(() => { if (ref) rememberReferrer(ref); }, [ref]);
   // A mainnet endpoint answered with another chain: the wallet refuses it (src/iwallet/chain.ts) and says why here.
   const changed = useSyncExternalStore(subscribeNetworkChanged, networkChanged);
+  // Opening or saving the key takes seconds on a phone: say so over the whole screen (src/iwallet/progress.ts).
+  const decrypting = useDecrypting();
   return (
     <>
+      {decrypting && <ProgressOverlay message={t('iwallet.unlocking')} />}
       {changed && (
         <div className="iw"><div className="iw-body"><p className="iw-error" role="alert">{t('iwallet.error.networkChanged')}</p></div></div>
       )}

@@ -4,6 +4,7 @@ import type { ApiPromise } from '@pezkuwi/api';
 import type { SubmittableExtrinsic } from '@pezkuwi/api/types';
 import { CorruptKeystoreError, WrongPasswordError, unlock as decrypt } from './keystore';
 import { useHoldOpen, useIWallet } from './IWalletContext';
+import { withKeyProgress } from './progress';
 import { friendlyError, isNodeRefusal, submit, type SubmitEvent } from './tx';
 
 // The signing step shared by the citizenship actions, with the same rule as Send (Task 7): each action decrypts a
@@ -38,7 +39,7 @@ export function useSignedTx() {
     busyRef.current = true; setBusy(true); setAuthError(null);
     let pair;
     try {
-      pair = await decrypt(keystore, password);
+      pair = await withKeyProgress(() => decrypt(keystore, password));
     } catch (err) {
       setAuthError(t(err instanceof WrongPasswordError ? 'iwallet.error.wrongPassword' : err instanceof CorruptKeystoreError ? 'iwallet.unlock.corrupt' : 'iwallet.error.generic'));
       busyRef.current = false; setBusy(false);

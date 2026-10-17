@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { user } from '../test-user';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import i18n from '../../i18n';
@@ -59,5 +59,20 @@ describe('i-Wallet unlock', () => {
     impl.face = true;
     renderTab();
     expect(await screen.findByRole('button', { name: /Face ID/ })).toBeInTheDocument();
+  });
+
+  it('shows the Kurdistan sun while the key is being opened, with the submit disabled, and removes it after', async () => {
+    let open: () => void = () => undefined;
+    impl.unlock.mockReturnValueOnce(new Promise<void>((r) => { open = r; }));
+    renderTab();
+    await user.type(await screen.findByLabelText('Parola'), 'right-pass1');
+    await user.click(screen.getByRole('button', { name: 'Kilidi aç' }));
+    const status = await screen.findByRole('status', { name: '' });
+    expect(status).toHaveTextContent('Açılıyor…');
+    expect(status.querySelector('.ks-container')).not.toBeNull();
+    expect(status).toHaveFocus();
+    expect(document.querySelector('button[type=submit]')).toBeDisabled();
+    await act(async () => { open(); });
+    await waitFor(() => expect(document.querySelector('.progress-overlay')).toBeNull());
   });
 });

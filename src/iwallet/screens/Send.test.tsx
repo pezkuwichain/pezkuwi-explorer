@@ -21,7 +21,7 @@ const impl = vi.hoisted(() => ({
   // Per network: spendable HEZ, a failing read, the fee, the error the registry decodes; and which network each
   // connection, fee estimate and signature was made on.
   spendBy: {} as Record<string, bigint>, spendFail: [] as string[], feeBy: {} as Record<string, bigint>, metaErrBy: {} as Record<string, string>,
-  apiChains: [] as string[], signedOn: [] as string[], feeOn: [] as string[],
+  apiChains: [] as string[], signedOn: [] as string[], feeOn: [] as string[], unlockGate: null as null | Promise<void>,
 }));
 
 vi.mock('../data', () => ({
@@ -47,7 +47,7 @@ vi.mock('../keystore', async (orig) => {
     if (pw !== 'right-pass1') return Promise.reject(new real.WrongPasswordError());
     const pair = { address: ADDR, lock: vi.fn() };
     impl.pairs.push(pair);
-    return Promise.resolve(pair);
+    return (impl.unlockGate ?? Promise.resolve()).then(() => pair);
   };
   return {
     ...real,
@@ -159,7 +159,7 @@ describe('i-Wallet send', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('tr');
     store = new Map<string, unknown>([['keystore', {}], ['words', {}]]);
-    Object.assign(impl, { spendBy: {}, spendFail: [], feeBy: {}, metaErrBy: {}, apiChains: [], signedOn: [], feeOn: [] });
+    Object.assign(impl, { spendBy: {}, spendFail: [], feeBy: {}, metaErrBy: {}, apiChains: [], signedOn: [], feeOn: [], unlockGate: null });
     Object.assign(impl, { hezSpendable: 5000n * T, assets: { 1: 20n * T, 1000: 9_000_000_000n }, fee: 2_000_000_000n, script: ['inBlock', 'finalized'], sendRejects: false, faceOn: false, face: null, scanned: null, scanFails: false, feeFn: null, feeGate: null, unsubs: 0, rejectWith: null });
     impl.signed = []; impl.pairs = []; impl.unlockPw = []; impl.balanceReads = [];
   });
@@ -671,5 +671,20 @@ describe('i-Wallet send', () => {
     renderSend(); await login('HEZ', 'relay');
     await user.click(screen.getByRole('button', { name: 'Değiştir' }));
     expect(await screen.findByRole('region', { name: 'Varlık' })).toBeInTheDocument();
+  });
+
+  it('covers the screen with the Kurdistan sun while the key is opened for signing, then shows the result', async () => {
+    renderSend(); await login();
+    await fill(BOB, '1');
+    let open: () => void = () => undefined;
+    impl.unlockGate = new Promise<void>((r) => { open = r; });
+    await confirmWith('right-pass1');
+    const status = await screen.findByText('Açılıyor…', { selector: '.progress-message' });
+    expect(status.closest('[role="status"]')).not.toBeNull();
+    expect(impl.signed).toEqual([]);
+    open();
+    expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+    expect(document.querySelector('.progress-overlay')).toBeNull();
+    expect(impl.signed).toHaveLength(1);
   });
 });

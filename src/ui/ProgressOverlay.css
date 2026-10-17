@@ -1,0 +1,12 @@
+.progress-overlay {
+  position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(4, 6, 14, 0.7); backdrop-filter: blur(4px);
+}
+/* The sun is white artwork, so the card is the hero surface (green in light, green-to-dark in dark) in both themes. */
+.progress-card {
+  inline-size: 100%; max-inline-size: 360px; box-sizing: border-box; padding: 32px 24px; border-radius: 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 24px;
+  background: var(--hero-bg); border: 1px solid var(--hero-border); color: var(--hero-text); box-shadow: var(--menu-shadow);
+}
+.progress-card:focus { outline: none; }
+.progress-message { margin: 0; font-size: 17px; font-weight: 600; text-align: center; }

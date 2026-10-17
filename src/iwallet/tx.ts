@@ -52,14 +52,17 @@ export function maxSendable(free: bigint, fee: bigint, ed: bigint, token: SendTo
 
 export type SubmitEvent =
   | { type: 'submitted' }
-  | { type: 'inBlock'; blockHash: string }
+  // `likelyFailed`: the block's events carry a dispatch error for it. Not final: the block may still be retracted and
+  // the extrinsic included again with another result, so only finality decides.
+  | { type: 'inBlock'; blockHash: string; likelyFailed?: true }
   | { type: 'finalized'; blockHash: string; extrinsicHash: string }
   | { type: 'failed'; dispatchError: DispatchError }
   | { type: 'dropped' }
   // The result is unknown: finalized without system.ExtrinsicSuccess in this extrinsic's events, or dropped by the
   // node's pool (possibly after it was gossiped or seen in a block).
   | { type: 'unknown' }
-  // The node gave up waiting for finality; the extrinsic may still be finalized later.
+  // Finality is slow. With inBlock it is reported once and the wait goes on (bounded, FINALITY_GIVE_UP_MS); without a
+  // block it is final (nothing seen of it within SEND_WAIT_MS, or the node gave up): it may still complete.
   | { type: 'slow'; inBlock: boolean };
 
 const hasSuccess = (r: ISubmittableResult): boolean =>
@@ -113,13 +116,18 @@ export function finalityReader(api: ApiPromise): FinalityReader {
 
 /** How often the finality watcher reads the finalized head once the extrinsic is in a block. */
 export const FINALITY_POLL_MS = 6_000;
-/** After the first block, how long to wait for finality before saying it is slow. */
+/** After the hand-off, how long to wait for a first block before saying it may still complete. */
+export const SEND_WAIT_MS = 120_000;
+/** After the first block, how long to wait for finality before saying it is slow (the wait goes on). */
 export const FINALITY_WAIT_MS = 180_000;
+/** After the first block, when to stop waiting altogether; well inside the ~256 blocks of state the nodes keep. */
+export const FINALITY_GIVE_UP_MS = 900_000;
 
-// Signs, locks the pair, then sends. Resolves after a terminal event; rejects if signing fails (before anything left
-// this device) or if the send call rejects. 'submitted' is reported just BEFORE the extrinsic is handed to the node,
-// so a caller knows that any later rejection may hide a transaction that is already in the pool.
-// `stop` ends the status subscription early (the caller gave up waiting, e.g. the connection dropped).
+// Signs, locks the pair, then sends. Resolves once nothing more will be reported; rejects if signing fails (before
+// anything left this device) or if the send call rejects. 'submitted' is reported just BEFORE the extrinsic is handed
+// to the node, so a caller knows that any later rejection may hide a transaction that is already in the pool.
+// `stop` ends the wait early (the caller gave up waiting, e.g. the connection dropped, or the screen went away). If it
+// is set before the hand-off, nothing is sent: it resolves without 'submitted'.
 // With `chain`, finality is also confirmed from the chain itself once the extrinsic is in a block: the status
 // subscription can go quiet (a socket that reconnects silently drops it) and would then wait for the node's own
 // finality timeout, hundreds of blocks later. Whichever reports first wins; the other is stopped.
@@ -128,21 +136,25 @@ export async function submit(
 ): Promise<void> {
   // The secret key is needed only to sign: wipe it before the (possibly long) wait for finality.
   try { await tx.signAsync(pair, { nonce: -1 }); } finally { try { pair.lock(); } catch { /* already locked */ } }
+  // The last moment to give up: nothing has left this device yet.
+  if (stop?.aborted) return;
   return new Promise<void>((resolve, reject) => {
     let unsub: (() => void) | undefined;
     let done = false;
     let seenInBlock = false;
+    let saidSlow = false;
     let poll: ReturnType<typeof setInterval> | undefined;
-    let deadline: ReturnType<typeof setTimeout> | undefined;
+    const timers: Array<ReturnType<typeof setTimeout>> = [];
+    let firstBlock: ReturnType<typeof setTimeout> | undefined;
     // The block the watcher waits on; null after a retraction until the next inBlock.
     let target: { hash: string; extrinsicHash: string; n: number | null } | null = null;
-    const clear = () => { done = true; clearInterval(poll); clearTimeout(deadline); unsub?.(); };
+    const clear = () => { done = true; clearInterval(poll); clearTimeout(firstBlock); timers.forEach(clearTimeout); unsub?.(); };
     const finish = () => { clear(); resolve(); };
     // One terminal report, whoever makes it.
     const end = (e: SubmitEvent) => { if (done) return; onStatus(e); finish(); };
-    if (stop) {
-      if (stop.aborted) finish(); else stop.addEventListener('abort', () => { if (!done) finish(); }, { once: true });
-    }
+    // Slow, but still watched: the screen moves on if the answer comes later.
+    const slow = () => { if (!done && !saidSlow) { saidSlow = true; onStatus({ type: 'slow', inBlock: true }); } };
+    stop?.addEventListener('abort', () => { if (!done) finish(); }, { once: true });
     let reading = false;
     const check = async () => {
       const at = target;
@@ -163,29 +175,36 @@ export async function submit(
       } catch { /* a failed read: try again on the next tick */ } finally { reading = false; }
     };
     const onInBlock = (hash: string, extrinsicHash: string) => {
-      seenInBlock = true;
       target = { hash, extrinsicHash, n: null };
-      if (!deadline) deadline = setTimeout(() => end({ type: 'slow', inBlock: true }), FINALITY_WAIT_MS);
-      if (chain && !poll) poll = setInterval(() => { void check(); }, FINALITY_POLL_MS);
+      if (seenInBlock) return;
+      seenInBlock = true;
+      clearTimeout(firstBlock);
+      timers.push(setTimeout(slow, FINALITY_WAIT_MS), setTimeout(finish, FINALITY_GIVE_UP_MS));
+      if (chain) poll = setInterval(() => { void check(); }, FINALITY_POLL_MS);
     };
     const handle = (r: ISubmittableResult) => {
       if (done) return;
-      if (r.dispatchError) { end({ type: 'failed', dispatchError: r.dispatchError }); return; }
       const s = r.status;
       if (s.isInBlock) {
         const blockHash = s.asInBlock.toHex();
         onInBlock(blockHash, r.txHash.toHex());
-        onStatus({ type: 'inBlock', blockHash });
+        onStatus(r.dispatchError ? { type: 'inBlock', blockHash, likelyFailed: true } : { type: 'inBlock', blockHash });
       } else if (s.isRetracted) target = null; // its block left the best chain; a new inBlock follows
       else if (s.isFinalized) {
-        end(hasSuccess(r) ? { type: 'finalized', blockHash: s.asFinalized.toHex(), extrinsicHash: r.txHash.toHex() } : { type: 'unknown' });
-      } else if (s.isFinalityTimeout) end({ type: 'slow', inBlock: seenInBlock });
-      else if (s.isDropped || s.isInvalid || s.isUsurped) {
+        if (r.dispatchError) end({ type: 'failed', dispatchError: r.dispatchError });
+        else end(hasSuccess(r) ? { type: 'finalized', blockHash: s.asFinalized.toHex(), extrinsicHash: r.txHash.toHex() } : { type: 'unknown' });
+      } else if (s.isFinalityTimeout) {
+        // The node stopped watching. After a block the chain itself can still be read; without one it may still complete.
+        if (!seenInBlock) end({ type: 'slow', inBlock: false });
+        else { slow(); if (!chain) finish(); }
+      } else if (s.isDropped || s.isInvalid || s.isUsurped) {
         // Only Invalid / Usurped before any block prove nothing will be included. Dropped means just that this node's
         // pool let it go (it may already have been gossiped), and after a block any of the three leaves it unknown.
         end(seenInBlock || s.isDropped ? { type: 'unknown' } : { type: 'dropped' });
       }
     };
+    // No block within SEND_WAIT_MS of the hand-off (a subscription gone quiet before inclusion): it may still complete.
+    firstBlock = setTimeout(() => end({ type: 'slow', inBlock: false }), SEND_WAIT_MS);
     onStatus({ type: 'submitted' });
     tx.send(handle).then(
       (u) => { unsub = u as () => void; if (done) unsub(); },

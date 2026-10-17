@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { user } from '../test-user';
 import i18n from '../../i18n';
@@ -7,6 +7,7 @@ import { IWalletProvider } from '../IWalletContext';
 import IWalletShell, { IWalletIndex } from '../IWalletRoutes';
 import Send from './Send';
 import { BACKGROUND_AFTER_MS } from '../useSignedTx';
+import { FINALITY_POLL_MS, SEND_WAIT_MS } from '../tx';
 import type { KvStore } from '../idb';
 
 const ADDR = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
@@ -25,6 +26,8 @@ const impl = vi.hoisted(() => ({
   apiChains: [] as string[], signedOn: [] as string[], feeOn: [] as string[], unlockGate: null as null | Promise<void>,
   // Manual: the status subscription reports only what a test pushes, when it pushes it.
   manual: false, push: null as null | ((kind: string) => void),
+  // Calls to send (anything handed to the node), a gate on signing, and the chain's finalized number and its reads.
+  sends: 0, signGate: null as null | Promise<void>, finalizedN: 0, finReads: 0,
 }));
 
 vi.mock('../data', () => ({
@@ -69,7 +72,9 @@ const result = (kind: string) => {
   if (kind === 'finalizedNoEvents') return { ...base, events: [], internalError: new Error('events'), status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb2' } } };
   if (kind === 'dropped') return { ...base, status: { ...base.status, isDropped: true } };
   if (kind === 'invalid') return { ...base, status: { ...base.status, isInvalid: true } };
-  return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } }, dispatchError: { isModule: kind === 'failed', asModule: {} } };
+  // In a block with an error: likely failed, not final. 'failed' / 'failedOther': finalized with the error.
+  if (kind === 'inBlockFailed') return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } }, dispatchError: { isModule: true, asModule: {} } };
+  return { ...base, status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb1' } }, dispatchError: { isModule: kind === 'failed', asModule: {} } };
 };
 const mkTx = (chain: string, name: string, args: unknown[]) => ({
   paymentInfo: () => {
@@ -78,8 +83,9 @@ const mkTx = (chain: string, name: string, args: unknown[]) => ({
     const fee = impl.feeFn ? impl.feeFn(args[args.length - 1] as bigint) : (impl.feeBy[chain] ?? impl.fee);
     return (impl.feeGate ?? Promise.resolve()).then(() => ({ partialFee: { toBigInt: () => fee } }));
   },
-  signAsync: vi.fn(() => { impl.signed.push({ name, args }); impl.signedOn.push(chain); return Promise.resolve(); }),
+  signAsync: vi.fn(() => { impl.signed.push({ name, args }); impl.signedOn.push(chain); return impl.signGate ?? Promise.resolve(); }),
   send: (cb: (r: unknown) => void) => {
+    impl.sends++;
     if (impl.sendRejects) return Promise.reject(impl.rejectWith ?? new Error('ws closed'));
     if (impl.manual) impl.push = (k) => cb(result(k));
     else impl.script.forEach((k) => cb(result(k)));
@@ -96,7 +102,17 @@ const mkApi = (chain: string) => ({
     // send routed to People would build and sign there, and only signedOn shows the mistake.
     ...(chain !== 'relay' ? { assets: { transfer: (...a: unknown[]) => mkTx(chain, 'assets.transfer', a) } } : {}),
   },
-  rpc: { chain: { getHeader: () => Promise.resolve({ number: { toNumber: () => (chain === 'assetHub' ? 77 : chain === 'relay' ? 88 : 99) } }) } },
+  // What the finality watcher reads: the finalized head ('0xfin', at impl.finalizedN), the canonical hash (the stub's
+  // in-block '0xb1'), the block's extrinsics and its events (index 0, this transfer, succeeded).
+  rpc: { chain: {
+    getHeader: (h: string) => Promise.resolve({ number: { toNumber: () => (h === '0xfin' ? impl.finalizedN : chain === 'assetHub' ? 77 : chain === 'relay' ? 88 : 99) } }),
+    getFinalizedHead: () => { impl.finReads++; return Promise.resolve('0xfin'); },
+    getBlockHash: () => Promise.resolve({ toHex: () => '0xb1' }),
+    getBlock: () => Promise.resolve({ block: { extrinsics: [{ hash: { toHex: () => '0xabc123' } }] } }),
+  } },
+  at: () => Promise.resolve({ query: { system: { events: () => Promise.resolve([
+    { phase: { isApplyExtrinsic: true, asApplyExtrinsic: { toNumber: () => 0 } }, event: { section: 'system', method: 'ExtrinsicSuccess', data: [] } },
+  ]) } } }),
   registry: { findMetaError: () => ({ section: 'balances', name: impl.metaErrBy[chain] ?? 'InsufficientBalance' }) },
   on, off,
 });
@@ -173,7 +189,7 @@ describe('i-Wallet send', () => {
     Object.assign(impl, { spendBy: {}, spendFail: [], feeBy: {}, metaErrBy: {}, apiChains: [], signedOn: [], feeOn: [], unlockGate: null });
     Object.assign(impl, { hezSpendable: 5000n * T, assets: { 1: 20n * T, 1000: 9_000_000_000n }, fee: 2_000_000_000n, script: ['inBlock', 'finalized'], sendRejects: false, faceOn: false, face: null, scanned: null, scanFails: false, feeFn: null, feeGate: null, unsubs: 0, rejectWith: null });
     impl.signed = []; impl.pairs = []; impl.unlockPw = []; impl.balanceReads = [];
-    impl.manual = false; impl.push = null;
+    impl.manual = false; impl.push = null; impl.sends = 0; impl.signGate = null; impl.finalizedN = 0; impl.finReads = 0;
   });
 
   it('gates HEZ above 1000 behind the orange alert and its checkbox, and only then enables confirm', async () => {
@@ -409,14 +425,115 @@ describe('i-Wallet send', () => {
   });
 
   it('releases the status subscription and the finality watcher when the screen goes away', async () => {
-    impl.script = ['inBlock'];
-    const view = renderSend(); await login();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      impl.script = ['inBlock'];
+      const view = renderSend(); await login();
+      await fill(BOB, '1');
+      await confirmWith('right-pass1');
+      await accepted();
+      // The watcher is running (the chain is not final there yet).
+      await act(async () => { await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS); });
+      const reads = impl.finReads;
+      expect(reads).toBeGreaterThan(0);
+      expect(impl.unsubs).toBe(0);
+      view.unmount();
+      await waitFor(() => expect(impl.unsubs).toBe(1));
+      await act(async () => { await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS * 3); });
+      expect(impl.finReads).toBe(reads);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('leaving while the key is being opened sends nothing', async () => {
+    renderSend(); await login();
+    await fill(BOB, '1');
+    let open: () => void = () => undefined;
+    impl.unlockGate = new Promise<void>((r) => { open = r; });
+    const before = impl.pairs.length;
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(impl.pairs.length).toBe(before + 1));
+    cleanup();
+    await act(async () => { open(); });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(impl.signed).toEqual([]);
+    expect(impl.sends).toBe(0);
+    expect(signPair().lock).toHaveBeenCalled();
+  });
+
+  it('leaving while the transfer is being signed sends nothing', async () => {
+    renderSend(); await login();
+    await fill(BOB, '1');
+    let signed: () => void = () => undefined;
+    impl.signGate = new Promise<void>((r) => { signed = r; });
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(impl.signed).toHaveLength(1));
+    cleanup();
+    await act(async () => { signed(); });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(impl.sends).toBe(0);
+    expect(signPair().lock).toHaveBeenCalled();
+  });
+
+  it('confirms finality from the chain when the status subscription goes quiet', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      impl.script = ['inBlock'];
+      renderSend(); await login();
+      await fill(BOB, '1');
+      await confirmWith('right-pass1');
+      await accepted();
+      impl.finalizedN = 1_000;
+      await act(async () => { await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS); });
+      expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+      expect(overlay()).toBeNull();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('slow is not the end: another transfer is allowed, and a later finality still shows', async () => {
+    impl.manual = true;
+    renderSend(); await login();
     await fill(BOB, '1');
     await confirmWith('right-pass1');
-    await accepted();
-    expect(impl.unsubs).toBe(0);
-    view.unmount();
-    await waitFor(() => expect(impl.unsubs).toBe(1));
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    await push('inBlock');
+    await push('timeout'); // the node gives up on finality
+    expect(overlay()).toBeNull();
+    expect(screen.getByText(/Son onay yavaş: yine de tamamlanabilir/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bir gönderim daha' })).toBeInTheDocument();
+    await push('finalized');
+    expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+  });
+
+  it('says "likely failed" for an error in a block that is not final, and failed once it is', async () => {
+    impl.manual = true;
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    await push('inBlockFailed');
+    expect(overlay()).toHaveTextContent('Büyük olasılıkla başarısız oldu. Kesinleşmesi bekleniyor…');
+    expect(inline()).toHaveTextContent('Büyük olasılıkla başarısız oldu');
+    expect(screen.queryByText('Gönderim başarısız')).toBeNull();
+    await push('failed');
+    expect(overlay()).toBeNull();
+    expect(await screen.findByText('Gönderim başarısız')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Gönderim başarısız' })).toHaveFocus());
+  });
+
+  it('with no block two minutes after the hand-off, says it may still complete and frees the screen', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      impl.manual = true;
+      renderSend(); await login();
+      await fill(BOB, '1');
+      await confirmWith('right-pass1');
+      await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+      await act(async () => { await vi.advanceTimersByTimeAsync(SEND_WAIT_MS); });
+      expect(await screen.findByText(/yine de tamamlanabilir/)).toBeInTheDocument();
+      expect(overlay()).toBeNull();
+      expect(screen.getByRole('button', { name: 'Bir gönderim daha' })).toBeInTheDocument();
+      expect(impl.unsubs).toBe(1);
+    } finally { vi.useRealTimers(); }
   });
 
   it('reports a transaction the pool refused as invalid (before any block) as not sent', async () => {
@@ -589,6 +706,8 @@ describe('i-Wallet send', () => {
     await push('finalized');
     expect(overlay()).toBeNull();
     expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+    // Focus goes to the result's heading.
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Gönderildi' })).toHaveFocus());
     watch.disconnect();
     expect(said).toEqual(['İmzalanıyor…', 'Ağa gönderiliyor…', 'Ağ tarafından kabul edildi. Kesinleşmesi bekleniyor…']);
     // Nothing behind it stays inert.

@@ -4,7 +4,7 @@ import { KurdistanSun } from './KurdistanSun';
 import './ProgressOverlay.css';
 
 const usable = (el: Element | null): el is HTMLElement =>
-  el instanceof HTMLElement && el.isConnected && !(el as HTMLButtonElement).disabled && !el.closest('[inert]');
+  el instanceof HTMLElement && el !== document.body && el.isConnected && !(el as HTMLButtonElement).disabled && !el.closest('[inert]');
 
 // After a failure (a wrong password) the person types again: the first enabled field near where they were, or the
 // error itself when there is no field.
@@ -24,9 +24,11 @@ function fieldOrError(before: HTMLElement | null): HTMLElement | null {
 // The message may change while it shows (a transaction's steps); the card is a polite live region, so each new line is
 // announced once. `dismiss` offers a way out that cancels nothing (the wait goes on behind): `dismiss.ready` shows its
 // button, and while `dismiss` is given Escape does the same.
-export function ProgressOverlay({ message, failed = () => false, dismiss }: {
+export function ProgressOverlay({ message, failed = () => false, dismiss, focusAfter }: {
   message: string;
   failed?: () => boolean;
+  /** Where focus goes on close (not after a failure) when the element focused before is gone, e.g. a result heading. */
+  focusAfter?: () => HTMLElement | null;
   dismiss?: { label: string; ready: boolean; onDismiss: () => void };
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -34,7 +36,8 @@ export function ProgressOverlay({ message, failed = () => false, dismiss }: {
   const button = useRef<HTMLButtonElement>(null);
   const failedRef = useRef(failed);
   const dismissRef = useRef(dismiss);
-  useEffect(() => { failedRef.current = failed; dismissRef.current = dismiss; });
+  const focusAfterRef = useRef(focusAfter);
+  useEffect(() => { failedRef.current = failed; dismissRef.current = dismiss; focusAfterRef.current = focusAfter; });
   useEffect(() => {
     const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const hostEl = host.current;
@@ -68,7 +71,9 @@ export function ProgressOverlay({ message, failed = () => false, dismiss }: {
       setTimeout(() => {
         const now = document.activeElement;
         if (now && now !== document.body && now.isConnected && !hostEl?.contains(now)) return; // already placed
-        const target = wasFailure ? fieldOrError(before) : (usable(before) ? before : null);
+        const target = wasFailure ? fieldOrError(before) : (usable(before) ? before : (focusAfterRef.current?.() ?? null));
+        // A heading is not focusable by itself.
+        if (target && !wasFailure && target !== before && !target.hasAttribute('tabindex')) target.tabIndex = -1;
         target?.focus();
       }, 0);
     };

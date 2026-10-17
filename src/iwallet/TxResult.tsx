@@ -6,6 +6,10 @@ import { ProgressOverlay } from '../ui/ProgressOverlay';
 import CopyAddress from './CopyAddress';
 import type { TxOutcome, TxPhase, useSignedTx } from './useSignedTx';
 
+// Where focus goes when the overlay closes over the result: its title (done, failed), else the screen's heading.
+const resultHeading = (): HTMLElement | null =>
+  document.querySelector<HTMLElement>('.iw-result .iw-h1') ?? document.querySelector<HTMLElement>('.iw .page-header h1');
+
 const PHASE_MESSAGE: Record<TxPhase, string> = { signing: 'iwallet.signing', sending: 'iwallet.broadcasting', inBlock: 'iwallet.send.inBlock' };
 
 // The Kurdistan-sun overlay of a signed action, from the password to a final answer (useSignedTx). A screen renders it
@@ -18,8 +22,9 @@ export function TxProgress({ progress }: { progress: ReturnType<typeof useSigned
   const onChain = progress.phase !== 'signing';
   return (
     <ProgressOverlay
-      message={t(PHASE_MESSAGE[progress.phase])}
+      message={t(progress.phase === 'inBlock' && progress.likelyFailed ? 'iwallet.send.likelyFailed' : PHASE_MESSAGE[progress.phase])}
       failed={progress.failed}
+      focusAfter={resultHeading}
       dismiss={onChain ? { label: t('iwallet.background'), ready: progress.canHide, onDismiss: progress.hide } : undefined}
     />
   );
@@ -45,7 +50,7 @@ export function TxResult({ title, outcome, doneTitle, failedTitle, interrupted, 
       <PageHeader title={title} />
       <div className="iw-body iw-result" aria-live="polite">
         {o.kind === 'pending' && <p className="iw-lead" role="status">{t('iwallet.send.pending')}</p>}
-        {o.kind === 'inBlock' && <p className="iw-lead" role="status">{t('iwallet.send.inBlock')}</p>}
+        {o.kind === 'inBlock' && <p className="iw-lead" role="status">{t(o.likelyFailed ? 'iwallet.send.likelyFailed' : 'iwallet.send.inBlock')}</p>}
         {o.kind === 'slow' && <p className="iw-note" role="status">{t('iwallet.send.slow')}</p>}
         {o.kind === 'finalized' && <>
           <span className="iw-result-icon"><IconCheck size={32} /></span>

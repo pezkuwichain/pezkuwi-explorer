@@ -643,3 +643,14 @@ following it. Two new keys, all six files:
   behind") is new wording: **flagged for native reading**.
 - ckb, fa and ar are drafts. ckb "تۆڕ" and "دەنێردرێت" as in `send.working` / `send.inBlock`; "پاشبنەما" (background) is
   not attested in pwap or the explorer.
+
+New key (PR #27 review): an error seen in a block that is not final yet is shown as "likely failed" until finality
+decides (the block may be retracted and the transaction included again).
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `iwallet.send.likelyFailed` | Büyük olasılıkla başarısız oldu. Kesinleşmesi bekleniyor… | Likely failed. Waiting for final confirmation… | Dibe ku bi ser neketibe. Li benda piştrastkirina dawî… | ڕەنگە سەرکەوتوو نەبووبێت. چاوەڕێی پشتڕاستکردنەوەی کۆتایی… | احتمالاً ناموفق بود. در انتظار تأیید نهایی… | على الأرجح فشلت. بانتظار التأكيد النهائي… |
+
+- kmr: "bi ser neket" is pwap verbatim (`account.failed`), here in the subjunctive perfect after "dibe ku" (as in
+  `send.interrupted` "Dibe ku … temam bibe"); the second sentence is `send.inBlock` verbatim. Flagged for native reading.
+- ckb, fa, ar: drafts; the second sentence follows each locale's `send.inBlock`.

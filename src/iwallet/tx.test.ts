@@ -4,7 +4,7 @@ import type { KeyringPair } from '@pezkuwi/keyring/types';
 import { ERROR_KEYS } from './errors';
 import en from '../i18n/locales/en.json';
 import {
-  FINALITY_POLL_MS, FINALITY_WAIT_MS, LARGE_HEZ, buildTransfer, estimateFee, finalityReader, friendlyError, isNodeRefusal, maxSendable,
+  FINALITY_GIVE_UP_MS, FINALITY_POLL_MS, FINALITY_WAIT_MS, LARGE_HEZ, SEND_WAIT_MS, buildTransfer, estimateFee, finalityReader, friendlyError, isNodeRefusal, maxSendable,
   needsLargeAck, submit, tokenInfo, type FinalityReader, type SubmitEvent,
 } from './tx';
 
@@ -127,15 +127,32 @@ describe('submit', () => {
       { type: 'submitted' }, { type: 'inBlock', blockHash: '0xb1' }, { type: 'finalized', blockHash: '0xb2', extrinsicHash: '0xhash' },
     ]);
   });
-  it('reports a dispatch error as failed and stops', async () => {
+  // A dispatch error in a block that is not final yet is only "likely failed": the block may be retracted and the
+  // extrinsic included again. Finalized with the error is the failure.
+  it('reports a dispatch error in a block as likely failed, and as failed once that block is final', async () => {
     const dispatchError = { isModule: true };
     const tx = {
       signAsync: () => Promise.resolve(),
-      send: (cb: (r: unknown) => void) => { cb({ ...res({ isInBlock: true, asInBlock: { toHex: () => '0xb1' } }), dispatchError }); return Promise.resolve(() => undefined); },
+      send: (cb: (r: unknown) => void) => {
+        cb({ ...res({ isInBlock: true, asInBlock: { toHex: () => '0xb1' } }), dispatchError });
+        cb({ ...res({ isFinalized: true, asFinalized: { toHex: () => '0xb1' } }), dispatchError });
+        return Promise.resolve(() => undefined);
+      },
     };
     const events: SubmitEvent[] = [];
     await submit(tx as never, pairStub(), (e) => events.push(e));
-    expect(events).toEqual([{ type: 'submitted' }, { type: 'failed', dispatchError }]);
+    expect(events).toEqual([{ type: 'submitted' }, { type: 'inBlock', blockHash: '0xb1', likelyFailed: true }, { type: 'failed', dispatchError }]);
+  });
+  it('sends nothing when the caller has already stopped (left the screen) by the time it is signed', async () => {
+    const ctl = new AbortController();
+    const send = vi.fn();
+    const pair = pairStub();
+    const tx = { signAsync: vi.fn(() => { ctl.abort(); return Promise.resolve(); }), send };
+    const events: SubmitEvent[] = [];
+    await submit(tx as never, pair, (e) => events.push(e), ctl.signal);
+    expect(send).not.toHaveBeenCalled();
+    expect(events).toEqual([]);
+    expect(pair.lock).toHaveBeenCalled();
   });
   it('locks the pair even when signing fails, and rejects', async () => {
     const pair = pairStub();
@@ -315,7 +332,35 @@ describe('submit finality watcher', () => {
     } finally { vi.useRealTimers(); }
   });
 
-  it('says slow, never stuck, when nothing is final three minutes after the block', async () => {
+  it('says slow three minutes after the block, keeps watching, and gives the final answer when it comes', async () => {
+    vi.useFakeTimers();
+    try {
+      let fin = 1;
+      const chain = reader({ finalized: () => fin });
+      const q = quietTx();
+      const seen: SubmitEvent[] = [];
+      let settled = false;
+      const p = submit(q.tx as never, pairStub(), (e) => seen.push(e), undefined, chain).then(() => { settled = true; });
+      await vi.advanceTimersByTimeAsync(0);
+      q.push(inBlock('0xb1'));
+      await vi.advanceTimersByTimeAsync(FINALITY_WAIT_MS - 1);
+      expect(seen.at(-1)).toEqual({ type: 'inBlock', blockHash: '0xb1' });
+      await vi.advanceTimersByTimeAsync(1);
+      expect(seen.at(-1)).toEqual({ type: 'slow', inBlock: true });
+      // Still watched: finality at minute 4 replaces "slow".
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(settled).toBe(false);
+      fin = 10;
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS);
+      await p;
+      expect(seen.filter((e) => e.type === 'slow')).toHaveLength(1);
+      expect(seen.at(-1)).toEqual({ type: 'finalized', blockHash: '0xb1', extrinsicHash: '0xhash' });
+      expect(q.unsub).toHaveBeenCalledTimes(1);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('stops watching, still slow, fifteen minutes after the block', async () => {
     vi.useFakeTimers();
     try {
       const chain = reader({ finalized: () => 1 });
@@ -325,13 +370,70 @@ describe('submit finality watcher', () => {
       const p = submit(q.tx as never, pairStub(), (e) => seen.push(e), undefined, chain).then(() => { settled = true; });
       await vi.advanceTimersByTimeAsync(0);
       q.push(inBlock('0xb1'));
-      await vi.advanceTimersByTimeAsync(FINALITY_WAIT_MS - 1);
+      await vi.advanceTimersByTimeAsync(FINALITY_GIVE_UP_MS - 1);
       expect(settled).toBe(false);
       await vi.advanceTimersByTimeAsync(1);
       await p;
       expect(seen.at(-1)).toEqual({ type: 'slow', inBlock: true });
       expect(q.unsub).toHaveBeenCalledTimes(1);
       expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('with no block two minutes after the hand-off, says it may still complete and stops waiting', async () => {
+    vi.useFakeTimers();
+    try {
+      const q = quietTx();
+      const seen: SubmitEvent[] = [];
+      let settled = false;
+      const p = submit(q.tx as never, pairStub(), (e) => seen.push(e), undefined, reader()).then(() => { settled = true; });
+      await vi.advanceTimersByTimeAsync(SEND_WAIT_MS - 1);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await p;
+      expect(seen).toEqual([{ type: 'submitted' }, { type: 'slow', inBlock: false }]);
+      expect(q.unsub).toHaveBeenCalledTimes(1);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('a likely failure in a retracted block is not the answer: it waits, and the block that is final decides', async () => {
+    vi.useFakeTimers();
+    try {
+      const chain = reader({ finalized: () => 12, canonical: { 10: '0xother', 11: '0xb2' } });
+      const q = quietTx();
+      const seen: SubmitEvent[] = [];
+      const p = submit(q.tx as never, pairStub(), (e) => seen.push(e), undefined, chain);
+      await vi.advanceTimersByTimeAsync(0);
+      q.push({ ...inBlock('0xb1'), dispatchError: { isModule: true } });
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS * 2);
+      expect(seen.at(-1)).toEqual({ type: 'inBlock', blockHash: '0xb1', likelyFailed: true });
+      expect(chain.extrinsicResult).not.toHaveBeenCalled();
+      q.push(res({ isRetracted: true }));
+      q.push(inBlock('0xb2'));
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS);
+      await p;
+      expect(seen.at(-1)).toEqual({ type: 'finalized', blockHash: '0xb2', extrinsicHash: '0xhash' });
+      expect(seen.some((e) => e.type === 'failed')).toBe(false);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('the node giving up after a block is slow, not the end, while the chain can still be read', async () => {
+    vi.useFakeTimers();
+    try {
+      let fin = 1;
+      const chain = reader({ finalized: () => fin });
+      const q = quietTx();
+      const seen: SubmitEvent[] = [];
+      const p = submit(q.tx as never, pairStub(), (e) => seen.push(e), undefined, chain);
+      await vi.advanceTimersByTimeAsync(0);
+      q.push(inBlock('0xb1'));
+      q.push(res({ isFinalityTimeout: true }));
+      expect(seen.at(-1)).toEqual({ type: 'slow', inBlock: true });
+      fin = 10;
+      await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS);
+      await p;
+      expect(seen.at(-1)).toEqual({ type: 'finalized', blockHash: '0xb1', extrinsicHash: '0xhash' });
     } finally { vi.useRealTimers(); }
   });
 
@@ -400,7 +502,8 @@ describe('submit finality watcher', () => {
       const p = submit(q.tx as never, pairStub(), () => undefined, ctl.signal, chain);
       await vi.advanceTimersByTimeAsync(0);
       q.push(inBlock('0xb1'));
-      expect(vi.getTimerCount()).toBe(2);
+      // The poll, "slow" and the give-up (the first-block deadline is cleared by the block).
+      expect(vi.getTimerCount()).toBe(3);
       ctl.abort();
       await p;
       expect(vi.getTimerCount()).toBe(0);

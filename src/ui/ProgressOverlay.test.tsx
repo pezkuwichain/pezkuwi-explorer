@@ -50,11 +50,12 @@ describe('ProgressOverlay', () => {
   it('Escape dismisses only when a dismiss is offered; its button only when ready, and Tab stays in the card', () => {
     const onDismiss = vi.fn();
     const view = render(<ProgressOverlay message="x" />);
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(onDismiss).not.toHaveBeenCalled();
+    // Without a dismiss, Escape is left alone (not taken, nothing called).
+    expect(fireEvent.keyDown(document, { key: 'Escape' })).toBe(true);
+    expect(screen.getByRole('status')).toBeInTheDocument();
     view.rerender(<ProgressOverlay message="x" dismiss={{ label: 'Continue in background', ready: false, onDismiss }} />);
     expect(screen.queryByRole('button')).toBeNull();
-    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(fireEvent.keyDown(document, { key: 'Escape' })).toBe(false);
     expect(onDismiss).toHaveBeenCalledTimes(1);
     view.rerender(<ProgressOverlay message="x" dismiss={{ label: 'Continue in background', ready: true, onDismiss }} />);
     const card = screen.getByRole('status');
@@ -70,5 +71,19 @@ describe('ProgressOverlay', () => {
     view.unmount();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onDismiss).toHaveBeenCalledTimes(2);
+  });
+
+  it('on close, focuses `focusAfter` (a result heading) when the element focused before is gone', async () => {
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    button.focus();
+    const heading = document.createElement('h2');
+    const view = render(<ProgressOverlay message="x" focusAfter={() => heading} />);
+    button.remove();
+    document.body.appendChild(heading);
+    view.unmount();
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(heading.tabIndex).toBe(-1);
+    heading.remove();
   });
 });

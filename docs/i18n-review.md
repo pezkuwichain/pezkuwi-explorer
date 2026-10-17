@@ -461,3 +461,17 @@ draft until a native reader signs it off.
 - **ckb**: "شاشەی سەرەکی" and "زیاد بکە" as in `home.a2hs`; "هاوبەش" as in `words.warnBody`; "دەست بنێ" for "tap" is a
   draft.
 - **fa, ar**: drafts; "صفحه اصلی" and "الشاشة الرئيسية" as in `home.a2hs`.
+
+### Overlay message by action (2026-10-17, PR #19 review)
+
+The Kurdistan-sun overlay now says what the password is doing. `iwallet.unlocking` stays for opening the key (unlock,
+showing the backup words, Settings). Two new keys:
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `iwallet.saving` (a new or imported wallet is sealed) | Cüzdanın kaydediliyor… | Saving your wallet… | Cuzdanê te tê tomarkirin… | جزدانەکەت پاشەکەوت دەکرێت… | در حال ذخیرهٔ کیف پول شما… | جارٍ حفظ محفظتك… |
+| `iwallet.signing` (a transfer or citizenship action is signed) | İmzalanıyor… | Signing… | Tê îmzekirin… | واژۆ دەکرێت… | در حال امضا… | جارٍ التوقيع… |
+
+- kmr: "tê tomarkirin" as in `faceid.storage` / `error.notSaved`; "tê îmzekirin" as in `send.pending`.
+- ckb: "پاشەکەوت" as in `faceid.storage`; "واژۆ دەکرێت" as in `send.pending`. fa and ar follow `send.pending` and
+  `faceid.storage`. All four are drafts for a native reading.

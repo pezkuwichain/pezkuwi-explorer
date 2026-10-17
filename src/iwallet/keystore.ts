@@ -109,33 +109,55 @@ export async function verifyPassword(json: KeyringPair$Json, password: string): 
   try { pair.lock(); } catch { /* already locked */ }
 }
 
-async function encryptWords(mnemonic: string, password: string): Promise<unknown> {
+// Encrypts the backup words with the password (scrypt: seconds on a phone). Nothing is stored.
+export async function sealWords(mnemonic: string, password: string): Promise<unknown> {
+  assertStrong(password);
   await waitReady();
   return jsonEncrypt(stringToU8a(normaliseMnemonic(mnemonic)), WORDS_CONTENT, password);
 }
 
-// Writes the keystore and the encrypted words in ONE transaction (all or nothing). With `replace` the Face ID
-// record of the wallet being replaced goes in the same transaction. false = nothing was changed.
-export async function saveWalletAtomic(
-  json: KeyringPair$Json, mnemonic: string, password: string, replace = false, store: KvStore = indexedDbStore,
+// Writes the keystore and the sealed words in ONE transaction (all or nothing). With `replace` the Face ID record of
+// the wallet being replaced goes in the same transaction. false = nothing was changed. No password work happens here,
+// so a caller can show its progress for the encryption alone (src/iwallet/saveWallet.ts).
+export async function storeWalletAtomic(
+  json: KeyringPair$Json, sealedWords: unknown, replace = false, store: KvStore = indexedDbStore,
 ): Promise<boolean> {
-  assertStrong(password);
   try {
-    const words = await encryptWords(mnemonic, password);
-    await store.setMany({ [KEYSTORE_KEY]: json, [WORDS_KEY]: words }, replace ? [FACEID_KEY] : []);
+    await store.setMany({ [KEYSTORE_KEY]: json, [WORDS_KEY]: sealedWords }, replace ? [FACEID_KEY] : []);
     return true;
   } catch { return false; }
 }
 
-export async function loadWords(password: string, store: KvStore = indexedDbStore): Promise<string> {
-  await waitReady();
+// Both steps in one: seal the words, then store them with the keystore. false = nothing was changed.
+export async function saveWalletAtomic(
+  json: KeyringPair$Json, mnemonic: string, password: string, replace = false, store: KvStore = indexedDbStore,
+): Promise<boolean> {
+  assertStrong(password);
+  let words: unknown;
+  try { words = await sealWords(mnemonic, password); } catch { return false; }
+  return storeWalletAtomic(json, words, replace, store);
+}
+
+// The sealed backup words as stored (IndexedDB only, no password work). Throws StorageUnavailableError on a storage
+// failure and an Error when no words are stored.
+export async function readSealedWords(store: KvStore = indexedDbStore): Promise<unknown> {
   let enc: unknown;
   try { enc = await store.get(WORDS_KEY); } catch { throw new StorageUnavailableError(); }
   if (enc === undefined || enc === null) throw new Error('No saved words');
+  return enc;
+}
+
+// Opens sealed words with the password (scrypt). Throws WrongPasswordError / CorruptKeystoreError.
+export async function openWords(enc: unknown, password: string): Promise<string> {
   assertEncrypted(enc);
+  await waitReady();
   try { return u8aToString(jsonDecrypt(enc as EncryptedJson, password)); } catch (e) {
     throw isWrongPassword(e) ? new WrongPasswordError() : new CorruptKeystoreError();
   }
+}
+
+export async function loadWords(password: string, store: KvStore = indexedDbStore): Promise<string> {
+  return openWords(await readSealedWords(store), password);
 }
 
 // null only when there is no wallet; a storage failure throws StorageUnavailableError so the UI

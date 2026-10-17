@@ -11,7 +11,7 @@ import type { KvStore } from '../idb';
 
 const WORDS = 'orbit fabric lunar vessel harbor candle meadow tribe glance salute oyster wisdom';
 const k = vi.hoisted(() => ({
-  saveWalletAtomic: vi.fn(), createKeystore: vi.fn(), unlock: vi.fn(), load: (): Promise<unknown> => Promise.resolve(null),
+  storeWalletAtomic: vi.fn(), createKeystore: vi.fn(), unlock: vi.fn(), load: (): Promise<unknown> => Promise.resolve(null),
   faceSupported: false, enrol: vi.fn(),
 }));
 vi.mock('../keystore', async (orig) => ({
@@ -19,7 +19,9 @@ vi.mock('../keystore', async (orig) => ({
   newMnemonic: () => 'orbit fabric lunar vessel harbor candle meadow tribe glance salute oyster wisdom',
   loadKeystore: () => k.load(),
   requestPersistence: () => Promise.resolve(true),
-  createKeystore: k.createKeystore, saveWalletAtomic: k.saveWalletAtomic, unlock: k.unlock,
+  createKeystore: k.createKeystore, storeWalletAtomic: k.storeWalletAtomic, unlock: k.unlock,
+  // Sealing is the scrypt step; the test sees what it was given in what gets stored.
+  sealWords: (m: string, pw: string) => Promise.resolve({ sealed: m, pw }),
 }));
 vi.mock('../faceid', () => ({ faceIdSupported: () => Promise.resolve(k.faceSupported), enrolFaceId: (pw: string) => k.enrol(pw), hasFaceId: () => Promise.resolve(false), unlockWithFaceId: vi.fn() }));
 
@@ -56,10 +58,10 @@ const within3 = (index: number, word: string) => {
 describe('i-Wallet create', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('tr');
-    [k.saveWalletAtomic, k.createKeystore, k.unlock, k.enrol].forEach((f) => f.mockReset());
+    [k.storeWalletAtomic, k.createKeystore, k.unlock, k.enrol].forEach((f) => f.mockReset());
     k.load = () => Promise.resolve(null); k.faceSupported = false;
     k.createKeystore.mockResolvedValue({ address: 'a', json: { address: 'a' } });
-    k.saveWalletAtomic.mockResolvedValue(true);
+    k.storeWalletAtomic.mockResolvedValue(true);
     k.unlock.mockResolvedValue({ lock: vi.fn() });
   });
 
@@ -117,7 +119,7 @@ describe('i-Wallet create', () => {
   });
 
   it('shows the not-saved error and stays on step 3 when the atomic save fails', async () => {
-    k.saveWalletAtomic.mockResolvedValue(false);
+    k.storeWalletAtomic.mockResolvedValue(false);
     renderCreate();
     const u = await toPasswordStep();
     const [pw, again] = screen.getAllByLabelText(/Parola/);
@@ -135,8 +137,22 @@ describe('i-Wallet create', () => {
     await u.type(pw, 'longenough1'); await u.type(again, 'longenough1');
     await u.click(screen.getByRole('button', { name: 'Cüzdanı oluştur' }));
     await waitFor(() => expect(screen.getByRole('heading', { name: "i-Wallet'in" })).toBeInTheDocument());
-    expect(k.saveWalletAtomic).toHaveBeenCalledWith({ address: 'a' }, WORDS, 'longenough1', false);
+    expect(k.storeWalletAtomic).toHaveBeenCalledWith({ address: 'a' }, { sealed: WORDS, pw: 'longenough1' }, false);
     expect(document.body.textContent).not.toContain('orbit');
+  });
+
+  it('says the wallet is being saved while the key is sealed', async () => {
+    let done: () => void = () => undefined;
+    k.createKeystore.mockReturnValueOnce(new Promise((r) => { done = () => r({ address: 'a', json: { address: 'a' } }); }));
+    renderCreate();
+    const u = await toPasswordStep();
+    const [pw, again] = screen.getAllByLabelText(/Parola/);
+    await u.type(pw, 'longenough1'); await u.type(again, 'longenough1');
+    await u.click(screen.getByRole('button', { name: 'Cüzdanı oluştur' }));
+    expect(await screen.findByText('Cüzdanın kaydediliyor…', { selector: '.progress-message' })).toBeInTheDocument();
+    await act(async () => { done(); });
+    await waitFor(() => expect(screen.getByRole('heading', { name: "i-Wallet'in" })).toBeInTheDocument());
+    expect(document.querySelector('.progress-overlay')).toBeNull();
   });
 
   it('redirects to the wallet and never creates when a wallet already exists', async () => {
@@ -144,7 +160,7 @@ describe('i-Wallet create', () => {
     renderCreate();
     await waitFor(() => expect(screen.getByRole('heading', { name: 'i-Wallet kilitli' })).toBeInTheDocument());
     expect(k.createKeystore).not.toHaveBeenCalled();
-    expect(k.saveWalletAtomic).not.toHaveBeenCalled();
+    expect(k.storeWalletAtomic).not.toHaveBeenCalled();
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
 

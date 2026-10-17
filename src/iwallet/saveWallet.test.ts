@@ -1,38 +1,68 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const m = vi.hoisted(() => ({
-  createKeystore: vi.fn(), saveWalletAtomic: vi.fn(), requestPersistence: vi.fn(), enrolFaceId: vi.fn(),
+  createKeystore: vi.fn(), sealWords: vi.fn(), storeWalletAtomic: vi.fn(), requestPersistence: vi.fn(), enrolFaceId: vi.fn(),
+  work: [] as string[],
 }));
 vi.mock('./keystore', () => ({
-  createKeystore: m.createKeystore, saveWalletAtomic: m.saveWalletAtomic, requestPersistence: m.requestPersistence,
+  createKeystore: m.createKeystore, sealWords: m.sealWords, storeWalletAtomic: m.storeWalletAtomic, requestPersistence: m.requestPersistence,
+}));
+// Records whether each step ran under the overlay.
+vi.mock('./progress', () => ({
+  withKeyProgress: async (reason: string, work: () => Promise<unknown>) => {
+    m.work.push(`start:${reason}`);
+    try { return await work(); } finally { m.work.push(`end:${reason}`); }
+  },
 }));
 vi.mock('./faceid', () => ({ enrolFaceId: m.enrolFaceId }));
 import { NotSavedError, enableFaceId, saveWallet } from './saveWallet';
 
 describe('saveWallet', () => {
   beforeEach(() => {
-    Object.values(m).forEach((f) => f.mockReset());
-    m.createKeystore.mockResolvedValue({ address: 'a', json: { address: 'a' } });
-    m.saveWalletAtomic.mockResolvedValue(true);
+    [m.createKeystore, m.sealWords, m.storeWalletAtomic, m.requestPersistence, m.enrolFaceId].forEach((f) => f.mockReset());
+    m.work = [];
+    m.createKeystore.mockImplementation(() => { m.work.push('keystore'); return Promise.resolve({ address: 'a', json: { address: 'a' } }); });
+    m.sealWords.mockImplementation(() => { m.work.push('seal'); return Promise.resolve('sealed'); });
+    m.storeWalletAtomic.mockImplementation(() => { m.work.push('store'); return Promise.resolve(true); });
     m.requestPersistence.mockResolvedValue(true);
   });
 
   it('saves keystore and words in one call, then asks for persistence; no decrypted pair is returned', async () => {
     const r = await saveWallet('w w', 'pw123456', { replacing: false });
-    expect(m.saveWalletAtomic).toHaveBeenCalledWith({ address: 'a' }, 'w w', 'pw123456', false);
+    expect(m.sealWords).toHaveBeenCalledWith('w w', 'pw123456');
+    expect(m.storeWalletAtomic).toHaveBeenCalledWith({ address: 'a' }, 'sealed', false);
     expect(m.requestPersistence).toHaveBeenCalled();
     expect(r).toEqual({ json: { address: 'a' } });
   });
 
   it('passes the replace flag so the old Face ID record goes in the same transaction', async () => {
     await saveWallet('w w', 'pw123456', { replacing: true });
-    expect(m.saveWalletAtomic).toHaveBeenCalledWith({ address: 'a' }, 'w w', 'pw123456', true);
+    expect(m.storeWalletAtomic).toHaveBeenCalledWith({ address: 'a' }, 'sealed', true);
   });
 
   it('a failed save throws NotSavedError and goes no further', async () => {
-    m.saveWalletAtomic.mockResolvedValue(false);
+    m.storeWalletAtomic.mockResolvedValue(false);
     await expect(saveWallet('w w', 'pw123456', { replacing: true })).rejects.toBeInstanceOf(NotSavedError);
     expect(m.requestPersistence).not.toHaveBeenCalled();
+  });
+});
+
+describe('saveWallet progress', () => {
+  it('shows the "saving" overlay for the two scrypt steps only; the IndexedDB write runs after it', async () => {
+    m.createKeystore.mockImplementation(() => { m.work.push('keystore'); return Promise.resolve({ address: 'a', json: { address: 'a' } }); });
+    m.sealWords.mockImplementation(() => { m.work.push('seal'); return Promise.resolve('sealed'); });
+    m.storeWalletAtomic.mockImplementation(() => { m.work.push('store'); return Promise.resolve(true); });
+    m.requestPersistence.mockResolvedValue(true);
+    m.work = [];
+    await saveWallet('w w', 'pw123456', { replacing: false });
+    expect(m.work).toEqual(['start:save', 'keystore', 'seal', 'end:save', 'store']);
+  });
+
+  it('a failed sealing is a NotSavedError and stores nothing', async () => {
+    m.sealWords.mockRejectedValueOnce(new Error('scrypt'));
+    m.storeWalletAtomic.mockReset();
+    await expect(saveWallet('w w', 'pw123456', { replacing: false })).rejects.toBeInstanceOf(NotSavedError);
+    expect(m.storeWalletAtomic).not.toHaveBeenCalled();
   });
 });
 

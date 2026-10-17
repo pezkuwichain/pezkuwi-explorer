@@ -18,7 +18,7 @@ import { hasFaceId } from '../faceid';
 import { parseAmount } from '../amount';
 import { parseRecipient } from '../address';
 import {
-  LARGE_HEZ, SEND_TOKENS, buildTransfer, estimateFee, maxSendable, needsLargeAck, tokenInfo, type SendToken,
+  LARGE_HEZ, SEND_TOKENS, buildTransfer, estimateFee, maxSendable, needsLargeAck, sendChain, tokenInfo, type SendToken,
 } from '../tx';
 import { useSignedTx } from '../useSignedTx';
 import { AuthConfirm } from '../AuthConfirm';
@@ -134,7 +134,8 @@ function SendBody({ address }: { address: string }) {
   const [phase, setPhase] = useState<Phase>(start.phase);
   const [to, setTo] = useState('');
   const [token, setToken] = useState<SendToken>(start.token);
-  const [chain, setChain] = useState<ChainKey>(start.chain);
+  // The network picked for HEZ; the transfer's network is derived from the token (sendChain), never set apart from it.
+  const [hezChain, setChain] = useState<ChainKey>(start.chain);
   const [amountText, setAmountText] = useState('');
   const [ack, setAck] = useState(false);
   const [conn, setConn] = useState<{ chain: ChainKey; api: ApiPromise } | null>(null);
@@ -150,6 +151,7 @@ function SendBody({ address }: { address: string }) {
   const [balanceRun, setBalanceRun] = useState(0);
 
   const info = tokenInfo(token);
+  const chain = sendChain(token, hezChain);
   // Everything below is bound to the chosen network: its connection, balance, fee and existential deposit.
   const api = conn?.chain === chain ? conn.api : null;
   const ed = IWALLET_ED[chain];
@@ -284,8 +286,7 @@ function SendBody({ address }: { address: string }) {
   const pickToken = (tk: SendToken) => {
     if (tk !== token) { setAmountText(''); setAck(false); }
     setToken(tk);
-    if (tk === 'HEZ') setPhase('network');
-    else { setChain('assetHub'); setPhase('form'); }
+    setPhase(tk === 'HEZ' ? 'network' : 'form');
   };
   const pickChain = (c: ChainKey) => { if (c !== chain) { setAmountText(''); setAck(false); } setChain(c); setPhase('form'); };
   const chainName = t(`chain.${chain}`);

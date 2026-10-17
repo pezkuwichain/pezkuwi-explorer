@@ -13,13 +13,15 @@ const WORDS = 'abandon abandon abandon abandon abandon abandon abandon abandon a
 const WORDS24 = `${'abandon '.repeat(23)}art`;
 const impl = vi.hoisted(() => ({
   load: (): Promise<unknown> => Promise.resolve(null),
-  createKeystore: vi.fn(), saveWalletAtomic: vi.fn(), unlock: vi.fn(),
+  createKeystore: vi.fn(), storeWalletAtomic: vi.fn(), unlock: vi.fn(),
 }));
 vi.mock('../keystore', async (orig) => ({
   ...(await orig<typeof import('../keystore')>()),
   loadKeystore: () => impl.load(),
   requestPersistence: () => Promise.resolve(true),
-  createKeystore: impl.createKeystore, saveWalletAtomic: impl.saveWalletAtomic, unlock: impl.unlock,
+  createKeystore: impl.createKeystore, storeWalletAtomic: impl.storeWalletAtomic, unlock: impl.unlock,
+  // Sealing is the scrypt step; the test sees what it was given in what gets stored.
+  sealWords: (m: string, pw: string) => Promise.resolve({ sealed: m, pw }),
 }));
 vi.mock('../faceid', () => ({ faceIdSupported: () => Promise.resolve(false), enrolFaceId: vi.fn(), forgetFaceId: vi.fn(() => Promise.resolve(true)), hasFaceId: () => Promise.resolve(false), unlockWithFaceId: vi.fn() }));
 
@@ -35,9 +37,9 @@ describe('i-Wallet import', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('tr');
     impl.load = () => Promise.resolve(null);
-    [impl.createKeystore, impl.saveWalletAtomic, impl.unlock].forEach((f) => f.mockReset());
+    [impl.createKeystore, impl.storeWalletAtomic, impl.unlock].forEach((f) => f.mockReset());
     impl.createKeystore.mockResolvedValue({ address: 'a', json: { address: 'a' } });
-    impl.saveWalletAtomic.mockResolvedValue(true);
+    impl.storeWalletAtomic.mockResolvedValue(true);
     impl.unlock.mockResolvedValue({ lock: vi.fn() });
   });
 
@@ -63,13 +65,13 @@ describe('i-Wallet import', () => {
     const [pw, again] = screen.getAllByLabelText(/Parola/);
     await u.type(pw, 'longenough1'); await u.type(again, 'longenough1');
     await u.click(screen.getByRole('button', { name: 'Cüzdanı aç' }));
-    expect(impl.saveWalletAtomic).not.toHaveBeenCalled();
+    expect(impl.storeWalletAtomic).not.toHaveBeenCalled();
     await u.click(screen.getByRole('button', { name: 'Vazgeç' }));
-    expect(impl.saveWalletAtomic).not.toHaveBeenCalled();
+    expect(impl.storeWalletAtomic).not.toHaveBeenCalled();
     await u.click(screen.getByRole('button', { name: 'Cüzdanı aç' }));
     await u.click(screen.getByRole('button', { name: 'Evet, değiştir' }));
     expect(await screen.findByText('home')).toBeInTheDocument();
-    expect(impl.saveWalletAtomic).toHaveBeenCalled();
+    expect(impl.storeWalletAtomic).toHaveBeenCalled();
   });
 
   it('accepts a valid 24-word phrase with the real validator and saves it', async () => {
@@ -81,7 +83,7 @@ describe('i-Wallet import', () => {
     await u.type(pw, 'longenough1'); await u.type(again, 'longenough1');
     await u.click(screen.getByRole('button', { name: 'Cüzdanı aç' }));
     expect(await screen.findByText('home')).toBeInTheDocument();
-    expect(impl.saveWalletAtomic).toHaveBeenCalledWith({ address: 'a' }, WORDS24, 'longenough1', false);
+    expect(impl.storeWalletAtomic).toHaveBeenCalledWith({ address: 'a' }, { sealed: WORDS24, pw: 'longenough1' }, false);
   });
 
   it('Back from the password step clears the words and asks for them again', async () => {
@@ -95,7 +97,7 @@ describe('i-Wallet import', () => {
 
   it('keeps the old wallet when the atomic save fails', async () => {
     impl.load = () => Promise.resolve({ address: 'old' });
-    impl.saveWalletAtomic.mockResolvedValue(false);
+    impl.storeWalletAtomic.mockResolvedValue(false);
     const u = user;
     renderImport();
     await u.type(await screen.findByLabelText('12 veya 24 kelime'), WORDS);

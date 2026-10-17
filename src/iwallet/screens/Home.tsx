@@ -6,7 +6,7 @@ import { HoldingsTokens, HoldingsTotal } from '../../ui/Holdings';
 import { IconArrow, IconIdTab, IconReceived, IconSettings, IconWarning } from '../../ui/icons';
 import { shortAddress } from '../../lib/address';
 import { useAsync } from '../../hooks/useAsync';
-import { loadWalletHoldings } from '../data';
+import { loadAssetHoldings, loadWalletHoldings } from '../data';
 import { InstallButton } from '../Install';
 import { useInstallMode } from '../installMode';
 import CopyAddress from '../CopyAddress';
@@ -19,6 +19,13 @@ function AddressRow({ address }: { address: string }) {
       <CopyAddress address={address} />
     </div>
   );
+}
+
+// When the HEZ card fails, PEZ and USDT still come from Asset Hub on their own; while that loads or if it fails too,
+// nothing more is shown (the card above already says it could not load and offers the retry).
+function AssetFallback({ address }: { address: string }) {
+  const assets = useAsync(() => loadAssetHoldings(address), [address]);
+  return assets.status === 'ok' && assets.data ? <HoldingsTokens holdings={assets.data} assetsOnly /> : null;
 }
 
 // The unlocked wallet (spec §5): hot-wallet strip, then the Account tab's balance card on mainnet (the HEZ total and
@@ -53,6 +60,7 @@ export default function Home({ address }: { address: string }) {
         </div>
 
         {holdings.status === 'ok' && holdings.data && <HoldingsTokens holdings={holdings.data} />}
+        {holdings.status === 'error' && <AssetFallback address={address} />}
 
         {/* Browser data can be evicted; the Home Screen app keeps it. The button where the browser can help. */}
         {install !== 'standalone' && (

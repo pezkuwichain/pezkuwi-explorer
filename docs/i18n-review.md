@@ -10,6 +10,7 @@ Turkish and English are written directly and are not listed.
 - source "brand": the product name, identical in every locale.
 - **Owner decision (Serok, 2026-10-16): in Kurmancî, citizenship is "Welatîbûn" and a citizen is "welatî" everywhere in the explorer, never "Hemwelatî"** (Hemwelatî carries the compatriot sense). Changed: `home.citizenship` and `citizenship.title` → Welatîbûn, `citizenship.citizen` → Welatî, `citizenship.revoked` → Welatîbûn hat rakirin, `citizenship.card` → Karta welatîbûnê. `src/i18n/kmr-spelling.test.ts` bans "hemwelat" in kmr. The rows stay drafts for grammar only.
   - Rationale (Serok, 2026-10-17): the Ferheng has Welatî/m. "Hemwelatî, kesên ji eynî welatê hev in." and Hevwelatî/m. "Hemwelatî, merivên ji welatekî, lê ne ji nijadekê." (Hemwelatî/m. "Hevwelatî, kesên ji eynî welatî ne, lê dibe ku ne ji nijadekê bin."). Hevwelatî / Hemwelatî name people who share a country, the hometown or compatriot sense: the spoken question "Tu hevwelatiyê kû yî?" (said "hewwelatî", written Hevwelatî) asks where someone is from. Welatîbûn and Hemwelatîbûn are not Ferheng entries; they are regular -bûn derivations. Citizenship as membership is therefore "Welatîbûn" and a citizen "Welatî", matching the chain role "Welati" and pwap. The UI is unchanged.
+  - Owner decision (Serok, 2026-10-17, 08:39): the bottom tab bar's citizenship label is "Hevwelatî" (its own key `tab.citizenship`; the other five locales keep their `home.citizenship` text there), and the directorate is "Rêveberiya Giştî ya Karên Gelhe û Hevwelatiyan". The home tile (`home.citizenship`), the citizenship screen title and every i-Wallet text keep "Welatîbûn" / "Welatî". "Hevwelatiyan" is the oblique plural of Hevwelatî (Ferheng: Hevwelatî/m.), î shortened before -yan as in welatî → welatiyan; the owner's typed "Hevweelatîyan" was normalised to it. `src/i18n/kmr-spelling.test.ts` pins both.
   - Usage rule (Serok, 2026-10-17, final): pick the word by function. Addressing citizens (the state or DKS speaking to its people, "dear citizens") → "Hevwelatiyên birêz". Citizenship as a matter or process (applications, the citizenship tab, citizen issues) → "Welatîbûn". A citizen as a person or role → "Welatî".
 - Row account.failed: the kmr cell is verbatim from pwap (settingsScreen.biometricAlerts.failedTitle, "Bi ser neket"); ckb, fa and ar are drafts. The row is therefore marked "draft (kmr: pwap verbatim)".
 
@@ -27,6 +28,7 @@ Turkish and English are written directly and are not listed.
 | home.account | Hesabê min | هەژمارەکەم | حساب من | حسابي | draft |
 | home.payment | Dayîna min gihîşt? | پارەدانەکەم گەیشت؟ | پرداخت من رسید؟ | هل وصلت دفعتي؟ | draft |
 | home.citizenship | Welatîbûn | هاوڵاتیبوون | شهروندی | المواطنة | draft |
+| tab.citizenship | Hevwelatî (Serok, 2026-10-17) | هاوڵاتیبوون | شهروندی | المواطنة | owner (kmr); others = home.citizenship |
 | home.network | Tor | تۆڕ | شبکه | الشبكة | pwap |
 | status.up | Tor dixebite | تۆڕ کار دەکات | شبکه کار می‌کند | الشبكة تعمل | draft |
 | status.down | Tor bersiv nade | تۆڕ وەڵام نادات | شبکه پاسخ نمی‌دهد | الشبكة لا تستجيب | draft |
@@ -521,7 +523,7 @@ under construction. New keys, all six files:
 
 | key | tr | en | kmr | ckb | fa | ar |
 |---|---|---|---|---|---|---|
-| `citizenship.directorate` | Nüfus ve Vatandaşlık İşleri Genel Müdürlüğü | General Directorate of Population and Citizenship Affairs | Rêveberiya Giştî ya Karên Gelhe û Welatîbûnê | بەڕێوەبەرایەتی گشتی کاروباری دانیشتوان و هاوڵاتیبوون | اداره کل امور جمعیت و شهروندی | المديرية العامة لشؤون السكان والمواطنة |
+| `citizenship.directorate` | Nüfus ve Vatandaşlık İşleri Genel Müdürlüğü | General Directorate of Population and Citizenship Affairs | Rêveberiya Giştî ya Karên Gelhe û Hevwelatiyan (Serok, 2026-10-17; was "… û Welatîbûnê") | بەڕێوەبەرایەتی گشتی کاروباری دانیشتوان و هاوڵاتیبوون | اداره کل امور جمعیت و شهروندی | المديرية العامة لشؤون السكان والمواطنة |
 | `citizenship.soonTitle` | Yapım aşamasında | Under construction | Di qonaxa avakirinê de ye | لە قۆناغی دروستکردندایە | در دست ساخت | قيد الإنشاء |
 | `citizenship.soonBody` | Bu hizmet yakında burada olacak. | This service will be available here soon. | Ev karûbar wê di demeke nêz de li vir be. | ئەم خزمەتگوزارییە بەم زووانە لێرە دەبێت. | این خدمت به‌زودی در اینجا در دسترس خواهد بود. | ستتوفر هذه الخدمة هنا قريبًا. |
 

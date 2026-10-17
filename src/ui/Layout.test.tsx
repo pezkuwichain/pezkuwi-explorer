@@ -51,6 +51,14 @@ describe('Layout', () => {
     setLanguage('kmr');
   });
 
+  it('the citizenship tab has its own label (kmr: Hevwelatî), while the home tile keeps Welatîbûn', () => {
+    setLanguage('kmr');
+    render(<MemoryRouter initialEntries={['/']}><Routes><Route element={<Layout />}><Route index element={<p>HOME</p>} /></Route></Routes></MemoryRouter>);
+    const tabs = screen.getByRole('navigation', { name: 'Beş' });
+    expect(within(tabs).getByRole('link', { name: 'Hevwelatî' })).toHaveAttribute('href', '/citizenship');
+    expect(within(tabs).queryByText('Welatîbûn')).toBeNull();
+  });
+
   it('the language pill shows the code and keeps the native picker', () => {
     setLanguage('kmr');
     render(<MemoryRouter initialEntries={['/']}><Routes><Route element={<Layout />}><Route index element={<p>HOME</p>} /></Route></Routes></MemoryRouter>);

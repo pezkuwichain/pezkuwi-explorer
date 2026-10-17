@@ -202,7 +202,7 @@ describe('Citizenship', () => {
   it('the directorate button and dialog read in Kurmanji', async () => {
     await i18n.changeLanguage('kmr');
     renderIt();
-    fireEvent.click(await screen.findByRole('button', { name: 'Rêveberiya Giştî ya Karên Gelhe û Welatîbûnê' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rêveberiya Giştî ya Karên Gelhe û Hevwelatiyan' }));
     expect(await screen.findByRole('dialog', { name: 'Di qonaxa avakirinê de ye' })).toBeInTheDocument();
   });
 });

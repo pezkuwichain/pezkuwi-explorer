@@ -5,7 +5,7 @@ import { IconHome, IconIdTab, IconPhoneKey, IconSignalTab, IconWallet } from './
 const TABS = [
   { to: '/', key: 'tab.home', Icon: IconHome, end: true },
   { to: '/account', key: 'tab.account', Icon: IconWallet, end: false },
-  { to: '/citizenship', key: 'home.citizenship', Icon: IconIdTab, end: false },
+  { to: '/citizenship', key: 'tab.citizenship', Icon: IconIdTab, end: false },
   { to: '/network', key: 'home.network', Icon: IconSignalTab, end: false },
   { to: '/i-wallet', key: 'tab.iwallet', Icon: IconPhoneKey, end: false },
 ] as const;

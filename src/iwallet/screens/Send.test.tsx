@@ -69,6 +69,7 @@ const result = (kind: string) => {
   if (kind === 'inBlock') return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } } };
   if (kind === 'finalized') return { ...base, status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb2' } } };
   if (kind === 'timeout') return { ...base, status: { ...base.status, isFinalityTimeout: true } };
+  if (kind === 'retracted') return { ...base, status: { ...base.status, isRetracted: true } };
   if (kind === 'finalizedNoEvents') return { ...base, events: [], internalError: new Error('events'), status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb2' } } };
   if (kind === 'dropped') return { ...base, status: { ...base.status, isDropped: true } };
   if (kind === 'invalid') return { ...base, status: { ...base.status, isInvalid: true } };
@@ -417,8 +418,8 @@ describe('i-Wallet send', () => {
     await accepted();
     const onDisconnect = stubApi.on.mock.calls.find((c) => c[0] === 'disconnected')![1] as () => void;
     act(() => onDisconnect());
-    // "May still complete" is an answer: the overlay closes on it.
-    expect(await screen.findByText(/yine de tamamlanabilir/)).toBeInTheDocument();
+    // "May still complete" is an answer: the overlay closes on it. A real disconnect says so.
+    expect(await screen.findByText(/^Bağlantı koptu\. Gönderim yine de tamamlanabilir/)).toBeInTheDocument();
     expect(overlay()).toBeNull();
     // The status subscription is released when the disconnect wins, not left running.
     await waitFor(() => expect(impl.unsubs).toBe(1));
@@ -504,6 +505,72 @@ describe('i-Wallet send', () => {
     expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
   });
 
+  it('after slow, a retraction and a new block change nothing on screen; the late final answer does, and re-reads the balance', async () => {
+    impl.manual = true;
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    const reads0 = impl.balanceReads.length;
+    await push('inBlock');
+    await push('timeout');
+    await waitFor(() => expect(impl.balanceReads).toHaveLength(reads0 + 1)); // read again at "slow"
+    await push('retracted');
+    await push('inBlock');
+    // No overlay over the result, still "slow", still free to send another.
+    expect(overlay()).toBeNull();
+    expect(document.querySelector('[inert]')).toBeNull();
+    expect(inline()).toHaveTextContent(/Son onay yavaş/);
+    expect(inline()).not.toHaveTextContent(ACCEPTED);
+    expect(screen.getByRole('button', { name: 'Bir gönderim daha' })).toBeInTheDocument();
+    await push('finalized');
+    expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+    // The late answer re-reads the balance too.
+    await waitFor(() => expect(impl.balanceReads).toHaveLength(reads0 + 2));
+  });
+
+  it('keeps the likely-failed warning when final confirmation then turns slow', async () => {
+    impl.manual = true;
+    renderSend(); await login();
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+    await push('inBlockFailed');
+    await push('timeout');
+    expect(inline()).toHaveTextContent('Büyük olasılıkla başarısız oldu. Son onay yavaş: yine de tamamlanabilir, bakiyeni sonra kontrol et.');
+  });
+
+  it('after slow and "send another", the old attempt can no longer touch the new screen', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      impl.manual = true;
+      renderSend(); await login();
+      await fill(BOB, '1');
+      await confirmWith('right-pass1');
+      await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
+      await push('inBlock');
+      await push('timeout');
+      const oldPush = impl.push!;
+      const oldDisconnect = stubApi.on.mock.calls.findLast((c) => c[0] === 'disconnected')![1] as () => void;
+      // The watcher is reading for the old attempt.
+      await act(async () => { await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS); });
+      expect(impl.finReads).toBeGreaterThan(0);
+      await user.click(screen.getByRole('button', { name: 'Bir gönderim daha' }));
+      // The old attempt is let go: its subscription is released and its watcher stops reading.
+      await waitFor(() => expect(impl.unsubs).toBe(1));
+      const reads = impl.finReads;
+      await act(async () => { await vi.advanceTimersByTimeAsync(FINALITY_POLL_MS * 3); });
+      expect(impl.finReads).toBe(reads);
+      // Late news for it (its connection drops, a final answer) changes nothing on the new screen.
+      act(() => oldDisconnect());
+      await act(async () => { oldPush('finalized'); });
+      // The new form, untouched.
+      expect(screen.getByLabelText('Alıcı adresi')).toBeInTheDocument();
+      expect(screen.queryByText('Gönderildi')).toBeNull();
+      expect(screen.queryByText(/yine de tamamlanabilir/)).toBeNull();
+    } finally { vi.useRealTimers(); }
+  });
+
   it('says "likely failed" for an error in a block that is not final, and failed once it is', async () => {
     impl.manual = true;
     renderSend(); await login();
@@ -529,7 +596,9 @@ describe('i-Wallet send', () => {
       await confirmWith('right-pass1');
       await waitFor(() => expect(overlay()).toHaveTextContent('Ağa gönderiliyor…'));
       await act(async () => { await vi.advanceTimersByTimeAsync(SEND_WAIT_MS); });
-      expect(await screen.findByText(/yine de tamamlanabilir/)).toBeInTheDocument();
+      // Nothing dropped here: the neutral wording, without "the connection dropped".
+      expect(await screen.findByText('Gönderim yine de tamamlanabilir: tekrar göndermeden önce bakiyeni kontrol et.')).toBeInTheDocument();
+      expect(screen.queryByText(/Bağlantı koptu/)).toBeNull();
       expect(overlay()).toBeNull();
       expect(screen.getByRole('button', { name: 'Bir gönderim daha' })).toBeInTheDocument();
       expect(impl.unsubs).toBe(1);

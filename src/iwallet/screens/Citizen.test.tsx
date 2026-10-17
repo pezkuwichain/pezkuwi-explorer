@@ -6,7 +6,7 @@ import { user } from '../test-user';
 import i18n from '../../i18n';
 import { IWalletProvider } from '../IWalletContext';
 import IWalletShell, { IWalletIndex } from '../IWalletRoutes';
-import { FUNDING_POLL, identityHash, loadForm, type CitizenForm } from '../citizen';
+import { FUNDING_POLL, identityHash, loadForm, teleportGuardActive, type CitizenForm } from '../citizen';
 import Citizen from './Citizen';
 import { shortAddress } from '../../lib/address';
 import type { KvStore } from '../idb';
@@ -57,6 +57,7 @@ const result = (kind: string) => {
   const base = { events: [{ event: { section: 'system', method: 'ExtrinsicSuccess' } }], internalError: undefined as unknown, dispatchError: undefined as unknown, txHash: { toHex: () => '0xabc123' }, status: { isInBlock: false, isFinalized: false, isDropped: false, isInvalid: false, isUsurped: false } };
   if (kind === 'inBlock') return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } } };
   if (kind === 'finalized') return { ...base, status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb2' } } };
+  if (kind === 'timeout') return { ...base, status: { ...base.status, isFinalityTimeout: true } };
   // Finalized with a dispatch error (a final failure).
   return { ...base, status: { ...base.status, isFinalized: true, asFinalized: { toHex: () => '0xb1' } }, dispatchError: { isModule: true, asModule: {} } };
 };
@@ -520,6 +521,25 @@ describe('i-Wallet citizenship', () => {
       expect(document.querySelector('[inert]')).toBeNull();
     });
   }
+
+  it('a slow teleport keeps the teleport away; a late proven failure brings it back', async () => {
+    seedForm(FORM);
+    impl.manual = true;
+    renderCitizen(); await login();
+    await user.click(await screen.findByRole('button', { name: /1,5 HEZ taşı/ }));
+    await user.type(await screen.findByLabelText('Parola'), 'right-pass1');
+    await user.click(screen.getByRole('button', { name: 'İmzala ve gönder' }));
+    await waitFor(() => expect(document.querySelector('.progress-card')).toHaveTextContent('Ağa gönderiliyor…'));
+    await act(async () => { impl.push!('inBlock'); });
+    await act(async () => { impl.push!('timeout'); });
+    // Slow: it may still land, so a second teleport is not offered.
+    await waitFor(() => expect(teleportGuardActive(ADDR)).toBe(true));
+    await act(async () => { impl.push!('failed'); });
+    expect(await screen.findByText('İşlem gerçekleşmedi')).toBeInTheDocument();
+    expect(teleportGuardActive(ADDR)).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Vatandaşlığa dön' }));
+    expect(await screen.findByRole('button', { name: /1,5 HEZ taşı/ })).toBeInTheDocument();
+  });
 
   it('keeps polling after a teleport whose outcome is unknown, and never offers a second teleport', async () => {
     impl.dropAfterSend = true;

@@ -32,13 +32,15 @@ export function TxProgress({ progress }: { progress: ReturnType<typeof useSigned
 
 // The result screen shared by Send and Citizen: on its way, accepted, final (with the transaction code), failed, or
 // unknown. It shows no secret, so it may stay on screen through an auto-lock (see RequireUnlocked).
-export function TxResult({ title, outcome, doneTitle, failedTitle, interrupted, detail, actions }: {
+export function TxResult({ title, outcome, doneTitle, failedTitle, interrupted, unknown, detail, actions }: {
   title: string;
   outcome: Exclude<TxOutcome, { kind: 'idle' }>;
   doneTitle: string;
   failedTitle: string;
-  /** The "may still complete, check before trying again" text. */
+  /** "The connection dropped; it may still complete, check before trying again" (a real disconnect). */
   interrupted: string;
+  /** The same without the dropped connection: the result is just not known (no block in time, an unknown result). */
+  unknown: string;
   /** Extra lines under the finalized title (what was sent, the record number). */
   detail?: ReactNode;
   actions: ReactNode;
@@ -51,7 +53,7 @@ export function TxResult({ title, outcome, doneTitle, failedTitle, interrupted, 
       <div className="iw-body iw-result" aria-live="polite">
         {o.kind === 'pending' && <p className="iw-lead" role="status">{t('iwallet.send.pending')}</p>}
         {o.kind === 'inBlock' && <p className="iw-lead" role="status">{t(o.likelyFailed ? 'iwallet.send.likelyFailed' : 'iwallet.send.inBlock')}</p>}
-        {o.kind === 'slow' && <p className="iw-note" role="status">{t('iwallet.send.slow')}</p>}
+        {o.kind === 'slow' && <p className="iw-note" role="status">{t(o.likelyFailed ? 'iwallet.send.slowLikelyFailed' : 'iwallet.send.slow')}</p>}
         {o.kind === 'finalized' && <>
           <span className="iw-result-icon"><IconCheck size={32} /></span>
           <h2 className="iw-h1">{doneTitle}</h2>
@@ -67,7 +69,7 @@ export function TxResult({ title, outcome, doneTitle, failedTitle, interrupted, 
           <h2 className="iw-h1">{failedTitle}</h2>
           <p className="iw-error" role="alert">{o.message}</p>
         </>}
-        {o.kind === 'interrupted' && <p className="iw-note" role="alert">{interrupted}</p>}
+        {o.kind === 'interrupted' && <p className="iw-note" role="alert">{o.disconnected ? interrupted : unknown}</p>}
         {actions}
       </div>
     </div>

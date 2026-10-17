@@ -16,10 +16,11 @@ export type TxOutcome =
   // In a block; `likelyFailed` when that block's events carry an error for it (not final until the block is).
   | { kind: 'inBlock'; likelyFailed?: boolean }
   | { kind: 'finalized'; hash: string; blockHash: string }
-  // In a block, but final confirmation is slow. Still watched for a while: a later answer replaces it.
-  | { kind: 'slow' }
+  // In a block, but final confirmation is slow. Still watched for a while: a later final answer replaces it.
+  | { kind: 'slow'; likelyFailed?: boolean }
   | { kind: 'failed'; message: string }
-  | { kind: 'interrupted' };
+  // The result is not known (it may still complete); `disconnected` when the connection to the node dropped.
+  | { kind: 'interrupted'; disconnected?: boolean };
 
 type Tx = SubmittableExtrinsic<'promise'>;
 
@@ -59,10 +60,13 @@ export function useSignedTx() {
     return () => clearTimeout(timer);
   }, [onChain]);
 
-  // Resolves with the first settled outcome (final, or slow) so the caller can follow up (reload, start polling); null
-  // when the password failed or the attempt was abandoned before anything was sent. A slow attempt keeps being watched
-  // and its outcome may still change, but the person is free to start another (busy is released).
-  const run = useCallback(async (api: ApiPromise, build: () => Tx, password: string): Promise<TxOutcome | null> => {
+  // Resolves with the first settled outcome (final, or slow); null when the password failed or the attempt was
+  // abandoned before anything was sent. A slow attempt keeps being watched and a later final answer replaces it, but the
+  // person is free to start another (busy is released). `onSettled` runs for every settled outcome, the late final one
+  // included, so the caller's follow-ups (reload, start polling) see it too.
+  const run = useCallback(async (
+    api: ApiPromise, build: () => Tx, password: string, onSettled?: (o: TxOutcome) => void,
+  ): Promise<TxOutcome | null> => {
     if (busyRef.current || !keystore) return null;
     live.current?.abort(); // an older attempt still watching after "slow"
     const id = ++attempt.current;
@@ -93,11 +97,21 @@ export function useSignedTx() {
     let settle: (o: TxOutcome | null) => void = () => undefined;
     const settled = new Promise<TxOutcome | null>((r) => { settle = r; });
     // Every outcome past "in a block" settles the attempt: the overlay closes and the result screen tells the rest.
+    // Once settled (slow), only a final answer changes the screen: a later block (after a retraction) neither reopens
+    // the overlay nor turns "slow" back into "in a block"; it only updates the likely-failed mark.
+    let settledOnce = false;
+    let likely = false;
+    const slowNow = (): TxOutcome => (likely ? { kind: 'slow', likelyFailed: true } : { kind: 'slow' });
     const set = (o: TxOutcome) => {
       if (!mine()) return;
+      if (o.kind === 'inBlock') {
+        likely = o.likelyFailed === true;
+        if (settledOnce) { last = slowNow(); setOutcome(last); return; }
+        last = o; setOutcome(o); setPhase('inBlock');
+        return;
+      }
       last = o; setOutcome(o);
-      if (o.kind === 'inBlock') setPhase('inBlock');
-      else if (o.kind !== 'pending') { setPhase(null); release(); settle(o); }
+      if (o.kind !== 'pending') { setPhase(null); release(); settle(o); settledOnce = true; onSettled?.(o); }
     };
     set({ kind: 'pending' });
     let terminal = false;
@@ -106,7 +120,7 @@ export function useSignedTx() {
     let onDisconnect: () => void = () => undefined;
     // Ends the status subscription when the disconnect wins the race, so it cannot report into a finished attempt.
     const disconnected = new Promise<'disconnected'>((resolve) => {
-      onDisconnect = () => { if (!terminal && handedOff) { terminal = true; set({ kind: 'interrupted' }); stop.abort(); resolve('disconnected'); } };
+      onDisconnect = () => { if (!terminal && handedOff) { terminal = true; set({ kind: 'interrupted', disconnected: true }); stop.abort(); resolve('disconnected'); } };
     });
     api.on('disconnected', onDisconnect);
     const onStatus = (ev: SubmitEvent) => {
@@ -118,7 +132,7 @@ export function useSignedTx() {
       else if (ev.type === 'dropped') { terminal = true; set({ kind: 'failed', message: t('iwallet.send.dropped') }); }
       else if (ev.type === 'unknown') { terminal = true; set({ kind: 'interrupted' }); }
       // Slow after a block is not the end: the watcher may still bring the answer. Without a block it is.
-      else if (ev.type === 'slow') { if (ev.inBlock) set({ kind: 'slow' }); else { terminal = true; set({ kind: 'interrupted' }); } }
+      else if (ev.type === 'slow') { if (ev.inBlock) set(slowNow()); else { terminal = true; set({ kind: 'interrupted' }); } }
     };
     void (async () => {
       try {

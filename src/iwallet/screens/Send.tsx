@@ -278,10 +278,9 @@ function SendBody({ address }: { address: string }) {
   const review = (e: FormEvent) => { e.preventDefault(); if (canReview) { signer.setAuthError(null); setPhase('confirm'); } };
   const doSend = (password: string) => {
     if (!api || toNorm === null || amount === null) return;
-    void signer.run(api, () => buildTransfer(api, token, toNorm, amount), password).then((o) => {
-      // The old "Available" and Max are stale once anything may have left: read them again.
-      if (o !== null) setBalanceRun((n) => n + 1);
-    });
+    // The old "Available" and Max are stale once anything may have left: read them again, and again when a late final
+    // answer replaces "slow".
+    void signer.run(api, () => buildTransfer(api, token, toNorm, amount), password, () => setBalanceRun((n) => n + 1));
   };
   const pickToken = (tk: SendToken) => {
     if (tk !== token) { setAmountText(''); setAck(false); }
@@ -305,6 +304,7 @@ function SendBody({ address }: { address: string }) {
         doneTitle={t('iwallet.send.doneTitle')}
         failedTitle={t('iwallet.send.failedTitle')}
         interrupted={t('iwallet.send.interrupted')}
+        unknown={t('iwallet.send.unknown')}
         detail={outcome.kind === 'finalized' && <>
           <p className="iw-lead">{amount !== null ? money(amount) : ''} → <bdi dir="ltr">{shortAddress(toNorm ?? '')}</bdi></p>
           <p className="iw-lead">{t('iwallet.send.network')}: {chainName}</p>

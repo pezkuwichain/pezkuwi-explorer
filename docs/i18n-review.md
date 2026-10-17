@@ -654,3 +654,18 @@ decides (the block may be retracted and the transaction included again).
 - kmr: "bi ser neket" is pwap verbatim (`account.failed`), here in the subjunctive perfect after "dibe ku" (as in
   `send.interrupted` "Dibe ku … temam bibe"); the second sentence is `send.inBlock` verbatim. Flagged for native reading.
 - ckb, fa, ar: drafts; the second sentence follows each locale's `send.inBlock`.
+
+New keys (PR #27 re-review). Each is assembled from sentences that already exist in the same locale, so no new wording:
+
+- `iwallet.send.unknown` / `iwallet.citizen.unknown`: the second sentence of `send.interrupted` / `citizen.interrupted`
+  without "The connection dropped." Shown when no connection dropped: no block within two minutes, or an unknown result.
+- `iwallet.send.slowLikelyFailed`: the first sentence of `send.likelyFailed` + `send.slow` without its first sentence
+  ("Accepted by the network."). Shown when a likely failure then turns slow.
+
+| key | tr | en | kmr |
+|---|---|---|---|
+| `iwallet.send.unknown` | Gönderim yine de tamamlanabilir: tekrar göndermeden önce bakiyeni kontrol et. | The transfer may still go through: check your balance before sending again. | Dibe ku şandin dîsa jî temam bibe: berî ku dîsa bişînî balansa xwe kontrol bike. |
+| `iwallet.citizen.unknown` | İşlem yine de gerçekleşebilir: tekrar denemeden önce bir dakika sonra bu sayfaya yeniden bak. | It may still go through: check this page again in a minute before trying again. | Dibe ku dîsa jî temam bibe: berî ku dîsa biceribînî, piştî deqeyekê li vê rûpelê binêre. |
+| `iwallet.send.slowLikelyFailed` | Büyük olasılıkla başarısız oldu. Son onay yavaş: yine de tamamlanabilir, bakiyeni sonra kontrol et. | Likely failed. Final confirmation is slow: it may still complete, check your balance later. | Dibe ku bi ser neketibe. Piştrastkirina dawî hêdî ye: dibe ku dîsa jî temam bibe, paşê balansa xwe kontrol bike. |
+
+ckb, fa and ar are built the same way from their own existing texts. They are drafts, like their sources.

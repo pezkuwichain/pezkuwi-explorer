@@ -196,3 +196,19 @@ button.iw-pick { cursor: pointer; }
 .iw-sendon-text { flex: 1; display: flex; flex-direction: column; min-inline-size: 0; color: var(--text-strong); }
 .iw-sendon-text > span { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
 .iw-change { flex: none; inline-size: auto; padding-inline: 14px; }
+
+/* "Add to Home Screen" (src/iwallet/Install.tsx): the hint row on the home, the card on the landing, the iOS steps. */
+.iw-a2hs-row { display: flex; flex-direction: column; gap: 8px; }
+.iw-install-card {
+  display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 16px;
+  background: var(--info-soft); border: 1px solid var(--info-line); color: var(--text);
+}
+.iw-install-card > p { margin: 0; font-weight: 700; font-size: 15px; color: var(--text-strong); }
+.iw-install-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.iw-install-steps li { display: flex; align-items: center; gap: 12px; min-block-size: var(--tap); font-size: 15px; color: var(--text-strong); }
+.iw-install-num { flex: none; inline-size: 24px; text-align: center; font-weight: 700; color: var(--muted); }
+.iw-install-icon {
+  flex: none; inline-size: var(--tap); block-size: var(--tap); border-radius: 12px; display: inline-flex; align-items: center;
+  justify-content: center; background: var(--surface-sunk); color: var(--info-icon);
+}
+.iw-install-note { margin: 0; padding: 12px; border-radius: 14px; background: var(--zer-soft); border: 1px solid var(--zer-line); color: var(--text); font-size: 13.5px; line-height: 1.45; }

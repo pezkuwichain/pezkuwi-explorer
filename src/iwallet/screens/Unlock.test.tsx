@@ -75,4 +75,31 @@ describe('i-Wallet unlock', () => {
     await act(async () => { open(); });
     await waitFor(() => expect(document.querySelector('.progress-overlay')).toBeNull());
   });
+
+  it('makes everything behind the overlay inert and hidden while it shows, and restores it after', async () => {
+    let fail: (e: unknown) => void = () => undefined;
+    impl.unlock.mockReturnValueOnce(new Promise<void>((_r, j) => { fail = j; }));
+    const { container } = renderTab();
+    await user.type(await screen.findByLabelText('Parola'), 'nope');
+    await user.click(screen.getByRole('button', { name: 'Kilidi aç' }));
+    await screen.findByText('Açılıyor…', { selector: '.progress-message' });
+    expect(container).toHaveAttribute('inert');
+    expect(container).toHaveAttribute('aria-hidden', 'true');
+    expect(document.querySelector('.progress-overlay')!.closest('[inert]')).toBeNull();
+    await act(async () => { fail(new WrongPasswordError()); });
+    await waitFor(() => expect(document.querySelector('.progress-overlay')).toBeNull());
+    expect(container).not.toHaveAttribute('inert');
+    expect(container).not.toHaveAttribute('aria-hidden');
+  });
+
+  it('after a wrong password the focus goes to the password field, not to the body', async () => {
+    impl.unlock.mockRejectedValueOnce(new WrongPasswordError());
+    renderTab();
+    const field = await screen.findByLabelText('Parola');
+    await user.type(field, 'nope');
+    await user.click(screen.getByRole('button', { name: 'Kilidi aç' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Parola yanlış');
+    await waitFor(() => expect(document.querySelector('.progress-overlay')).toBeNull());
+    await waitFor(() => expect(screen.getByLabelText('Parola')).toHaveFocus());
+  });
 });

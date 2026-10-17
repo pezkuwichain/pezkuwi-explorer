@@ -25,14 +25,15 @@ export function HoldingsTotal({ holdings }: { holdings: Holding[] }) {
 }
 
 // One row per token: the native token first (on every chain), then the Asset Hub assets with their standard label.
-export function HoldingsTokens({ holdings }: { holdings: Holding[] }) {
+// `assetsOnly`: the list holds Asset Hub assets alone (no native row first).
+export function HoldingsTokens({ holdings, assetsOnly = false }: { holdings: Holding[]; assetsOnly?: boolean }) {
   const { t, i18n } = useTranslation();
   return (
     <section className="tokens" aria-label={t('account.tokens')}>
       <ul>{holdings.map((h, i) => (
         <li key={h.symbol} className="token-row">
           <TokenIcon symbol={h.symbol} />
-          <span className="token-name"><span className="token-symbol">{h.symbol}</span><span className="token-chain">{i === 0 ? 'PezkuwiChain' : h.standard ? `${t('chain.assetHub')} (${h.standard})` : t('chain.assetHub')}</span></span>
+          <span className="token-name"><span className="token-symbol">{h.symbol}</span><span className="token-chain">{i === 0 && !assetsOnly ? 'PezkuwiChain' : h.standard ? `${t('chain.assetHub')} (${h.standard})` : t('chain.assetHub')}</span></span>
           <bdi className="token-amount">{formatNumber(h.amount, h.decimals, i18n.language)}</bdi>
         </li>))}</ul>
     </section>

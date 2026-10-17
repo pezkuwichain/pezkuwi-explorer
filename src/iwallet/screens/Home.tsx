@@ -6,8 +6,9 @@ import { HoldingsTokens, HoldingsTotal } from '../../ui/Holdings';
 import { IconArrow, IconIdTab, IconReceived, IconSettings, IconWarning } from '../../ui/icons';
 import { shortAddress } from '../../lib/address';
 import { useAsync } from '../../hooks/useAsync';
-import { loadWalletHoldings } from '../data';
-import { isStandalone } from '../standalone';
+import { loadAssetHoldings, loadWalletHoldings } from '../data';
+import { InstallButton } from '../Install';
+import { useInstallMode } from '../installMode';
 import CopyAddress from '../CopyAddress';
 import '../iwallet.css';
 
@@ -20,12 +21,20 @@ function AddressRow({ address }: { address: string }) {
   );
 }
 
+// When the HEZ card fails, PEZ and USDT still come from Asset Hub on their own; while that loads or if it fails too,
+// nothing more is shown (the card above already says it could not load and offers the retry).
+function AssetFallback({ address }: { address: string }) {
+  const assets = useAsync(() => loadAssetHoldings(address), [address]);
+  return assets.status === 'ok' && assets.data ? <HoldingsTokens holdings={assets.data} assetsOnly /> : null;
+}
+
 // The unlocked wallet (spec §5): hot-wallet strip, then the Account tab's balance card on mainnet (the HEZ total and
 // where it sits on Relay, Asset Hub and People, fail-closed, never partial) with the address, the three actions, and
 // the Account tab's token rows (HEZ, PEZ, USDT).
 export default function Home({ address }: { address: string }) {
   const { t } = useTranslation();
   const holdings = useAsync(() => loadWalletHoldings(address), [address]);
+  const install = useInstallMode();
 
   return (
     <div className="iw">
@@ -51,8 +60,15 @@ export default function Home({ address }: { address: string }) {
         </div>
 
         {holdings.status === 'ok' && holdings.data && <HoldingsTokens holdings={holdings.data} />}
+        {holdings.status === 'error' && <AssetFallback address={address} />}
 
-        {!isStandalone() && <p className="iw-a2hs">{t('iwallet.home.a2hs')}</p>}
+        {/* Browser data can be evicted; the Home Screen app keeps it. The button where the browser can help. */}
+        {install !== 'standalone' && (
+          <div className="iw-a2hs-row">
+            <p className="iw-a2hs">{t('iwallet.home.a2hs')}</p>
+            <InstallButton mode={install} />
+          </div>
+        )}
       </div>
     </div>
   );

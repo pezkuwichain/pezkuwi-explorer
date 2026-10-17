@@ -39,7 +39,7 @@ export function useSignedTx() {
     busyRef.current = true; setBusy(true); setAuthError(null);
     let pair;
     try {
-      pair = await withKeyProgress(() => decrypt(keystore, password));
+      pair = await withKeyProgress('sign', () => decrypt(keystore, password));
     } catch (err) {
       setAuthError(t(err instanceof WrongPasswordError ? 'iwallet.error.wrongPassword' : err instanceof CorruptKeystoreError ? 'iwallet.unlock.corrupt' : 'iwallet.error.generic'));
       busyRef.current = false; setBusy(false);

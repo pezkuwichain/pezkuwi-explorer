@@ -88,8 +88,9 @@ const off = vi.fn();
 const mkApi = (chain: string) => ({
   tx: {
     balances: { transferKeepAlive: (...a: unknown[]) => mkTx(chain, 'balances.transferKeepAlive', a) },
-    // Asset Hub only: the relay and People have no assets pallet.
-    ...(chain === 'assetHub' ? { assets: { transfer: (...a: unknown[]) => mkTx(chain, 'assets.transfer', a) } } : {}),
+    // Asset Hub and People both have an assets pallet (People's measured on mainnet); the relay has none. So an asset
+    // send routed to People would build and sign there, and only signedOn shows the mistake.
+    ...(chain !== 'relay' ? { assets: { transfer: (...a: unknown[]) => mkTx(chain, 'assets.transfer', a) } } : {}),
   },
   rpc: { chain: { getHeader: () => Promise.resolve({ number: { toNumber: () => (chain === 'assetHub' ? 77 : chain === 'relay' ? 88 : 99) } }) } },
   registry: { findMetaError: () => ({ section: 'balances', name: impl.metaErrBy[chain] ?? 'InsufficientBalance' }) },
@@ -343,7 +344,8 @@ describe('i-Wallet send', () => {
     await user.type(await screen.findByLabelText('Parola'), 'right-pass1');
     const form = screen.getByLabelText('Parola').closest('form')!;
     fireEvent.submit(form); fireEvent.submit(form);
-    await screen.findByText(/İmzalanıyor/);
+    await waitFor(() => expect(impl.signed).toHaveLength(1));
+    await waitFor(() => expect(document.querySelector('.progress-overlay')).toBeNull());
     expect(impl.signed).toHaveLength(1);
     expect(impl.unlockPw.filter((p) => p === 'right-pass1')).toHaveLength(2); // sign-in + one transfer
   });
@@ -667,6 +669,20 @@ describe('i-Wallet send', () => {
     expect(document.querySelector('.iw-sendon')).toHaveTextContent(/^USDT Asset Hub/);
   });
 
+  it('an asset picked after choosing People for HEZ is still sent on Asset Hub', async () => {
+    impl.spendBy = { people: 5n * T };
+    renderSend(); await login('HEZ', 'people');
+    await user.click(screen.getByRole('button', { name: 'Değiştir' }));
+    await user.click(await screen.findByRole('button', { name: /^PEZ/ }));
+    await screen.findByText(/Kullanılabilir: [^—]/);
+    expect(document.querySelector('.iw-sendon')).toHaveTextContent(/^PEZ Asset Hub/);
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+    expect(impl.signed).toEqual([{ name: 'assets.transfer', args: [1, BOB, T] }]);
+    expect(impl.signedOn).toEqual(['assetHub']);
+  });
+
   it('Change goes back to the token step', async () => {
     renderSend(); await login('HEZ', 'relay');
     await user.click(screen.getByRole('button', { name: 'Değiştir' }));
@@ -679,7 +695,7 @@ describe('i-Wallet send', () => {
     let open: () => void = () => undefined;
     impl.unlockGate = new Promise<void>((r) => { open = r; });
     await confirmWith('right-pass1');
-    const status = await screen.findByText('Açılıyor…', { selector: '.progress-message' });
+    const status = await screen.findByText('İmzalanıyor…', { selector: '.progress-message' });
     expect(status.closest('[role="status"]')).not.toBeNull();
     expect(impl.signed).toEqual([]);
     open();

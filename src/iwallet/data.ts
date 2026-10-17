@@ -34,6 +34,16 @@ export async function loadAssetBalances(address: string, deps: Deps = real): Pro
   }));
 }
 
+// The home's fallback when the HEZ card fails (it is fail-closed): PEZ and USDT read from Asset Hub alone, so a relay
+// or People outage does not hide them. No HEZ row: a partial HEZ figure is never shown.
+export async function loadAssetHoldings(address: string, deps: Deps = real): Promise<Holding[]> {
+  const balances = await loadAssetBalances(address, deps);
+  return balances.map((b) => {
+    const standard = IWALLET_NETWORK.assets.find((a) => a.id === b.id)?.standard;
+    return { symbol: b.symbol, decimals: b.decimals, amount: b.amount, ...(standard ? { standard } : {}) };
+  });
+}
+
 // Spendable HEZ on one chain (free minus the part frozen beyond reserved). Send reads each chain on its own, so an
 // outage of one network never blocks a transfer on another.
 export async function chainSpendable(chain: ChainKey, address: string, deps: Deps = real): Promise<bigint> {

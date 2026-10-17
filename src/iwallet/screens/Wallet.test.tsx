@@ -13,9 +13,10 @@ import type { KvStore } from '../idb';
 const ADDR = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const impl = vi.hoisted(() => ({
   holdings: null as null | (() => Promise<unknown>),
+  assets: (): Promise<unknown> => Promise.reject(new Error('asset hub down')), assetReads: 0,
   words: vi.fn(), enrol: vi.fn(), faceSupported: false, faceOn: false, forgot: 0,
 }));
-vi.mock('../data', () => ({ loadWalletHoldings: () => impl.holdings!() }));
+vi.mock('../data', () => ({ loadWalletHoldings: () => impl.holdings!(), loadAssetHoldings: () => { impl.assetReads++; return impl.assets(); } }));
 vi.mock('../faceid', () => ({
   hasFaceId: () => Promise.resolve(impl.faceOn), unlockWithFaceId: () => Promise.resolve(null),
   faceIdSupported: () => Promise.resolve(impl.faceSupported),
@@ -24,7 +25,8 @@ vi.mock('../faceid', () => ({
 vi.mock('../keystore', async (orig) => ({
   ...(await orig<typeof import('../keystore')>()),
   loadKeystore: () => Promise.resolve({ address: ADDR, encoded: 'enc' }),
-  loadWords: (...a: unknown[]) => impl.words(...a),
+  readSealedWords: () => Promise.resolve({ sealed: true }),
+  openWords: (_enc: unknown, pw: string) => impl.words(pw),
   unlock: () => Promise.resolve({ address: ADDR, lock() {} }),
   verifyPassword: () => Promise.resolve(),
 }));
@@ -71,6 +73,7 @@ describe('i-Wallet home', () => {
     await i18n.changeLanguage('tr');
     store = new Map<string, unknown>([['keystore', {}], ['words', {}], ['faceid', {}]]);
     impl.holdings = holdingsOk(0n, 0n); impl.words.mockReset();
+    impl.assets = () => Promise.reject(new Error('asset hub down')); impl.assetReads = 0;
     window.matchMedia = (() => ({ matches: false })) as never;
   });
 
@@ -110,6 +113,28 @@ describe('i-Wallet home', () => {
     expect(screen.getByRole('button', { name: 'Adresi kopyala' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Tekrar dene' }));
     expect(await screen.findByTitle('5 HEZ')).toBeInTheDocument();
+  });
+
+  it('when the HEZ card fails, still lists PEZ and USDT from Asset Hub alone, with no HEZ row', async () => {
+    impl.holdings = () => Promise.reject(new Error('people down'));
+    impl.assets = () => Promise.resolve([
+      { symbol: 'PEZ', decimals: 12, amount: 2n * T }, { symbol: 'USDT', decimals: 6, amount: 3_000_000n, standard: 'PEZ-20' },
+    ]);
+    renderAt('/i-wallet');
+    await unlock();
+    // The card stays fail-closed: no HEZ figure, the retry is offered.
+    expect(await screen.findByRole('button', { name: 'Tekrar dene' })).toBeInTheDocument();
+    expect(document.querySelector('.chain-tile')).toBeNull();
+    const list = await screen.findByRole('region', { name: 'Varlıklar' });
+    expect(within(list).getAllByRole('listitem').map((r) => r.textContent)).toEqual(['PEZAsset Hub2', 'USDTAsset Hub (PEZ-20)3']);
+    expect(impl.assetReads).toBe(1);
+  });
+
+  it('does not read Asset Hub on its own when the HEZ card loads', async () => {
+    renderAt('/i-wallet');
+    await unlock();
+    await screen.findByTitle('5 HEZ');
+    expect(impl.assetReads).toBe(0);
   });
 
   it('shows the Home Screen hint in a browser tab and hides it in standalone mode', async () => {

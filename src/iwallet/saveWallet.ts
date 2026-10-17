@@ -2,7 +2,7 @@
 // replace, the removal of the old Face ID record land in a single IndexedDB transaction. A failure changes nothing,
 // so an existing wallet is never damaged. Used by the create and import screens.
 import type { KeyringPair$Json } from '@pezkuwi/keyring/types';
-import { createKeystore, requestPersistence, saveWalletAtomic } from './keystore';
+import { createKeystore, requestPersistence, sealWords, storeWalletAtomic } from './keystore';
 import { enrolFaceId } from './faceid';
 import { withKeyProgress } from './progress';
 
@@ -13,12 +13,15 @@ export class NotSavedError extends Error {
 export interface SavedWallet { json: KeyringPair$Json }
 
 export async function saveWallet(mnemonic: string, password: string, opts: { replacing: boolean }): Promise<SavedWallet> {
-  // Both steps run scrypt with the password (the keystore, then the words): the overlay covers them.
-  const json = await withKeyProgress(async () => {
+  // Both password steps run scrypt (the keystore, then the words): the overlay covers them, and only them. The
+  // IndexedDB write after it has no timeout, so a stuck transaction must not leave the screen covered.
+  const { json, words } = await withKeyProgress('save', async () => {
     const { json: j } = await createKeystore(mnemonic, password);
-    if (!(await saveWalletAtomic(j, mnemonic, password, opts.replacing))) throw new NotSavedError();
-    return j;
+    let w: unknown;
+    try { w = await sealWords(mnemonic, password); } catch { throw new NotSavedError(); }
+    return { json: j, words: w };
   });
+  if (!(await storeWalletAtomic(json, words, opts.replacing))) throw new NotSavedError();
   await requestPersistence();
   // No decrypted pair comes back: the wallet opens unlocked, and each signature decrypts its own pair.
   return { json };

@@ -3,7 +3,7 @@
 // fresh pair of its own (useSignedTx). "Unlocked" therefore means "may show the wallet", never "holds the secret".
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { KeyringPair$Json } from '@pezkuwi/keyring/types';
-import { deleteKeystore, loadKeystore, loadWords, verifyPassword } from './keystore';
+import { deleteKeystore, loadKeystore, openWords, readSealedWords, verifyPassword } from './keystore';
 import { withKeyProgress } from './progress';
 import { unlockWithFaceId } from './faceid';
 import { indexedDbStore, type KvStore } from './idb';
@@ -66,7 +66,7 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
   const unlock = useCallback(async (password: string) => {
     const j = jsonRef.current;
     if (!j) return;
-    await withKeyProgress(() => verifyPassword(j, password));
+    await withKeyProgress('open', () => verifyPassword(j, password));
     setState('unlocked');
   }, []);
 
@@ -75,11 +75,15 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
     if (!j) return;
     const pw = await unlockWithFaceId(store);
     if (pw === null) return;
-    await withKeyProgress(() => verifyPassword(j, pw));
+    await withKeyProgress('open', () => verifyPassword(j, pw));
     setState('unlocked');
   }, [store]);
 
-  const readWords = useCallback((password: string) => withKeyProgress(() => loadWords(password, store)), [store]);
+  // The stored words are read first, outside the overlay (IndexedDB), then opened with the password under it.
+  const readWords = useCallback(async (password: string) => {
+    const sealed = await readSealedWords(store);
+    return withKeyProgress('open', () => openWords(sealed, password));
+  }, [store]);
 
   const lock = useCallback(() => {
     setState((s) => (s === 'unlocked' ? 'locked' : s));

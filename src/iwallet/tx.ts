@@ -4,6 +4,7 @@ import type { ISubmittableResult } from '@pezkuwi/types/types';
 import type { DispatchError } from '@pezkuwi/types/interfaces';
 import type { KeyringPair } from '@pezkuwi/keyring/types';
 import { IWALLET_NETWORK } from '../config/iwallet-network';
+import type { ChainKey } from '../config/network';
 import { ERROR_KEYS } from './errors';
 
 export type SendToken = 'HEZ' | 'PEZ' | 'USDT';
@@ -15,6 +16,10 @@ export function tokenInfo(token: SendToken): { symbol: SendToken; decimals: numb
   const a = IWALLET_NETWORK.assets.find((x) => x.symbol === token)!;
   return { symbol: token, decimals: a.decimals, assetId: a.id };
 }
+
+// The network a transfer of `token` is made on: HEZ on the one the person chose, PEZ and USDT always on Asset Hub
+// (People has an assets pallet too, so a stray choice must never route an asset there).
+export const sendChain = (token: SendToken, chosen: ChainKey): ChainKey => (tokenInfo(token).assetId === null ? chosen : 'assetHub');
 
 // Sending more than this many HEZ from the browser hot wallet needs an explicit acknowledgement (spec §5).
 // It applies to HEZ only: PEZ and USDT are never gated.

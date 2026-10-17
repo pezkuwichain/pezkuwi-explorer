@@ -430,7 +430,7 @@ function MyReferrals({ list, address, onApprove, onRetry }: {
               </div>
               {/* approve_referral accepts only an open application that names this account and reads PendingReferral. */}
               {r.state === 'waiting' && (
-                <button type="button" className="iw-max" onClick={() => onApprove(r.address)}
+                <button type="button" className="iw-ref-approve" onClick={() => onApprove(r.address)}
                   aria-label={t('iwallet.citizen.refs.approveFor', { address: r.address })}>
                   {t('iwallet.citizen.refs.approve')}
                 </button>

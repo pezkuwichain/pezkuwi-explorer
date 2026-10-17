@@ -366,6 +366,41 @@ describe('i-Wallet citizenship', () => {
     expect(document.querySelector('form.iw-form')).toBeNull();
   });
 
+  for (const status of ['NotStarted', 'Revoked']) {
+    it(`does not scan or offer referral approvals for an NFT holder whose status reads ${status} (the chain needs Approved)`, async () => {
+      impl.status = status; impl.nft = 4n; impl.people = T;
+      impl.apps = [{ applicant: BOB, referrer: ADDR, status: 'PendingReferral' }];
+      renderCitizen(); await login();
+      if (status === 'Revoked') await screen.findByText('Bu hesabın vatandaşlığı iptal edildi.');
+      else await screen.findByRole('heading', { name: 'Vatandaşsın' });
+      expect(impl.scans).toBe(0);
+      expect(screen.queryByText('Onayını bekleyen başvurular')).toBeNull();
+      expect(screen.queryByRole('button', { name: `${BOB} onayla` })).toBeNull();
+    });
+  }
+
+  it('makes one salt per application: kept across re-renders and remounts and used in the signed hash', async () => {
+    impl.people = 2n * T;
+    seedForm(FORM);
+    const first = renderCitizen(); await login();
+    await screen.findByRole('button', { name: 'Başvuruyu Gönder' });
+    expect(screen.getByLabelText('Tam Adın')).toHaveValue('Berzê Ronahî');
+    const salt = loadForm(ADDR).salt;
+    expect(salt).toMatch(/^0x[0-9a-f]{64}$/);
+    await user.clear(screen.getByLabelText('Tam Adın'));
+    await user.type(screen.getByLabelText('Tam Adın'), 'Rojîn Welat');
+    expect(loadForm(ADDR).salt).toBe(salt);
+    first.unmount();
+    renderCitizen(); await login();
+    expect(await screen.findByLabelText('Tam Adın')).toHaveValue('Rojîn Welat');
+    expect(loadForm(ADDR).salt).toBe(salt);
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(applyBtn());
+    await signWith('right-pass1');
+    await screen.findByText('Başvuru gönderildi');
+    expect(impl.signed[0].args[0]).toBe(identityHash({ fullName: 'Rojîn Welat', referrer: '', salt }, ADDR));
+  });
+
   it('says approved without an NFT when the NFT is missing', async () => {
     impl.status = 'Approved'; impl.nft = null;
     renderCitizen(); await login();

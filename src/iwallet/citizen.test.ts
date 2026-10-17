@@ -4,20 +4,32 @@ import { u8aToHex } from '@pezkuwi/util';
 import type { ApiPromise } from '@pezkuwi/api';
 import { normaliseAddress } from '../lib/address';
 import {
-  EMPTY_FORM, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, formKey, formProblems, identityHash, loadForm,
+  EMPTY_FORM, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, formKey, formProblems, identityHash, loadForm, newSalt,
   loadStatus, needsFunding, parseReferrer, pendingReferrals, saveForm, stageOf, teleportAmount, toKycStatus, type CitizenForm,
 } from './citizen';
 
 const ADDR = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const BOB = '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty';
 const CHARLIE = '5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y';
-const FORM: CitizenForm = { fullName: 'Berzê Ronahî', referrer: BOB };
+const SALT = `0x${'11'.repeat(32)}`;
+const FORM: CitizenForm = { fullName: 'Berzê Ronahî', referrer: BOB, salt: SALT };
+const KEY = `pezkuwi-explorer:iwallet-citizen:${ADDR}`;
+const stored = () => JSON.parse(localStorage.getItem(KEY)!) as Record<string, unknown>;
 
 describe('identityHash', () => {
-  it('hashes { fullName, walletAddress } only, for a fixed vector', () => {
-    const json = `{"fullName":"Berzê Ronahî","walletAddress":"${ADDR}"}`;
+  it('hashes { fullName, walletAddress, salt }, for a fixed vector', () => {
+    const json = `{"fullName":"Berzê Ronahî","walletAddress":"${ADDR}","salt":"${SALT}"}`;
     expect(identityHash(FORM, ADDR)).toBe(blake2AsHex(json, 256));
-    expect(identityHash(FORM, ADDR)).toBe('0x091d6991eb0d1709e579eb632f59e2055f0178ba81711030211064cff5ec5824');
+    expect(identityHash(FORM, ADDR)).toBe('0x319a72f1684218bdc8fe6d579e413ddea9f4ddeb8d1167e99b2aba02e64ef7b1');
+  });
+
+  it('gives different hashes for the same name and address with two salts, so a guessed name cannot be checked', () => {
+    const a = newSalt(); const b = newSalt();
+    expect(a).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(a).not.toBe(b);
+    expect(identityHash({ ...FORM, salt: a }, ADDR)).not.toBe(identityHash({ ...FORM, salt: b }, ADDR));
+    // A guess without the salt does not reproduce it.
+    expect(identityHash(FORM, ADDR)).not.toBe(blake2AsHex(JSON.stringify({ fullName: FORM.fullName, walletAddress: ADDR }), 256));
   });
 
   it('ignores the referrer and changes with the name or the wallet', () => {
@@ -30,36 +42,48 @@ describe('identityHash', () => {
 describe('form', () => {
   beforeEach(() => localStorage.clear());
   it('asks only for the full name', () => {
-    expect(Object.keys(EMPTY_FORM).sort()).toEqual(['fullName', 'referrer']);
+    expect(Object.keys(EMPTY_FORM).sort()).toEqual(['fullName', 'referrer', 'salt']);
     expect(formProblems(FORM)).toEqual([]);
     expect(formProblems({ ...FORM, fullName: '  ' })).toEqual(['fullName']);
-    expect(formProblems({ fullName: 'x', referrer: '' })).toEqual([]);
+    expect(formProblems({ ...FORM, referrer: '' })).toEqual([]);
   });
-  it('is kept only in localStorage under pezkuwi-explorer:iwallet-citizen:<address>', () => {
+  it('is kept only in localStorage under pezkuwi-explorer:iwallet-citizen:<address>, with its salt', () => {
     expect(formKey(ADDR)).toBe(`iwallet-citizen:${ADDR}`);
     expect(saveForm(ADDR, FORM)).toBe(true);
-    expect(JSON.parse(localStorage.getItem(`pezkuwi-explorer:iwallet-citizen:${ADDR}`)!)).toEqual(FORM);
+    expect(stored()).toEqual(FORM);
     expect(loadForm(ADDR)).toEqual(FORM);
-    expect(loadForm(BOB)).toEqual(EMPTY_FORM);
+    expect(loadForm(ADDR).salt).toBe(SALT);
   });
-  it('reads a form saved in the old long shape as name + referrer, and the next save drops the rest', () => {
+  it('gives a new form a fresh salt without writing anything', () => {
+    const f = loadForm(BOB);
+    expect(f).toEqual({ fullName: '', referrer: '', salt: f.salt });
+    expect(f.salt).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(localStorage.length).toBe(0);
+  });
+  it('rewrites a form saved in the old long shape on load: name + referrer + a new salt, nothing else left', () => {
     const old = {
       fullName: 'Berzê Ronahî', fatherName: 'Şêrko', grandfatherName: 'Welat', motherName: 'Gula', tribe: 'Barzanî',
       maritalStatus: 'zewici', childrenCount: '2', children: [{ name: 'Rojîn', birthYear: '2015' }],
       region: 'bakur', email: 'berze@example.com', profession: 'Mamosta', referrer: BOB,
     };
-    localStorage.setItem(`pezkuwi-explorer:iwallet-citizen:${ADDR}`, JSON.stringify(old));
-    expect(loadForm(ADDR)).toEqual(FORM);
-    saveForm(ADDR, loadForm(ADDR));
-    expect(JSON.parse(localStorage.getItem(`pezkuwi-explorer:iwallet-citizen:${ADDR}`)!)).toEqual(FORM);
+    localStorage.setItem(KEY, JSON.stringify(old));
+    const f = loadForm(ADDR);
+    expect(f).toEqual({ fullName: 'Berzê Ronahî', referrer: BOB, salt: f.salt });
+    // Written back at once, with no save: none of the old fields stay in this browser.
+    expect(stored()).toEqual(f);
+    expect(Object.keys(stored()).sort()).toEqual(['fullName', 'referrer', 'salt']);
+    expect(loadForm(ADDR).salt).toBe(f.salt);
   });
   it('falls back to empty fields when the stored text is damaged or of the wrong type', () => {
-    localStorage.setItem(`pezkuwi-explorer:iwallet-citizen:${ADDR}`, '{not json');
-    expect(loadForm(ADDR)).toEqual(EMPTY_FORM);
-    localStorage.setItem(`pezkuwi-explorer:iwallet-citizen:${ADDR}`, 'null');
-    expect(loadForm(ADDR)).toEqual(EMPTY_FORM);
-    localStorage.setItem(`pezkuwi-explorer:iwallet-citizen:${ADDR}`, '{"fullName":7,"referrer":["x"]}');
-    expect(loadForm(ADDR)).toEqual(EMPTY_FORM);
+    const empty = (f: CitizenForm) => expect({ ...f, salt: '' }).toEqual(EMPTY_FORM);
+    localStorage.setItem(KEY, '{not json');
+    empty(loadForm(ADDR));
+    localStorage.setItem(KEY, 'null');
+    empty(loadForm(ADDR));
+    localStorage.setItem(KEY, '{"fullName":7,"referrer":["x"],"salt":"0xnot-hex"}');
+    const f = loadForm(ADDR);
+    empty(f);
+    expect(f.salt).toMatch(/^0x[0-9a-f]{64}$/);
   });
 });
 

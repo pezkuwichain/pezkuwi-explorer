@@ -190,7 +190,8 @@ describe('Citizenship', () => {
     fireEvent.click(btn);
     const dialog = await screen.findByRole('dialog', { name: 'Under construction' });
     expect(dialog).toHaveTextContent('This service will be available here soon.');
-    fireEvent.click(within(dialog).getAllByRole('button', { name: 'Close' })[0]);
+    // The footer button (by its visible text), not the header X, which is an icon with only an aria-label.
+    fireEvent.click(within(dialog).getByText('Close', { selector: 'button' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 

@@ -61,7 +61,7 @@ export function ProgressOverlay({ message, failed = () => false }: { message: st
   return createPortal(
     <div ref={host} className="progress-overlay">
       <div
-        ref={card} className="progress-card" role="status" aria-live="polite" aria-modal="true" tabIndex={-1}
+        ref={card} className="progress-card" role="status" aria-live="polite" tabIndex={-1}
         onKeyDown={(e) => { if (e.key === 'Tab') e.preventDefault(); }}
       >
         <KurdistanSun size={100} />

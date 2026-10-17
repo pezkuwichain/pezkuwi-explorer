@@ -20,9 +20,10 @@ describe('ProgressOverlay', () => {
     expect(document.querySelector('style')).toBeNull();
   });
 
-  it('is modal and makes inert what is added to <body> while it shows, restoring it on close', async () => {
+  it('makes inert what is added to <body> while it shows, restoring it on close', async () => {
     const view = render(<ProgressOverlay message="x" />);
-    expect(screen.getByRole('status')).toHaveAttribute('aria-modal', 'true');
+    // Isolation comes from inert, not aria-modal (which is not allowed on role="status").
+    expect(screen.getByRole('status')).not.toHaveAttribute('aria-modal');
     const late = document.createElement('div');
     document.body.appendChild(late);
     await waitFor(() => expect(late).toHaveAttribute('inert'));

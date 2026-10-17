@@ -483,7 +483,9 @@ showing the backup words, Settings). Two new keys:
 
 Only a hash goes on chain and the data stays in the browser, so the i-Wallet application now asks only for the full
 name (kept on this device for the citizen card) and the optional referrer. The identity hash is now
-`blake2(JSON.stringify({ fullName, walletAddress }))`, no longer pwap's nine-field recipe.
+`blake2(JSON.stringify({ fullName, walletAddress, salt }))`, no longer pwap's nine-field recipe. The salt (32 random
+bytes, kept with the form in this browser; owner's ruling on the PR #21 review) stops anyone from checking a guessed
+name against the public hash, so `form.privacy` and `form.agree` ("cannot be read back") stay true and are unchanged.
 
 Removed keys, in all six files (ignore their entries in the fa / ar lists above):
 `iwallet.citizen.form.fatherName`, `grandfatherName`, `motherName`, `tribe`, `marital`, `married`, `unmarried`,
@@ -530,3 +532,12 @@ under construction. New keys, all six files:
   for native reading, as is the whole sentence.
 - ckb, fa, ar: drafts. fa uses "جمعیت" for population rather than Iran's "ثبت احوال" (civil registration); a native
   reader should pick the official-sounding name.
+
+### Install step 1 without "Safari" (2026-10-17, PR #21 review)
+
+`iwallet.install.step1` now names the browser's toolbar, not Safari's (Chrome, Edge and Firefox on iOS add to the
+Home Screen from their own Share menus): tr "Tarayıcının araç çubuğundaki Paylaş düğmesine dokun", en "Tap the Share
+button in your browser's toolbar". kmr "Di geroka xwe de li nîşana Parvekirinê bitikîne" (gerok, nîşan and
+parvekirin as before; "bitikîne" still flagged), ckb "لە شریتی ئامرازەکانی وێبگەڕەکەتدا دەست بنێ بە دوگمەی هاوبەشکردن",
+fa "در نوار ابزار مرورگر خود روی دکمه اشتراک‌گذاری بزنید", ar "اضغط على زر المشاركة في شريط أدوات متصفحك". All four are
+drafts for a native reading.

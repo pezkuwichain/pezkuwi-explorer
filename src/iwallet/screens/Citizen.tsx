@@ -14,7 +14,7 @@ import { parseRecipient } from '../address';
 import {
   FUNDING_POLL, assetHubNeed, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, chainSpendable,
   clearTeleportSent, formProblems, identityHash, kycDeposit, loadForm, loadStatus, markTeleportSent, needsFunding, parseReferrer,
-  isCitizen, pendingReferrals, rememberedReferrer, saveForm, stageOf, teleportAmount, teleportGuardActive,
+  canRefer, pendingReferrals, rememberedReferrer, saveForm, stageOf, teleportAmount, teleportGuardActive,
   type CitizenForm, type CitizenStatus, type PendingReferral,
 } from '../citizen';
 import { AuthConfirm } from '../AuthConfirm';
@@ -53,8 +53,8 @@ async function load(address: string, cachedReferrals: PendingReferral[] | null):
     estimateFee(buildApply(people, ZERO_HASH, address), address),
     estimateFee(buildTeleportToPeople(assetHub, address, teleportAmount(deposit)), address),
   ]);
-  // Only a citizen can be a referrer, so nobody else pays for the scan.
-  const referrals: Loaded['referrals'] = !isCitizen(status) ? []
+  // Only an Approved account can be a referrer (the pallet's rule), so nobody else pays for the scan or sees Approve.
+  const referrals: Loaded['referrals'] = !canRefer(status) ? []
     : cachedReferrals ?? await pendingReferrals(address).catch((): 'failed' => 'failed');
   return { people, assetHub, status, referrals, deposit, peopleFree, ahFree, applyFee: { none: feeNone, some: feeSome }, teleportFee };
 }
@@ -98,7 +98,7 @@ function CitizenBody({ address }: { address: string }) {
     cancelLoad.current = () => { live = false; };
     load(address, referralCache.current).then((d) => {
       if (!live) return;
-      if (isCitizen(d.status) && d.referrals !== 'failed') referralCache.current = d.referrals;
+      if (canRefer(d.status) && d.referrals !== 'failed') referralCache.current = d.referrals;
       setData(d);
     }, () => { if (live) setData('failed'); });
   }, [address]);

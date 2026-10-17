@@ -66,7 +66,7 @@ describe('Add to Home Screen', () => {
     const dialog = await screen.findByRole('dialog', { name: "i-Wallet'i Ana Ekrana ekle" });
     const steps = within(dialog).getAllByRole('listitem').map((li) => li.textContent);
     expect(steps).toEqual([
-      "1Safari'nin araç çubuğundaki Paylaş simgesine dokun", '2“Ana Ekrana Ekle”yi seç', '3“Ekle”ye dokun',
+      '1Tarayıcının araç çubuğundaki Paylaş düğmesine dokun', '2“Ana Ekrana Ekle”yi seç', '3“Ekle”ye dokun',
     ]);
     expect(within(dialog).getByText(/Ana Ekrandaki uygulama Safari'den ayrı, kendi deposunu kullanır/)).toBeInTheDocument();
     expect(within(dialog).getByRole('link', { name: '12 kelimeyle geri yükle' })).toHaveAttribute('href', '/i-wallet/import');

@@ -622,3 +622,61 @@ labels are the chip in each screen's header. `mascot.say3` now names the network
   Ferheng words. The kmr `switchBody` and `switchSignOut` sentences are new wording: flagged for native reading.
 - ckb, fa and ar are drafts. In those scripts `{{network}}` in `mascot.say3` is now the localised network label (it was
   the transliterated "زاگرۆس" / "زاگرس" / "زاغروس"); a native reader may prefer a localised name per network.
+
+### Privacy and terms pages and footer (2026-10-17, Serok)
+
+The `/privacy` and `/terms` pages and the footer links. The long text is not in the locale files: it is in
+`src/legal/privacy.<lang>.ts` and `src/legal/terms.<lang>.ts`, rendered by `src/legal/LegalPage.tsx`.
+
+- **en and tr are the owner-approved drafts** (Serok, 2026-10-17; source `res/explorer/legal-drafts-2026-10-17.md`), used
+  verbatim except for the internal measurement note in privacy §3, which is not shown. The genesis-reset clause was removed
+  by the owner; `src/legal/LegalPage.test.tsx` asserts that no language mentions a genesis. Contact privacy@pezkuwichain.io;
+  log retention 14 days (measured).
+- **kmr, ckb, fa and ar: all four modules (`privacy.*`, `terms.*`) are drafts awaiting native reading AND legal reading.**
+  They were translated from en at implementation; no sentence of them is confirmed. A legal reader should check in
+  particular: privacy §3 (third-party relay), §5 (rights, EU/EEA and UK authority) and terms §5 (no warranty, liability).
+- Not translated, kept as the international term in every language: PezkuwiChain, Pezkuwi Explorer, i-Wallet, Pezkuwi Wallet,
+  WalletConnect, Face ID, App Store, iPhone (ar, ckb; fa writes آیفون/اندروید as elsewhere), Android, IP, Zagros, rpc /
+  asset-hub-rpc / people-rpc, EU/EEA, UK, and the host names (kept left to right inside RTL text).
+- kmr follows the glossary above: cuzdan (masculine), mifte, şîfrekirî, peyvên vegerandinê, cîhaz / gerok (feminine, "geroka
+  te"), welatîbûn (process) / welatî; no "Hemwelatî" (kmr-spelling.test.ts covers the locale file, LegalPage.test.tsx the two kmr
+  modules). "Kurdish nation / Kurdish people" does not occur in these texts.
+- kmr words checked mechanically against the Ferheng (Zeynelabidin), pwap `kmr.ts` and the explorer's `kmr.json`
+  (316 distinct words; inflected forms of found stems counted as found). **Not confirmed in any source:** `Cotmeh`
+  (October; pwap writes its own date as "8 Mijdar 2025", so the same month system is used), `analîtîk`, `cookieyên`
+  (cookie kept as the international word), `nodên` (node), `indexera` (indexer), `rasthatî` (random; Ferheng has only
+  Rasthatin/m. "şans"), `sêyem` (third, in "aliyê sêyem"), `tevbigerî` (Ferheng has tevger), `kurt-demî` (short-lived),
+  the names `Yekîtiya Ewropayê`, `Qada Aborî ya Ewropayê` and `Keyaniya Yekbûyî`. `yekalî` (one-way, privacy §4) is in
+  the Ferheng only as "one-sided" (under Devxwar/m. and Yeksa/m.); the one-way sense is a draft. PR #28 review: privacy §5
+  now names both the EU and the EEA in kmr and ckb, and in all four says "your data-protection authority" (the one
+  responsible for you), not "the authority of your country". **Wording questions:** `Nepenîtî` as the page title (pwap has both
+  "Polîtîkaya Nepenîtiyê" and "Siyaseta Taybetiyê"); `Şertên bikaranînê` (pwap's "Şertên Karûbarê" is kept for the
+  PezkuwiChain Terms of Service it names); `berpirsyar` is the Ferheng spelling (Berpirsyar/m. Mesul), not the common
+  "berpirsiyar"; `desthilat` for the data-protection authority; terms §1 heading is a paraphrase ("a tool that does not
+  hold your key and funds") because no Kurmancî word for "non-custodial" was found.
+- The ckb heading of terms §1 is paraphrased the same way; fa uses غیرامانی and ar غير وصائية for "non-custodial", both
+  drafts. ckb and fa use their own digits (١٢ / ۱۲), ar Latin digits, as in the rest of the explorer.
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `legal.privacy` | Gizlilik | Privacy | Nepenîtî | تایبەتێتی | حریم خصوصی | الخصوصية |
+| `legal.terms` | Koşullar | Terms | Şertên bikaranînê | مەرجەکان | شرایط | الشروط |
+| `legal.footer` (name of the footer's legal links) | Gizlilik ve koşullar | Privacy and terms | Nepenîtî û şert | تایبەتێتی و مەرجەکان | حریم خصوصی و شرایط | الخصوصية والشروط |
+| `legal.social` (name of the icon list) | Sosyal medya | Social media | Medyaya civakî | تۆڕە کۆمەڵایەتییەکان | شبکه‌های اجتماعی | وسائل التواصل الاجتماعي |
+| `legal.accept` | Devam ederek &lt;terms&gt;Kullanım koşullarını&lt;/terms&gt; ve &lt;privacy&gt;Gizlilik bildirimini&lt;/privacy&gt; kabul etmiş olursun. | By continuing you accept the &lt;terms&gt;Terms&lt;/terms&gt; and &lt;privacy&gt;Privacy notice&lt;/privacy&gt;. | Bi berdewamkirinê, tu &lt;terms&gt;Şertên bikaranînê&lt;/terms&gt; û &lt;privacy&gt;Daxuyaniya nepenîtiyê&lt;/privacy&gt; dipejirînî. | بە بەردەوامبوون، ڕازیدەبیت بە &lt;terms&gt;مەرجەکانی بەکارهێنان&lt;/terms&gt; و &lt;privacy&gt;ئاگاداری تایبەتێتی&lt;/privacy&gt;. | با ادامه دادن، &lt;terms&gt;شرایط استفاده&lt;/terms&gt; و &lt;privacy&gt;اطلاعیه حریم خصوصی&lt;/privacy&gt; را می‌پذیرید. | بالمتابعة، فإنك تقبل &lt;terms&gt;شروط الاستخدام&lt;/terms&gt; و&lt;privacy&gt;إشعار الخصوصية&lt;/privacy&gt;. |
+
+- tr and en of these keys are new short labels, not part of the owner-approved draft; "Gizlilik" / "Koşullar" are the owner's
+  words from the request. kmr `legal.accept` follows pwap `login.terms` ("Bi berdewamkirinê, tu …") with the verb moved to the
+  end; ckb follows pwap `login.terms` verbatim for its opening. All kmr, ckb, fa and ar cells here are drafts.
+- The social account names (YouTube, X, Instagram, Facebook, Telegram) are brand names and are not translated.
+
+### i-Wallet code that did not load (2026-10-17, PR #28 review)
+
+Shown when the on-demand wallet code fails to download (not a storage problem). tr and en are source texts; the rest
+are drafts. kmr "nehat barkirin" follows the explorer's "tê barkirin" (loading, pwap usage); "Dîsa biceribîne" is
+`iwallet.error.generic` verbatim.
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `iwallet.loadFailed.body` | i-Wallet yüklenemedi. Bağlantını kontrol edip tekrar dene. | i-Wallet could not be loaded. Check your connection and try again. | i-Wallet nehat barkirin. Girêdana xwe kontrol bike û dîsa biceribîne. | i-Wallet بار نەکرا. پەیوەندییەکەت بپشکنە و دووبارە هەوڵبدەرەوە. | i-Wallet بارگذاری نشد. اتصال خود را بررسی کنید و دوباره تلاش کنید. | تعذّر تحميل i-Wallet. تحقق من اتصالك وحاول مرة أخرى. |
+| `iwallet.loadFailed.retry` | Tekrar dene | Try again | Dîsa biceribîne | دووبارە هەوڵبدەرەوە | تلاش دوباره | حاول مرة أخرى |

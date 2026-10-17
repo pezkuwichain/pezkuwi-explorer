@@ -24,18 +24,20 @@ describe('key-work progress', () => {
   });
 
   it('reading the backup words: no overlay while IndexedDB is read (it has no timeout), only for the decrypt', async () => {
-    let answer: (v: unknown) => void = () => undefined;
+    let answer: ((v: unknown) => void) | null = null;
     const store = { get: () => new Promise((r) => { answer = r; }) } as unknown as KvStore;
     const wrapper = ({ children }: { children: ReactNode }) => <IWalletProvider store={store}>{children}</IWalletProvider>;
     const seen: Array<string | null> = [];
     const { result } = renderHook(() => { const work = useKeyWork(); seen.push(work); return useIWallet(); }, { wrapper });
     let reading!: Promise<string>;
     act(() => { reading = result.current.readWords('pw'); });
+    // The keystore code loads on demand (IWalletContext): wait until the read has really reached IndexedDB.
+    await waitFor(() => expect(answer).not.toBeNull(), { timeout: 5000 });
     // A hung read: well past the overlay's paint delay, nothing covers the screen.
     await act(() => new Promise((r) => setTimeout(r, 120)));
     expect(seen.every((w) => w === null)).toBe(true);
     // The stored words arrive (malformed here): only now is the password step run, under the overlay.
-    await act(async () => { answer({ encoded: 'x' }); await expect(reading).rejects.toThrow(); });
+    await act(async () => { answer!({ encoded: 'x' }); await expect(reading).rejects.toThrow(); });
     expect(seen).toContain('open');
     await waitFor(() => expect(seen.at(-1)).toBeNull());
   });

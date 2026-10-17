@@ -1,0 +1,25 @@
+version: 2
+
+# Every ecosystem this repository installs from. Nothing is merged automatically: a compromised release merged
+# unread is the attack, so every bump is a pull request someone reads, and CI (build, iwallet-e2e) still has to pass.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: "Europe/Istanbul"
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: "Europe/Istanbul"
+    open-pull-requests-limit: 5
+    groups:
+      pezkuwi:
+        patterns: ["@pezkuwi/*"]

@@ -508,3 +508,22 @@ Welatî; Hevwelatî only for formal plural address) and is unchanged. The ar pen
 - **kmr `approved.title`**: "Referansa te tu pejirandî" is the ergative past (agent oblique, verb agreeing with "tu");
   "referansa" feminine as in `pending.body`. Flagged for native reading.
 - kmr `pending.title`: "Li benda … ye" with Pejirandin/m.; `home.citizen`: Serlêdan/m. + ezafe "welatîbûnê".
+
+### Population directorate button (2026-10-17, Serok)
+
+The explorer's Citizenship tab has a second button under the experts button. It opens a dialog saying the service is
+under construction. New keys, all six files:
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `citizenship.directorate` | Nüfus ve Vatandaşlık İşleri Genel Müdürlüğü | General Directorate of Population and Citizenship Affairs | Rêveberiya Giştî ya Karên Gelhe û Welatîbûnê | بەڕێوەبەرایەتی گشتی کاروباری دانیشتوان و هاوڵاتیبوون | اداره کل امور جمعیت و شهروندی | المديرية العامة لشؤون السكان والمواطنة |
+| `citizenship.soonTitle` | Yapım aşamasında | Under construction | Di qonaxa avakirinê de ye | لە قۆناغی دروستکردندایە | در دست ساخت | قيد الإنشاء |
+| `citizenship.soonBody` | Bu hizmet yakında burada olacak. | This service will be available here soon. | Ev karûbar wê di demeke nêz de li vir be. | ئەم خزمەتگوزارییە بەم زووانە لێرە دەبێت. | این خدمت به‌زودی در اینجا در دسترس خواهد بود. | ستتوفر هذه الخدمة هنا قريبًا. |
+
+- kmr Ferheng entries: Rêveberî/m. "Rayberî, rênîşanderî"; Giştî/m. "Tevek/ seranser"; Kar/m. "b) Şixul, şol, îş";
+  Gelhe/m. "nifûs, kes, xelk"; Qonax/m. "Gihanek, qedem, raden"; Avakirin/m. "Şênkirin, ji bingehê ve çêkirin";
+  Karûbar/m. "îşûmîş …"; Nêz/m. "Nedûr, nêzîk"; "demeke kurt" as in Bistik/m. and Rekem/m.
+- kmr `soonBody` uses "karûbar" for "service" because "xizmet" is not in the Ferheng (only Xizmetî = kinship); flagged
+  for native reading, as is the whole sentence.
+- ckb, fa, ar: drafts. fa uses "جمعیت" for population rather than Iran's "ثبت احوال" (civil registration); a native
+  reader should pick the official-sounding name.

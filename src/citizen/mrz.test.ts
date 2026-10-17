@@ -6,10 +6,9 @@ const ADDR = '5F3ydAf91e1kcSW5NWXgBamHowmJbjSz8b1Gvd41MyzLCNpd';
 const valid = (lines: string[]) => lines.every((l) => /^[A-Z0-9<]{30}$/.test(l));
 
 describe('citizen number', () => {
-  it('is DK- and the NFT id padded to six digits', () => {
-    expect(cidNumber(57n)).toBe('DK-000057');
-    expect(cidNumber(1234567n)).toBe('DK-1234567');
-    expect(cidNumber(null)).toBeNull();
+  it('is the number shared with pwap and the exchange', () => {
+    expect(cidNumber(97n, '5FuesBLjbaC32RwqKSJhndF3sgBG27r7thubSQ1rzg5z6sTF')).toBe('#42-97-255509');
+    expect(cidNumber(null, ADDR)).toBeNull();
   });
 });
 
@@ -17,7 +16,7 @@ describe('mrz', () => {
   it('builds three 30-character lines from the real data', () => {
     const m = mrz({ nftId: 57n, address: ADDR });
     expect(m).toEqual([
-      'IDDKZ000057<<<<<<<<<<<<<<<<<<<',
+      `IDDKZ${cidNumber(57n, ADDR)!.replace(/[^0-9]/g, '')}`.padEnd(30, '<'),
       '5F3YDAF91E1KCSW5NWXGBAMHOWMJBJ',
       'WELATI<<<<<<<<<<<<<<<<<<<<<<<<',
     ]);

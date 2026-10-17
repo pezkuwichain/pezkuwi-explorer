@@ -416,6 +416,13 @@ describe('i-Wallet citizenship', () => {
     expect(impl.signed[0].args[0]).toBe(identityHash({ fullName: 'Rojîn Welat', referrer: '', salt }, ADDR));
   });
 
+  it('shows the citizen number shared with pwap and the exchange', async () => {
+    impl.status = 'Approved'; impl.nft = 97n; impl.people = 2n * T;
+    renderCitizen(); await login();
+    expect(await screen.findByRole('heading', { name: 'Vatandaşsın' })).toBeInTheDocument();
+    expect(screen.getByText(/^#42-97-\d{6}$/)).toBeInTheDocument();
+  });
+
   it('says approved without an NFT when the NFT is missing', async () => {
     impl.status = 'Approved'; impl.nft = null;
     renderCitizen(); await login();

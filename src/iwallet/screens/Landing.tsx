@@ -4,6 +4,8 @@ import { PLAY_STORE } from '../../account/AccountContext';
 import PageHeader from '../../ui/PageHeader';
 import { IconArrow, IconBars, IconIdTab, IconPhoneKey, IconWarning } from '../../ui/icons';
 import { useIWallet } from '../IWalletContext';
+import { InstallButton } from '../Install';
+import { useInstallMode } from '../installMode';
 import '../iwallet.css';
 
 // The i-Wallet tab before a wallet exists (state 'none'), or when this browser cannot store one ('unavailable').
@@ -11,6 +13,9 @@ export default function Landing() {
   const { t } = useTranslation();
   const { state } = useIWallet();
   const unavailable = state === 'unavailable';
+  const install = useInstallMode();
+  // On iOS the Home Screen app has its own storage, so the wallet is best created there from the start.
+  const installFirst = install === 'ios' || install === 'prompt';
   return (
     <div className="iw">
       <PageHeader title={t('iwallet.title')} />
@@ -32,7 +37,13 @@ export default function Landing() {
             <h2>{t('iwallet.unavailable.title')}</h2>
             <p>{t('iwallet.unavailable.body')}</p>
           </section>
-        ) : (
+        ) : (<>
+          {installFirst && (
+            <section className="iw-install-card" aria-label={t('iwallet.install.button')}>
+              <p>{t('iwallet.install.landing')}</p>
+              <InstallButton mode={install} className="iw-primary iw-install-btn" />
+            </section>
+          )}
           <section className="iw-hero">
             <span className="iw-hero-icon"><IconPhoneKey size={28} /></span>
             <div className="iw-hero-text">
@@ -42,7 +53,7 @@ export default function Landing() {
             <Link className="iw-hero-primary" to="/i-wallet/create">{t('iwallet.create.cta')}</Link>
             <Link className="iw-hero-secondary" to="/i-wallet/import">{t('iwallet.import.cta')}</Link>
           </section>
-        )}
+        </>)}
 
         <ul className="iw-features">
           <li><IconArrow className="iw-f-pay" /><span>{t('iwallet.feature.send')}</span></li>

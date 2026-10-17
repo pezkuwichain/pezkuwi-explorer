@@ -134,3 +134,27 @@ test('create a wallet, prove the backup, lock on reload and unlock with the pass
 
   expect(await problems()).toEqual([]);
 });
+
+test.describe('on an iPhone', () => {
+  test.use({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' });
+
+  test('the landing asks to add i-Wallet to the Home Screen first and shows the Safari steps', async ({ page }) => {
+    const problems = await setUp(page);
+    await page.goto('/i-wallet');
+    const card = page.getByRole('region', { name: 'Add to Home Screen' });
+    await expect(card).toContainText('First add i-Wallet to your Home Screen and create your wallet there');
+    await card.getByRole('button', { name: 'Add to Home Screen' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Add i-Wallet to your Home Screen' });
+    await expect(dialog.getByRole('listitem')).toHaveText([
+      "1Tap the Share icon in Safari's toolbar", '2Choose “Add to Home Screen”', '3Tap “Add”',
+    ]);
+    await expect(dialog.getByRole('link', { name: 'Restore with 12 words' })).toHaveAttribute('href', '/i-wallet/import');
+    // 44 px targets for the button and the step icons.
+    for (const box of [await card.getByRole('button', { name: 'Add to Home Screen' }).boundingBox(), await dialog.locator('.iw-install-icon').first().boundingBox()]) {
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
+    await dialog.getByRole('button', { name: 'Close' }).click();
+    await expect(dialog).toBeHidden();
+    expect(await problems()).toEqual([]);
+  });
+});

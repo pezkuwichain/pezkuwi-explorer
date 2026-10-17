@@ -7,7 +7,8 @@ import { IconArrow, IconIdTab, IconReceived, IconSettings, IconWarning } from '.
 import { shortAddress } from '../../lib/address';
 import { useAsync } from '../../hooks/useAsync';
 import { loadWalletHoldings } from '../data';
-import { isStandalone } from '../standalone';
+import { InstallButton } from '../Install';
+import { useInstallMode } from '../installMode';
 import CopyAddress from '../CopyAddress';
 import '../iwallet.css';
 
@@ -26,6 +27,7 @@ function AddressRow({ address }: { address: string }) {
 export default function Home({ address }: { address: string }) {
   const { t } = useTranslation();
   const holdings = useAsync(() => loadWalletHoldings(address), [address]);
+  const install = useInstallMode();
 
   return (
     <div className="iw">
@@ -52,7 +54,13 @@ export default function Home({ address }: { address: string }) {
 
         {holdings.status === 'ok' && holdings.data && <HoldingsTokens holdings={holdings.data} />}
 
-        {!isStandalone() && <p className="iw-a2hs">{t('iwallet.home.a2hs')}</p>}
+        {/* Browser data can be evicted; the Home Screen app keeps it. The button where the browser can help. */}
+        {install !== 'standalone' && (
+          <div className="iw-a2hs-row">
+            <p className="iw-a2hs">{t('iwallet.home.a2hs')}</p>
+            <InstallButton mode={install} />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -433,3 +433,31 @@ People read "digital fingerprint" (parmak izi, şop, پەنجەمۆر, اثر ا
 ### Progress while the key is opened (2026-10-17)
 
 New key `iwallet.unlocking`, shown in the Kurdistan-sun overlay while a password opens or saves the key: tr "Açılıyor…", en "Opening…". kmr "Tê vekirin…" (Ferheng Vekirin/m.; same as `unlock.working`). ckb "دەکرێتەوە…", fa "در حال باز کردن…", ar "جارٍ الفتح…" are the existing `unlock.working` texts reused, still drafts for a native reading.
+
+### Add to Home Screen (2026-10-17, Serok's request)
+
+New keys `iwallet.install.*`: the button on the home hint row and on the landing card, the landing card line, and the
+iOS dialog (three Safari steps and the storage note). tr and en are the source texts. Every kmr, ckb, fa and ar cell is a
+draft until a native reader signs it off.
+
+| key | kmr | ckb | fa | ar |
+|---|---|---|---|---|
+| `install.button` | Li Ekrana Malê zêde bike | زیادکردن بۆ شاشەی سەرەکی | افزودن به صفحه اصلی | إضافة إلى الشاشة الرئيسية |
+| `install.title` | i-Wallet li Ekrana Malê zêde bike | i-Wallet زیاد بکە بۆ شاشەی سەرەکی | i-Wallet را به صفحه اصلی اضافه کنید | أضف i-Wallet إلى الشاشة الرئيسية |
+| `install.step1` | Di Safariyê de li nîşana Parvekirinê bitikîne | لە Safari دا دەست بنێ بە ئایکۆنی هاوبەشکردن | در نوار ابزار Safari روی نماد اشتراک‌گذاری بزنید | اضغط على أيقونة المشاركة في شريط أدوات Safari |
+| `install.step2` | “Li Ekrana Malê zêde bike” hilbijêre | «زیادکردن بۆ شاشەی سەرەکی» هەڵبژێرە | «افزودن به صفحه اصلی» را انتخاب کنید | اختر «إضافة إلى الشاشة الرئيسية» |
+| `install.step3` | Li “Zêde bike” bitikîne | دەست بنێ بە «زیادکردن» | روی «افزودن» بزنید | اضغط على «إضافة» |
+| `install.iosNote` | Sepana li Ekrana Malê daneyên xwe ji Safariyê cuda tomar dike: i-Wallet ji Ekrana Malê veke. Heke te cuzdanê xwe di Safariyê de çêkiribe, li wir bi 12 peyvên xwe vegerîne. | بەرنامەکەی سەر شاشەی سەرەکی داتای خۆی جیا لە Safari هەڵدەگرێت: … | برنامهٔ صفحه اصلی فضای ذخیره‌سازی خودش را دارد، جدا از Safari: … | يحتفظ تطبيق الشاشة الرئيسية بتخزينه الخاص، منفصلًا عن Safari: … |
+| `install.landing` | Pêşî i-Wallet li Ekrana Malê zêde bike û cuzdanê xwe li wir çêke | سەرەتا i-Wallet زیاد بکە بۆ شاشەی سەرەکی و جزدانەکەت لەوێ دروست بکە | ابتدا i-Wallet را به صفحه اصلی اضافه کنید و کیف پول خود را آنجا بسازید | أضف i-Wallet أولًا إلى الشاشة الرئيسية وأنشئ محفظتك هناك |
+
+- **The quoted iOS labels** (step 2 and step 3) must match what the person's iPhone shows. iOS has no Kurmancî or Soranî
+  interface, so a Kurdish reader's iPhone shows Turkish, Arabic, Persian or English labels ("Ana Ekrana Ekle" / "Ekle",
+  "إضافة إلى الشاشة الرئيسية" / "إضافة", "Add to Home Screen" / "Add"). The kmr and ckb quotes are translations of the
+  label, not the label itself; a native reader should decide whether to quote the English label instead.
+- **kmr**: vocabulary confirmed: "Ekrana Malê" and "zêde bike" as in `home.a2hs`; "parvekirin" (Ferheng
+  Parvekirin/m.), "nîşan" (Ferheng Nîşan/m. marke, sembol), "cuda" (Ferheng Cihê/n. Cuda), "tomar", "dane", "sepan"
+  (pwap usage, see above), "hilbijêre", "vegerîne" (`unlock.restore`), "çêke" (çêkirin). "Bitikîne" for "tap" is
+  common usage but not in the Ferheng (it has only "tikandin.") and not in pwap: flagged.
+- **ckb**: "شاشەی سەرەکی" and "زیاد بکە" as in `home.a2hs`; "هاوبەش" as in `words.warnBody`; "دەست بنێ" for "tap" is a
+  draft.
+- **fa, ar**: drafts; "صفحه اصلی" and "الشاشة الرئيسية" as in `home.a2hs`.

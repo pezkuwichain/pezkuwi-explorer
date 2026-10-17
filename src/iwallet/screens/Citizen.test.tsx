@@ -346,7 +346,7 @@ describe('i-Wallet citizenship', () => {
     expect(screen.queryByRole('button', { name: 'Başvuruyu Gönder' })).toBeNull();
   });
 
-  for (const status of ['NotStarted', 'PendingReferral', 'ReferrerApproved', 'Revoked']) {
+  for (const status of ['NotStarted', 'PendingReferral', 'ReferrerApproved']) {
     it(`shows the citizen card, never the form, for an NFT holder whose status reads ${status}`, async () => {
       impl.status = status; impl.nft = 9n; impl.people = 2n * T;
       renderCitizen(); await login();
@@ -357,6 +357,14 @@ describe('i-Wallet citizenship', () => {
       expect(screen.queryByText('Bu hesabın vatandaşlığı iptal edildi.')).toBeNull();
     });
   }
+
+  it('shows revoked, not the citizen card, when the citizenship was revoked but an NFT is left', async () => {
+    impl.status = 'Revoked'; impl.nft = 9n; impl.people = 2n * T;
+    renderCitizen(); await login();
+    expect(await screen.findByText('Bu hesabın vatandaşlığı iptal edildi.')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Vatandaşsın' })).toBeNull();
+    expect(document.querySelector('form.iw-form')).toBeNull();
+  });
 
   it('says approved without an NFT when the NFT is missing', async () => {
     impl.status = 'Approved'; impl.nft = null;

@@ -115,11 +115,12 @@ describe('stageOf', () => {
     expect(stageOf({ kyc: 'Approved', nftId: null })).toBe('approvedNoNft');
     expect(stageOf({ kyc: 'Revoked', nftId: null })).toBe('revoked');
   });
-  it('shows the citizen whenever a citizen NFT exists, whatever kycStatuses says', () => {
-    for (const kyc of ['NotStarted', 'PendingReferral', 'ReferrerApproved', 'Approved', 'Revoked'] as const) {
+  it('shows the citizen whenever a citizen NFT exists, unless the citizenship was revoked', () => {
+    for (const kyc of ['NotStarted', 'PendingReferral', 'ReferrerApproved', 'Approved'] as const) {
       expect(stageOf({ kyc, nftId: 5n })).toBe('citizen');
     }
     expect(stageOf({ kyc: 'NotStarted', nftId: 0n })).toBe('citizen');
+    expect(stageOf({ kyc: 'Revoked', nftId: 5n })).toBe('revoked');
   });
 });
 

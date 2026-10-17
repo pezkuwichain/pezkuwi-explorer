@@ -120,13 +120,14 @@ export async function loadStatus(address: string, deps: Deps = real): Promise<Ci
 export const isCitizen = (s: CitizenStatus) => s.nftId !== null || s.kyc === 'Approved';
 export type Stage = 'form' | 'pending' | 'sign' | 'citizen' | 'approvedNoNft' | 'revoked';
 export function stageOf(s: CitizenStatus): Stage {
+  // A revoked citizenship wins over a leftover NFT; otherwise an NFT means a citizen whatever the status reads.
+  if (s.kyc === 'Revoked') return 'revoked';
   if (s.nftId !== null) return 'citizen';
   switch (s.kyc) {
     case 'NotStarted': return 'form';
     case 'PendingReferral': return 'pending';
     case 'ReferrerApproved': return 'sign';
     case 'Approved': return 'approvedNoNft';
-    case 'Revoked': return 'revoked';
   }
 }
 

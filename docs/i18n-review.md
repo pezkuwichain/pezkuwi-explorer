@@ -329,9 +329,9 @@ Words not in the Ferheng, taken from pwap's `kmr.ts` (a native reader may prefer
 
 ### Soranî (ckb): 193 confirmed, 62 not confirmed
 
-- `iwallet.citizen.form.agree`: not attested in pwap or the explorer: پەنجەمۆرەکەیان
+- `iwallet.citizen.form.agree`: replaced on 2026-10-17 (see "No 'fingerprint'" below); draft
 - `iwallet.citizen.form.notSaved`: not attested in pwap or the explorer: بۆیە, فۆرمەکەتی, هەڵنەگرت
-- `iwallet.citizen.form.privacy`: not attested in pwap or the explorer: دەنووسرێت, کەسییەکانت
+- `iwallet.citizen.form.privacy`: replaced on 2026-10-17 (see "No 'fingerprint'" below); draft
 - `iwallet.citizen.form.referrerNote`: not attested in pwap or the explorer: کردوویت
 - `iwallet.citizen.fund.body`: not attested in pwap or the explorer: لەوێ
 - `iwallet.citizen.interrupted`: not attested in pwap or the explorer: هەوڵدانەوە
@@ -419,3 +419,11 @@ New keys; every kmr, ckb, fa and ar cell below is a draft until a native reader 
 - **kmr**: vocabulary confirmed: "tor" as in `send.fee` (xerca torê, glossary "network"), "hilbijêre" (Ferheng: Dengdan/m. Hilbijartin; pwap "Wêneyekî hilbijêre"), "biguherîne" (explorer "Erê, biguherîne"; Ferheng guhertin), "werdigire" (wergirtin, glossary "receive"), "her sê". Word order of `networkTitle` ("Ji bo şandina HEZ torê hilbijêre", after the wallet's "Select network for sending %s") was not machine-checked.
 - **ckb**: "تۆڕ" as in the glossary (کرێی تۆڕ); "هەڵبژێرە" and "گۆڕین" occur in pwap's `ckb.ts`, "وەردەگرێت" in the explorer's ckb; the sentences as a whole are drafts.
 - **fa, ar**: drafts (no pwap source for these sentences).
+
+### No "fingerprint" (2026-10-17, Serok's request)
+
+People read "digital fingerprint" (parmak izi, şop, پەنجەمۆر, اثر انگشت, بصمة) as a real fingerprint being taken. `iwallet.citizen.form.privacy` and `iwallet.citizen.form.agree` were replaced in all six files with Serok's texts, which call it a one-way code made from the data that cannot be read back. No other `iwallet.*` cell uses fingerprint wording (kmr `send.scan` "bişopîne" means "scan").
+
+- tr, en: source texts.
+- kmr: new words "kodeke", "çêkirin", "xwendin" are in common use in the explorer's kmr; the ezafe "zincîrê welatîbûnê" follows the note above. Still awaiting a native reading.
+- ckb, fa, ar: **flagged for native reading** (both keys), as before.

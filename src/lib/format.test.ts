@@ -8,7 +8,9 @@ describe('formatAmount', () => {
     expect(formatAmount(1_250_000_000_000n, 12, 'HEZ', 'en')).toBe('1.25 HEZ');
   });
   it('keeps the smallest unit visible instead of rounding to zero', () => {
-    expect(formatAmount(1n, 12, 'HEZ', 'en')).toBe('0.000000000001 HEZ');
+    expect(formatAmount(1n, 12, 'HEZ', 'en')).toBe('<0.0001 HEZ');
+    expect(formatAmount(966_245_000n, 12, 'HEZ', 'en')).toBe('≈0.0009 HEZ');
+    expect(formatAmount(10_800_000_000n, 12, 'HEZ', 'en')).toBe('0.0108 HEZ');
   });
   it('never uses scientific notation for huge values', () => {
     expect(formatAmount(10n ** 30n, 12, 'HEZ', 'en')).toBe('1,000,000,000,000,000,000 HEZ');
@@ -16,7 +18,7 @@ describe('formatAmount', () => {
   it('respects 6-decimal assets', () => {
     expect(formatAmount(1_500_000n, 6, 'USDT', 'en')).toBe('1.5 USDT');
   });
-  it('shows at most 4 fractional digits once the whole part is non-zero, marked ≈ when digits were cut', () => {
+  it('shows at most 4 fractional digits, marked ≈ when digits were cut', () => {
     expect(formatAmount(1_234_567_890_000n, 12, 'HEZ', 'en')).toBe('≈1.2345 HEZ');
     expect(formatAmount(4_999_960_000_000n, 12, 'HEZ', 'en')).toBe('≈4.9999 HEZ');
     expect(formatAmount(4_999_900_000_000n, 12, 'HEZ', 'en')).toBe('4.9999 HEZ');
@@ -106,7 +108,7 @@ describe('formatCompact', () => {
   });
   it('below a thousand it is the exact amount, as formatAmount shows it', () => {
     expect(formatCompact(HEZ(7n), 12, 'en')).toBe('7');
-    expect(formatCompact(1n, 12, 'en')).toBe('0.000000000001');
+    expect(formatCompact(1n, 12, 'en')).toBe('<0.0001');
     expect(formatCompact(1_500_000n, 6, 'en')).toBe('1.5');
   });
   it('uses the locale digits', () => {

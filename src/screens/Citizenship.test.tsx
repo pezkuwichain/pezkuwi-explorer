@@ -179,4 +179,26 @@ describe('Citizenship', () => {
     expect(await screen.findByTestId('where')).toHaveTextContent('/account/open?next=/citizenship');
     expect(impl.calls).toBe(0);
   });
+
+  it('the population directorate button sits under the experts button and opens an under-construction dialog', async () => {
+    renderIt();
+    const btn = await screen.findByRole('button', { name: 'General Directorate of Population and Citizenship Affairs' });
+    const experts = screen.getByRole('link', { name: /For experts/ });
+    expect(experts.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(btn).toHaveClass('btn', 'btn-quiet');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(btn);
+    const dialog = await screen.findByRole('dialog', { name: 'Under construction' });
+    expect(dialog).toHaveTextContent('This service will be available here soon.');
+    // The footer button (by its visible text), not the header X, which is an icon with only an aria-label.
+    fireEvent.click(within(dialog).getByText('Close', { selector: 'button' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('the directorate button and dialog read in Kurmanji', async () => {
+    await i18n.changeLanguage('kmr');
+    renderIt();
+    fireEvent.click(await screen.findByRole('button', { name: 'Rêveberiya Giştî ya Karên Gelhe û Welatîbûnê' }));
+    expect(await screen.findByRole('dialog', { name: 'Di qonaxa avakirinê de ye' })).toBeInTheDocument();
+  });
 });

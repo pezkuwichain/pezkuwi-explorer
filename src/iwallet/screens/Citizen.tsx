@@ -12,9 +12,9 @@ import { hasFaceId } from '../faceid';
 import { estimateFee } from '../tx';
 import { parseRecipient } from '../address';
 import {
-  FUNDING_POLL, REGIONS, assetHubNeed, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, chainSpendable,
+  FUNDING_POLL, assetHubNeed, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, chainSpendable,
   clearTeleportSent, formProblems, identityHash, kycDeposit, loadForm, loadStatus, markTeleportSent, needsFunding, parseReferrer,
-  pendingReferrals, rememberedReferrer, saveForm, teleportAmount, teleportGuardActive,
+  canRefer, pendingReferrals, rememberedReferrer, saveForm, stageOf, teleportAmount, teleportGuardActive,
   type CitizenForm, type CitizenStatus, type PendingReferral,
 } from '../citizen';
 import { AuthConfirm } from '../AuthConfirm';
@@ -53,8 +53,8 @@ async function load(address: string, cachedReferrals: PendingReferral[] | null):
     estimateFee(buildApply(people, ZERO_HASH, address), address),
     estimateFee(buildTeleportToPeople(assetHub, address, teleportAmount(deposit)), address),
   ]);
-  // Only an Approved citizen can be a referrer, so nobody else pays for the scan.
-  const referrals: Loaded['referrals'] = status.kyc !== 'Approved' ? []
+  // Only an Approved account can be a referrer (the pallet's rule), so nobody else pays for the scan or sees Approve.
+  const referrals: Loaded['referrals'] = !canRefer(status) ? []
     : cachedReferrals ?? await pendingReferrals(address).catch((): 'failed' => 'failed');
   return { people, assetHub, status, referrals, deposit, peopleFree, ahFree, applyFee: { none: feeNone, some: feeSome }, teleportFee };
 }
@@ -98,7 +98,7 @@ function CitizenBody({ address }: { address: string }) {
     cancelLoad.current = () => { live = false; };
     load(address, referralCache.current).then((d) => {
       if (!live) return;
-      if (d.status.kyc === 'Approved' && d.referrals !== 'failed') referralCache.current = d.referrals;
+      if (canRefer(d.status) && d.referrals !== 'failed') referralCache.current = d.referrals;
       setData(d);
     }, () => { if (live) setData('failed'); });
   }, [address]);
@@ -276,22 +276,13 @@ function CitizenBody({ address }: { address: string }) {
   const amount = teleportAmount(data.deposit);
   const ahNeed = assetHubNeed(amount, data.teleportFee ?? 0n, IWALLET_ED.assetHub);
   const peopleNeed = data.deposit + applyFee + IWALLET_ED.people;
-  const field = (k: 'fullName' | 'fatherName' | 'grandfatherName' | 'motherName' | 'tribe' | 'profession', label: string) => (
-    <>
-      <label className="iw-field">
-        <span>{label}</span>
-        <input type="text" value={form[k]} onChange={(e) => update({ [k]: e.target.value })} autoComplete="off" />
-      </label>
-      {touched && problems.includes(k) && <p className="iw-error" role="alert">{t('iwallet.citizen.form.required')}</p>}
-    </>
-  );
-  const childCount = Math.min(Math.max(Number.parseInt(form.childrenCount, 10) || 0, 0), 20);
+  const stage = stageOf(status);
 
   return (
     <div className="iw">
       <PageHeader title={t('iwallet.citizen.title')} />
       <div className="iw-body">
-        {status.kyc === 'NotStarted' && <>
+        {stage === 'form' && <>
           <p className="iw-lead">{t('iwallet.citizen.intro')}</p>
           {needFunds && (
             <section className="iw-fund" aria-labelledby="iw-fund-title">
@@ -315,59 +306,11 @@ function CitizenBody({ address }: { address: string }) {
 
           <form className="iw-form" onSubmit={apply} noValidate>
             <h2 className="iw-h">{t('iwallet.citizen.form.personal')}</h2>
-            {field('fullName', t('iwallet.citizen.form.fullName'))}
-            {field('fatherName', t('iwallet.citizen.form.fatherName'))}
-            {field('grandfatherName', t('iwallet.citizen.form.grandfatherName'))}
-            {field('motherName', t('iwallet.citizen.form.motherName'))}
-            {field('tribe', t('iwallet.citizen.form.tribe'))}
-
-            <fieldset className="iw-field iw-fieldset">
-              <legend>{t('iwallet.citizen.form.marital')}</legend>
-              {(['zewici', 'nezewici'] as const).map((m) => (
-                <label key={m} className="iw-check">
-                  <input type="radio" name="iw-marital" checked={form.maritalStatus === m} onChange={() => update({ maritalStatus: m })} />
-                  {t(`iwallet.citizen.form.${m === 'zewici' ? 'married' : 'unmarried'}`)}
-                </label>
-              ))}
-            </fieldset>
-            {form.maritalStatus === 'zewici' && <>
-              <label className="iw-field">
-                <span>{t('iwallet.citizen.form.childrenCount')}</span>
-                <input type="number" inputMode="numeric" min={0} max={20} value={form.childrenCount} onChange={(e) => update({ childrenCount: e.target.value })} />
-              </label>
-              {Array.from({ length: childCount }, (_, i) => {
-                const c = form.children[i] ?? { name: '', birthYear: '' };
-                const setChild = (patch: Partial<typeof c>) => {
-                  const children = [...form.children];
-                  children[i] = { ...c, ...patch };
-                  update({ children });
-                };
-                return (
-                  <div key={i} className="iw-row">
-                    <input type="text" aria-label={t('iwallet.citizen.form.childName', { number: i + 1 })} placeholder={t('iwallet.citizen.form.childName', { number: i + 1 })}
-                      value={c.name} onChange={(e) => setChild({ name: e.target.value })} className="iw-input" />
-                    <input type="number" inputMode="numeric" aria-label={t('iwallet.citizen.form.birthYear')} placeholder={t('iwallet.citizen.form.birthYear')}
-                      value={c.birthYear} onChange={(e) => setChild({ birthYear: e.target.value })} className="iw-input iw-year" />
-                  </div>
-                );
-              })}
-            </>}
-
             <label className="iw-field">
-              <span>{t('iwallet.citizen.form.region')}</span>
-              <select value={form.region} onChange={(e) => update({ region: e.target.value as CitizenForm['region'] })}>
-                <option value="">{t('iwallet.citizen.form.selectRegion')}</option>
-                {REGIONS.map((r) => <option key={r} value={r}>{t(`iwallet.citizen.region.${r}`)}</option>)}
-              </select>
+              <span>{t('iwallet.citizen.form.fullName')}</span>
+              <input type="text" value={form.fullName} onChange={(e) => update({ fullName: e.target.value })} autoComplete="off" />
             </label>
-            {touched && problems.includes('region') && <p className="iw-error" role="alert">{t('iwallet.citizen.form.required')}</p>}
-
-            <label className="iw-field">
-              <span>{t('iwallet.citizen.form.email')}</span>
-              <input type="email" dir="ltr" value={form.email} onChange={(e) => update({ email: e.target.value })} autoComplete="off" />
-            </label>
-            {touched && problems.includes('email') && <p className="iw-error" role="alert">{t('iwallet.citizen.form.emailInvalid')}</p>}
-            {field('profession', t('iwallet.citizen.form.profession'))}
+            {touched && problems.includes('fullName') && <p className="iw-error" role="alert">{t('iwallet.citizen.form.required')}</p>}
 
             <label className="iw-field">
               <span>{t('iwallet.citizen.form.referrer')}</span>
@@ -397,7 +340,7 @@ function CitizenBody({ address }: { address: string }) {
           </form>
         </>}
 
-        {status.kyc === 'PendingReferral' && (
+        {stage === 'pending' && (
           <section className="iw-stage">
             <IconClock size={28} />
             <h2 className="iw-h1">{t('iwallet.citizen.pending.title')}</h2>
@@ -407,7 +350,7 @@ function CitizenBody({ address }: { address: string }) {
           </section>
         )}
 
-        {status.kyc === 'ReferrerApproved' && (
+        {stage === 'sign' && (
           <section className="iw-stage">
             <IconCheckCircle size={28} />
             <h2 className="iw-h1">{t('iwallet.citizen.approved.title')}</h2>
@@ -416,17 +359,17 @@ function CitizenBody({ address }: { address: string }) {
           </section>
         )}
 
-        {status.kyc === 'Approved' && (status.nftId !== null
-          ? (
-            <section className="iw-stage">
-              <IconCheckCircle size={28} />
-              <h2 className="iw-h1">{t('iwallet.citizen.citizen.title')}</h2>
-              <p className="iw-lead">{t('iwallet.citizen.citizen.nft', { id: status.nftId.toString() })}</p>
-            </section>
-          )
-          : <p className="iw-note" role="status">{t('iwallet.citizen.approvedNoNft')}</p>)}
+        {stage === 'citizen' && (
+          <section className="iw-stage">
+            <IconCheckCircle size={28} />
+            <h2 className="iw-h1">{t('iwallet.citizen.citizen.title')}</h2>
+            {form.fullName.trim() && <p className="iw-lead">{form.fullName}</p>}
+            {status.nftId !== null && <p className="iw-lead">{t('iwallet.citizen.citizen.nft', { id: status.nftId.toString() })}</p>}
+          </section>
+        )}
+        {stage === 'approvedNoNft' && <p className="iw-note" role="status">{t('iwallet.citizen.approvedNoNft')}</p>}
 
-        {status.kyc === 'Revoked' && <p className="iw-error" role="alert">{t('iwallet.citizen.revoked')}</p>}
+        {stage === 'revoked' && <p className="iw-error" role="alert">{t('iwallet.citizen.revoked')}</p>}
 
         {data.referrals === 'failed' && <p className="iw-error" role="alert">{t('iwallet.citizen.refs.failed')}</p>}
         {data.referrals !== 'failed' && data.referrals.length > 0 && (

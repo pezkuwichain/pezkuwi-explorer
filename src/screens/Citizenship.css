@@ -39,3 +39,4 @@
 .badge-info { background: var(--info-soft); border-color: var(--info-line); }
 .badge-info svg { color: var(--info-icon); }
 .experts-button { margin-block-start: auto; font-size: 16px; }
+.directorate-button { font-size: 16px; }

@@ -6,7 +6,8 @@ import { useAsync } from '../hooks/useAsync';
 import { loadCitizenship } from '../data/citizenship';
 import { Card } from '../ui/Card';
 import PageHeader from '../ui/PageHeader';
-import { IconCheck, IconExternal, IconHall, IconLines, IconPerson } from '../ui/icons';
+import { IconCheck, IconClock, IconExternal, IconHall, IconLines, IconPerson } from '../ui/icons';
+import { Dialog } from '../ui/Dialog';
 import { CitizenCard } from '../citizen/CitizenCard';
 import { PersonalEditor } from '../citizen/PersonalEditor';
 import { loadPersonal, type Personal } from '../citizen/personal';
@@ -35,6 +36,7 @@ export default function Citizenship() {
   // Photo and name live in this browser only; reloaded when the account changes.
   const [personal, setPersonal] = useState<Personal>(() => (address ? loadPersonal(address) : EMPTY));
   const [shownFor, setShownFor] = useState(address);
+  const [soon, setSoon] = useState(false);
   if (shownFor !== address) { setShownFor(address); setPersonal(address ? loadPersonal(address) : EMPTY); }
   if (!address) return <Navigate to="/account/open?next=/citizenship" replace />;
   const data = s.data;
@@ -67,6 +69,11 @@ export default function Citizenship() {
             : <p className="card-note">{t('citizenship.noRoles')}</p>}
         </Card>
         <a className="btn btn-quiet experts-button" href="https://apps.pezkuwichain.io" rel="noopener">{t('app.expertsShort')} <IconExternal size={16} /></a>
+        {/* The directorate's own service is not built yet: the button says so instead of leading nowhere. */}
+        <button type="button" className="btn btn-quiet directorate-button" onClick={() => setSoon(true)}>{t('citizenship.directorate')}</button>
+        <Dialog open={soon} onClose={() => setSoon(false)} icon={<IconClock size={20} />} title={t('citizenship.soonTitle')} description={t('citizenship.soonBody')}>
+          <button type="button" className="btn btn-quiet" onClick={() => setSoon(false)}>{t('dialog.close')}</button>
+        </Dialog>
       </div>
     </>
   );

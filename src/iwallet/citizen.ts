@@ -1,6 +1,6 @@
 // Citizenship on the mainnet People chain (spec §6), ported from pwap shared/lib/citizenship-workflow.ts and
-// web/src/components/citizenship/NewCitizenApplication.tsx. Personal form data never leaves this browser: only its
-// blake2 hash goes on chain.
+// web/src/components/citizenship/NewCitizenApplication.tsx. The name never leaves this browser: only a blake2 hash
+// goes on chain.
 import type { ApiPromise } from '@pezkuwi/api';
 import type { SubmittableExtrinsic } from '@pezkuwi/api/types';
 import { u8aEq, u8aToHex } from '@pezkuwi/util';
@@ -17,75 +17,59 @@ type Tx = SubmittableExtrinsic<'promise'>;
 type Deps = { getApi: (chain: ChainKey) => Promise<ApiPromise> };
 const real: Deps = { getApi: getMainnetApi };
 
-export const REGIONS = ['bakur', 'basur', 'rojava', 'rojhelat', 'kurdistan_a_sor', 'diaspora'] as const;
-export type Region = (typeof REGIONS)[number];
-export type MaritalStatus = 'zewici' | 'nezewici';
-export type Child = { name: string; birthYear: string };
-
+// The application asks only for a name and an optional referrer. Nothing personal goes on chain (only the hash
+// below), and the name stays in this browser for the citizen card, so asking for more would only collect data that
+// is never used.
 export type CitizenForm = {
   fullName: string;
-  fatherName: string;
-  grandfatherName: string;
-  motherName: string;
-  tribe: string;
-  maritalStatus: MaritalStatus;
-  childrenCount: string;
-  children: Child[];
-  region: Region | '';
-  email: string;
-  profession: string;
   referrer: string;
+  // 32 random bytes as 0x-hex, made once per application and kept with the form (see identityHash).
+  salt: string;
 };
 
-export const EMPTY_FORM: CitizenForm = {
-  fullName: '', fatherName: '', grandfatherName: '', motherName: '', tribe: '', maritalStatus: 'nezewici',
-  childrenCount: '', children: [], region: '', email: '', profession: '', referrer: '',
-};
+export const EMPTY_FORM: CitizenForm = { fullName: '', referrer: '', salt: '' };
 
-// The on-chain identity hash. The expression and key order are copied from pwap NewCitizenApplication.tsx so the
-// same person and wallet give the same hash in both apps. Values are hashed as typed, as pwap does.
+const SALT_RE = /^0x[0-9a-f]{64}$/;
+export const newSalt = (): string => u8aToHex(crypto.getRandomValues(new Uint8Array(32)));
+
+// The on-chain identity hash. The field set shrank with the form (2026-10-17): it was pwap NewCitizenApplication.tsx's
+// nine-field recipe and is now { fullName, walletAddress, salt }, so it no longer matches pwap's hash for the same
+// person. Uniqueness comes from the wallet address (one application per account); the name is hashed as typed. The
+// address is public, so without the salt anyone could test a guessed name against the hash on chain; with it the
+// privacy text holds ("cannot be read back"). Nothing on chain or in pwap verifies the hash, so a lost salt breaks
+// nothing; a person who must prove the name later shows name + salt.
 export function identityHash(form: CitizenForm, address: string): string {
-  const citizenshipData = { ...form, walletAddress: address };
-  return blake2AsHex(
-    JSON.stringify({
-      fullName: citizenshipData.fullName,
-      fatherName: citizenshipData.fatherName,
-      grandfatherName: citizenshipData.grandfatherName,
-      motherName: citizenshipData.motherName,
-      tribe: citizenshipData.tribe,
-      region: citizenshipData.region,
-      email: citizenshipData.email,
-      profession: citizenshipData.profession,
-      walletAddress: citizenshipData.walletAddress,
-    }),
-    256,
-  );
+  return blake2AsHex(JSON.stringify({ fullName: form.fullName, walletAddress: address, salt: form.salt }), 256);
 }
 
-// pwap's email rule.
-export const EMAIL_RE = /^\S+@\S+$/i;
-
-export type FormProblem = 'fullName' | 'fatherName' | 'grandfatherName' | 'motherName' | 'tribe' | 'region' | 'email' | 'profession';
+export type FormProblem = 'fullName';
 export function formProblems(form: CitizenForm): FormProblem[] {
-  const out: FormProblem[] = [];
-  for (const k of ['fullName', 'fatherName', 'grandfatherName', 'motherName', 'tribe'] as const) if (!form[k].trim()) out.push(k);
-  if (!form.region) out.push('region');
-  if (!EMAIL_RE.test(form.email)) out.push('email');
-  if (!form.profession.trim()) out.push('profession');
-  return out;
+  return form.fullName.trim() ? [] : ['fullName'];
 }
 
 // Personal data is kept only in this browser's localStorage (via src/lib/storage.ts), keyed by the wallet address.
 export const formKey = (address: string) => `iwallet-citizen:${address}`;
+const FORM_KEYS = ['fullName', 'referrer', 'salt'];
+// Always returns a form with a salt. A new form's salt is kept in memory until the first save (nothing is written for
+// someone who never types). A stored form that lacks a salt, or that still holds the long form saved before
+// 2026-10-17 (father/mother names, tribe, region, email …), is rewritten at once to { fullName, referrer, salt }, so
+// none of the old fields stay in this browser even if the form is never shown again.
 export function loadForm(address: string): CitizenForm {
   const raw = storage.get(formKey(address));
-  if (!raw) return { ...EMPTY_FORM };
-  try {
-    const v = JSON.parse(raw) as Partial<CitizenForm>;
-    return { ...EMPTY_FORM, ...v, children: Array.isArray(v.children) ? v.children : [] };
-  } catch { return { ...EMPTY_FORM }; }
+  const fresh = (): CitizenForm => ({ ...EMPTY_FORM, salt: newSalt() });
+  if (!raw) return fresh();
+  let v: unknown;
+  try { v = JSON.parse(raw); } catch { return fresh(); }
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return fresh();
+  const o = v as Record<string, unknown>;
+  const text = (x: unknown) => (typeof x === 'string' ? x : '');
+  const salt = typeof o.salt === 'string' && SALT_RE.test(o.salt) ? o.salt : newSalt();
+  const form: CitizenForm = { fullName: text(o.fullName), referrer: text(o.referrer), salt };
+  if (salt !== o.salt || Object.keys(o).some((k) => !FORM_KEYS.includes(k))) saveForm(address, form);
+  return form;
 }
-export const saveForm = (address: string, form: CitizenForm): boolean => storage.set(formKey(address), JSON.stringify(form));
+export const saveForm = (address: string, form: CitizenForm): boolean =>
+  storage.set(formKey(address), JSON.stringify({ fullName: form.fullName, referrer: form.referrer, salt: form.salt }));
 export const clearForm = (address: string): void => storage.remove(formKey(address));
 // "Delete from device" promises a clean device: every saved citizenship form goes, whatever wallet it belonged to.
 export function clearAllForms(): void {
@@ -147,10 +131,28 @@ export async function loadStatus(address: string, deps: Deps = real): Promise<Ci
   return { kyc: toKycStatus(status.type), nftId: nft.isSome ? nft.unwrap().toBigInt() : null };
 }
 
+// A citizen NFT is the proof of citizenship: whoever holds one sees the citizen card, never the form, whatever
+// kycStatuses says, except Revoked (measured 2026-10-17: all 97 mainnet NFT holders are Approved, so this only guards
+// a drift). Being a referrer is the pallet's own rule instead: approve_referral needs kycStatuses == Approved
+// (ReferrerNotCitizen), so the referral list is read and offered only then (canRefer).
+export const canRefer = (s: CitizenStatus) => s.kyc === 'Approved';
+export type Stage = 'form' | 'pending' | 'sign' | 'citizen' | 'approvedNoNft' | 'revoked';
+export function stageOf(s: CitizenStatus): Stage {
+  // A revoked citizenship wins over a leftover NFT; otherwise an NFT means a citizen whatever the status reads.
+  if (s.kyc === 'Revoked') return 'revoked';
+  if (s.nftId !== null) return 'citizen';
+  switch (s.kyc) {
+    case 'NotStarted': return 'form';
+    case 'PendingReferral': return 'pending';
+    case 'ReferrerApproved': return 'sign';
+    case 'Approved': return 'approvedNoNft';
+  }
+}
+
 export type PendingReferral = { applicant: string; identityHash: string };
 // Applications that name this account as referrer and still wait for its approval (pwap getPendingApprovalsForReferrer).
 // The applications struct is { identityHash, referrer } with the referrer always set (the pallet fills its default).
-// Only citizens can be referrers (ReferrerNotCitizen), so callers run this only for an Approved account. The statuses of
+// Only an Approved account can be a referrer (ReferrerNotCitizen), so callers run this only for one (canRefer). The statuses of
 // the matching applicants are read in one batched query.
 export async function pendingReferrals(address: string, deps: Deps = real): Promise<PendingReferral[]> {
   const api = await deps.getApi('people');

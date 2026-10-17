@@ -4,65 +4,86 @@ import { u8aToHex } from '@pezkuwi/util';
 import type { ApiPromise } from '@pezkuwi/api';
 import { normaliseAddress } from '../lib/address';
 import {
-  EMPTY_FORM, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, formKey, formProblems, identityHash, loadForm,
-  loadStatus, needsFunding, parseReferrer, pendingReferrals, saveForm, teleportAmount, toKycStatus, type CitizenForm,
+  EMPTY_FORM, buildApply, buildApprove, buildCancel, buildConfirm, buildTeleportToPeople, formKey, formProblems, identityHash, loadForm, newSalt,
+  loadStatus, needsFunding, parseReferrer, pendingReferrals, saveForm, stageOf, teleportAmount, toKycStatus, type CitizenForm,
 } from './citizen';
 
 const ADDR = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
 const BOB = '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty';
 const CHARLIE = '5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y';
-const FORM: CitizenForm = {
-  ...EMPTY_FORM,
-  fullName: 'Berzê Ronahî', fatherName: 'Şêrko', grandfatherName: 'Welat', motherName: 'Gula', tribe: 'Barzanî',
-  maritalStatus: 'zewici', childrenCount: '2', children: [{ name: 'Rojîn', birthYear: '2015' }],
-  region: 'bakur', email: 'berze@example.com', profession: 'Mamosta', referrer: BOB,
-};
+const SALT = `0x${'11'.repeat(32)}`;
+const FORM: CitizenForm = { fullName: 'Berzê Ronahî', referrer: BOB, salt: SALT };
+const KEY = `pezkuwi-explorer:iwallet-citizen:${ADDR}`;
+const stored = () => JSON.parse(localStorage.getItem(KEY)!) as Record<string, unknown>;
 
 describe('identityHash', () => {
-  it('equals pwap NewCitizenApplication.tsx for a fixed vector', () => {
-    // Verbatim from pwap web/src/components/citizenship/NewCitizenApplication.tsx:214-227.
-    const citizenshipData = { ...FORM, walletAddress: ADDR, timestamp: 1, referralCode: undefined };
-    const pwap = blake2AsHex(
-      JSON.stringify({
-        fullName: citizenshipData.fullName,
-        fatherName: citizenshipData.fatherName,
-        grandfatherName: citizenshipData.grandfatherName,
-        motherName: citizenshipData.motherName,
-        tribe: citizenshipData.tribe,
-        region: citizenshipData.region,
-        email: citizenshipData.email,
-        profession: citizenshipData.profession,
-        walletAddress: citizenshipData.walletAddress
-      }),
-      256
-    );
-    expect(identityHash(FORM, ADDR)).toBe(pwap);
-    // Pinned so a change to both expressions at once still shows.
-    expect(pwap).toBe('0x9c2ee01e38acdbd4f49331153e350049c6b6847a03ea136536985a07997b2886');
+  it('hashes { fullName, walletAddress, salt }, for a fixed vector', () => {
+    const json = `{"fullName":"Berzê Ronahî","walletAddress":"${ADDR}","salt":"${SALT}"}`;
+    expect(identityHash(FORM, ADDR)).toBe(blake2AsHex(json, 256));
+    expect(identityHash(FORM, ADDR)).toBe('0x319a72f1684218bdc8fe6d579e413ddea9f4ddeb8d1167e99b2aba02e64ef7b1');
   });
-  it('ignores the fields pwap does not hash (marital status, children, referrer)', () => {
-    expect(identityHash({ ...FORM, maritalStatus: 'nezewici', children: [], referrer: '' }, ADDR)).toBe(identityHash(FORM, ADDR));
-    expect(identityHash({ ...FORM, email: 'x@y.z' }, ADDR)).not.toBe(identityHash(FORM, ADDR));
+
+  it('gives different hashes for the same name and address with two salts, so a guessed name cannot be checked', () => {
+    const a = newSalt(); const b = newSalt();
+    expect(a).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(a).not.toBe(b);
+    expect(identityHash({ ...FORM, salt: a }, ADDR)).not.toBe(identityHash({ ...FORM, salt: b }, ADDR));
+    // A guess without the salt does not reproduce it.
+    expect(identityHash(FORM, ADDR)).not.toBe(blake2AsHex(JSON.stringify({ fullName: FORM.fullName, walletAddress: ADDR }), 256));
+  });
+
+  it('ignores the referrer and changes with the name or the wallet', () => {
+    expect(identityHash({ ...FORM, referrer: '' }, ADDR)).toBe(identityHash(FORM, ADDR));
+    expect(identityHash({ ...FORM, fullName: 'Rojîn' }, ADDR)).not.toBe(identityHash(FORM, ADDR));
     expect(identityHash(FORM, BOB)).not.toBe(identityHash(FORM, ADDR));
   });
 });
 
 describe('form', () => {
   beforeEach(() => localStorage.clear());
-  it('lists missing required fields and a bad email', () => {
+  it('asks only for the full name', () => {
+    expect(Object.keys(EMPTY_FORM).sort()).toEqual(['fullName', 'referrer', 'salt']);
     expect(formProblems(FORM)).toEqual([]);
-    expect(formProblems({ ...FORM, fullName: '  ', region: '', email: 'no-at-sign' })).toEqual(['fullName', 'region', 'email']);
+    expect(formProblems({ ...FORM, fullName: '  ' })).toEqual(['fullName']);
+    expect(formProblems({ ...FORM, referrer: '' })).toEqual([]);
   });
-  it('is kept only in localStorage under pezkuwi-explorer:iwallet-citizen:<address>', () => {
+  it('is kept only in localStorage under pezkuwi-explorer:iwallet-citizen:<address>, with its salt', () => {
     expect(formKey(ADDR)).toBe(`iwallet-citizen:${ADDR}`);
     expect(saveForm(ADDR, FORM)).toBe(true);
-    expect(JSON.parse(localStorage.getItem(`pezkuwi-explorer:iwallet-citizen:${ADDR}`)!)).toEqual(FORM);
+    expect(stored()).toEqual(FORM);
     expect(loadForm(ADDR)).toEqual(FORM);
-    expect(loadForm(BOB)).toEqual(EMPTY_FORM);
+    expect(loadForm(ADDR).salt).toBe(SALT);
   });
-  it('falls back to an empty form when the stored text is damaged', () => {
-    localStorage.setItem(`pezkuwi-explorer:iwallet-citizen:${ADDR}`, '{not json');
-    expect(loadForm(ADDR)).toEqual(EMPTY_FORM);
+  it('gives a new form a fresh salt without writing anything', () => {
+    const f = loadForm(BOB);
+    expect(f).toEqual({ fullName: '', referrer: '', salt: f.salt });
+    expect(f.salt).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(localStorage.length).toBe(0);
+  });
+  it('rewrites a form saved in the old long shape on load: name + referrer + a new salt, nothing else left', () => {
+    const old = {
+      fullName: 'Berzê Ronahî', fatherName: 'Şêrko', grandfatherName: 'Welat', motherName: 'Gula', tribe: 'Barzanî',
+      maritalStatus: 'zewici', childrenCount: '2', children: [{ name: 'Rojîn', birthYear: '2015' }],
+      region: 'bakur', email: 'berze@example.com', profession: 'Mamosta', referrer: BOB,
+    };
+    localStorage.setItem(KEY, JSON.stringify(old));
+    const f = loadForm(ADDR);
+    expect(f).toEqual({ fullName: 'Berzê Ronahî', referrer: BOB, salt: f.salt });
+    // Written back at once, with no save: none of the old fields stay in this browser.
+    expect(stored()).toEqual(f);
+    expect(Object.keys(stored()).sort()).toEqual(['fullName', 'referrer', 'salt']);
+    expect(loadForm(ADDR).salt).toBe(f.salt);
+  });
+  it('falls back to empty fields when the stored text is damaged or of the wrong type', () => {
+    const empty = (f: CitizenForm) => expect({ ...f, salt: '' }).toEqual(EMPTY_FORM);
+    localStorage.setItem(KEY, '{not json');
+    empty(loadForm(ADDR));
+    localStorage.setItem(KEY, 'null');
+    empty(loadForm(ADDR));
+    localStorage.setItem(KEY, '{"fullName":7,"referrer":["x"],"salt":"0xnot-hex"}');
+    const f = loadForm(ADDR);
+    empty(f);
+    expect(f.salt).toMatch(/^0x[0-9a-f]{64}$/);
   });
 });
 
@@ -107,6 +128,23 @@ describe('status', () => {
   });
   it('fails the load on an unknown variant instead of guessing a stage', async () => {
     await expect(loadStatus(ADDR, { getApi: () => Promise.resolve(peopleWith('Suspended', null)) })).rejects.toThrow(/unknown citizenship status/);
+  });
+});
+
+describe('stageOf', () => {
+  it('follows kycStatuses when there is no citizen NFT', () => {
+    expect(stageOf({ kyc: 'NotStarted', nftId: null })).toBe('form');
+    expect(stageOf({ kyc: 'PendingReferral', nftId: null })).toBe('pending');
+    expect(stageOf({ kyc: 'ReferrerApproved', nftId: null })).toBe('sign');
+    expect(stageOf({ kyc: 'Approved', nftId: null })).toBe('approvedNoNft');
+    expect(stageOf({ kyc: 'Revoked', nftId: null })).toBe('revoked');
+  });
+  it('shows the citizen whenever a citizen NFT exists, unless the citizenship was revoked', () => {
+    for (const kyc of ['NotStarted', 'PendingReferral', 'ReferrerApproved', 'Approved'] as const) {
+      expect(stageOf({ kyc, nftId: 5n })).toBe('citizen');
+    }
+    expect(stageOf({ kyc: 'NotStarted', nftId: 0n })).toBe('citizen');
+    expect(stageOf({ kyc: 'Revoked', nftId: 5n })).toBe('revoked');
   });
 });
 

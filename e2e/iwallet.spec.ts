@@ -146,7 +146,7 @@ test.describe('on an iPhone', () => {
     await card.getByRole('button', { name: 'Add to Home Screen' }).click();
     const dialog = page.getByRole('dialog', { name: 'Add i-Wallet to your Home Screen' });
     await expect(dialog.getByRole('listitem')).toHaveText([
-      "1Tap the Share icon in Safari's toolbar", '2Choose “Add to Home Screen”', '3Tap “Add”',
+      "1Tap the Share button in your browser's toolbar", '2Choose “Add to Home Screen”', '3Tap “Add”',
     ]);
     await expect(dialog.getByRole('link', { name: 'Restore with 12 words' })).toHaveAttribute('href', '/i-wallet/import');
     // 44 px targets for the button and the step icons.

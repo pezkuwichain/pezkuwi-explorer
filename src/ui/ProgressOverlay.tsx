@@ -18,8 +18,9 @@ function fieldOrError(before: HTMLElement | null): HTMLElement | null {
 
 // A full-screen wait: dimmed backdrop, a card with the Kurdistan sun and one line (the miniapp's processing popup).
 // It is rendered over the whole page; everything else is inert (no pointer, no focus, out of the accessibility tree)
-// while it shows. It takes focus and keeps it. When it goes, focus returns where it was, or, after a failure
-// (`failed()`), to the field to try again.
+// while it shows, including what is added to <body> meanwhile. It takes focus and keeps it. When it goes, focus
+// returns where it was; after a failure (`failed()`) the screen behind focuses its own field (AuthConfirm, Unlock),
+// and this only falls back to the first usable field or the error.
 export function ProgressOverlay({ message, failed = () => false }: { message: string; failed?: () => boolean }) {
   const host = useRef<HTMLDivElement>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -29,13 +30,20 @@ export function ProgressOverlay({ message, failed = () => false }: { message: st
     const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const hostEl = host.current;
     const hidden: Array<{ el: Element; aria: string | null }> = [];
-    for (const el of Array.from(document.body.children)) {
-      if (el === hostEl || el.hasAttribute('inert')) continue;
+    const hide = (el: Element) => {
+      if (el === hostEl || el.hasAttribute('inert')) return;
       hidden.push({ el, aria: el.getAttribute('aria-hidden') });
       el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true');
-    }
+    };
+    Array.from(document.body.children).forEach(hide);
+    // Anything added to <body> while the overlay shows (a portal, a toast) is made inert too, and restored with the rest.
+    const watch = new MutationObserver((records) => {
+      for (const r of records) r.addedNodes.forEach((n) => { if (n instanceof Element && n.parentNode === document.body) hide(n); });
+    });
+    watch.observe(document.body, { childList: true });
     card.current?.focus();
     return () => {
+      watch.disconnect();
       for (const { el, aria } of hidden) {
         el.removeAttribute('inert');
         if (aria === null) el.removeAttribute('aria-hidden'); else el.setAttribute('aria-hidden', aria);

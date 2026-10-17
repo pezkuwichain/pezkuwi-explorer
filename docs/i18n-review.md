@@ -449,11 +449,14 @@ draft until a native reader signs it off.
 | `install.step3` | Li “Zêde bike” bitikîne | دەست بنێ بە «زیادکردن» | روی «افزودن» بزنید | اضغط على «إضافة» |
 | `install.iosNote` | Sepana li Ekrana Malê daneyên xwe ji Safariyê cuda tomar dike: i-Wallet ji Ekrana Malê veke. Heke te cuzdanê xwe di Safariyê de çêkiribe, li wir bi 12 peyvên xwe vegerîne. | بەرنامەکەی سەر شاشەی سەرەکی داتای خۆی جیا لە Safari هەڵدەگرێت: … | برنامهٔ صفحه اصلی فضای ذخیره‌سازی خودش را دارد، جدا از Safari: … | يحتفظ تطبيق الشاشة الرئيسية بتخزينه الخاص، منفصلًا عن Safari: … |
 | `install.landing` | Pêşî i-Wallet li Ekrana Malê zêde bike û cuzdanê xwe li wir çêke | سەرەتا i-Wallet زیاد بکە بۆ شاشەی سەرەکی و جزدانەکەت لەوێ دروست بکە | ابتدا i-Wallet را به صفحه اصلی اضافه کنید و کیف پول خود را آنجا بسازید | أضف i-Wallet أولًا إلى الشاشة الرئيسية وأنشئ محفظتك هناك |
+| `install.landingQuick` (Android: the installed app shares the browser's storage, so no "create it there"; added 2026-10-17, PR #20 review) | i-Wallet li Ekrana Malê zêde bike da ku zû vekî | بۆ دەستگەیشتنی خێرا i-Wallet زیاد بکە بۆ شاشەی سەرەکی | برای دسترسی سریع، i-Wallet را به صفحه اصلی اضافه کنید | أضف i-Wallet إلى الشاشة الرئيسية للوصول السريع |
 
 - **The quoted iOS labels** (step 2 and step 3) must match what the person's iPhone shows. iOS has no Kurmancî or Soranî
   interface, so a Kurdish reader's iPhone shows Turkish, Arabic, Persian or English labels ("Ana Ekrana Ekle" / "Ekle",
   "إضافة إلى الشاشة الرئيسية" / "إضافة", "Add to Home Screen" / "Add"). The kmr and ckb quotes are translations of the
   label, not the label itself; a native reader should decide whether to quote the English label instead.
+- **kmr `install.landingQuick`**: tr "Hızlı erişim için i-Wallet'i Ana Ekrana ekle", en "Add i-Wallet to your Home Screen for
+  quick access"; kmr "da ku zû vekî" (so you open it quickly) uses Zû/m. "Lezgîn, lez" and Vekirin/m.; draft like the rest.
 - **kmr**: vocabulary confirmed: "Ekrana Malê" and "zêde bike" as in `home.a2hs`; "parvekirin" (Ferheng
   Parvekirin/m.), "nîşan" (Ferheng Nîşan/m. marke, sembol), "cuda" (Ferheng Cihê/n. Cuda), "tomar", "dane", "sepan"
   (pwap usage, see above), "hilbijêre", "vegerîne" (`unlock.restore`), "çêke" (çêkirin). "Bitikîne" for "tap" is
@@ -475,3 +478,66 @@ showing the backup words, Settings). Two new keys:
 - kmr: "tê tomarkirin" as in `faceid.storage` / `error.notSaved`; "tê îmzekirin" as in `send.pending`.
 - ckb: "پاشەکەوت" as in `faceid.storage`; "واژۆ دەکرێت" as in `send.pending`. fa and ar follow `send.pending` and
   `faceid.storage`. All four are drafts for a native reading.
+
+### Short citizenship application (2026-10-17, Serok)
+
+Only a hash goes on chain and the data stays in the browser, so the i-Wallet application now asks only for the full
+name (kept on this device for the citizen card) and the optional referrer. The identity hash is now
+`blake2(JSON.stringify({ fullName, walletAddress, salt }))`, no longer pwap's nine-field recipe. The salt (32 random
+bytes, kept with the form in this browser; owner's ruling on the PR #21 review) stops anyone from checking a guessed
+name against the public hash, so `form.privacy` and `form.agree` ("cannot be read back") stay true and are unchanged.
+
+Removed keys, in all six files (ignore their entries in the fa / ar lists above):
+`iwallet.citizen.form.fatherName`, `grandfatherName`, `motherName`, `tribe`, `marital`, `married`, `unmarried`,
+`childrenCount`, `childName`, `birthYear`, `region`, `selectRegion`, `email`, `emailInvalid`, `profession`, and the
+whole `iwallet.citizen.region.*` group (six regions). `form.privacy` and `form.agree` are unchanged.
+
+Changed texts (tr and en are Serok's; kmr as below; ckb, fa, ar drafts):
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `iwallet.home.citizen` (home button) | Vatandaşlık başvurusu | Citizenship application | Serlêdana welatîbûnê | داواکاری هاوڵاتیبوون | درخواست شهروندی | طلب المواطنة |
+| `iwallet.citizen.pending.title` | Referansının onayı bekleniyor | Waiting for your referrer's approval | Li benda pejirandina referansê ye | چاوەڕوانی پەسەندکردنی ئاماژەکارەکەتە | در انتظار تأیید معرف شما | في انتظار موافقة المحيل |
+| `iwallet.citizen.approved.title` | Referansın onayladı | Your referrer approved | Referansa te tu pejirandî | ئاماژەکارەکەت پەسەندی کردیت | معرف شما تأیید کرد | وافق المحيل عليك |
+| `iwallet.citizen.approved.body` | Vatandaşlık sürecini tamamlamak için imzan gerekiyor. | Your signature is needed to complete your citizenship. | Ji bo temamkirina pêvajoya welatîbûnê îmzeya te pêwîst e. | بۆ تەواوکردنی پرۆسەی هاوڵاتیبوون واژۆکەت پێویستە. | برای تکمیل روند شهروندی، امضای شما لازم است. | توقيعك مطلوب لإكمال إجراءات المواطنة. |
+
+`iwallet.citizen.citizen.title` already read tr "Vatandaşsın" / en "You are a citizen" / kmr "Tu welatî yî" (a person is
+Welatî; Hevwelatî only for formal plural address) and is unchanged. The ar pending title is the old pwap text, kept.
+
+- **kmr `approved.body` — flagged for native reading.** "Îmze", "temamkirin" and "pêvajo" are not headwords in the
+  Ferheng, but each is used in its definitions: Qol/n. "… c) Îmze, dema lêkera kirinê têkeve dawiyê dibe îmzekirin";
+  Rêkeft/m. "… rêkeftinek îmze kirin"; Jêrnivîs/m. "Imze, hemze, têbinî"; Tûmandin/m. "Kamekirin, temamkirin,
+  îkmalkirin"; Têrker/m. "… temamkirin, komplement"; Rewend/m. "a) Reform, b) Pêvajo"; Deqn/m. "… di pêvajoya …".
+  The Ferheng gives no gender for îmze; "îmzeya te" writes it feminine (as `iwallet.signing` "Tê îmzekirin" uses the
+  verb). Pêwîst/m. is in the table above.
+- **kmr `approved.title`**: "Referansa te tu pejirandî" is the ergative past (agent oblique, verb agreeing with "tu");
+  "referansa" feminine as in `pending.body`. Flagged for native reading.
+- kmr `pending.title`: "Li benda … ye" with Pejirandin/m.; `home.citizen`: Serlêdan/m. + ezafe "welatîbûnê".
+
+### Population directorate button (2026-10-17, Serok)
+
+The explorer's Citizenship tab has a second button under the experts button. It opens a dialog saying the service is
+under construction. New keys, all six files:
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `citizenship.directorate` | Nüfus ve Vatandaşlık İşleri Genel Müdürlüğü | General Directorate of Population and Citizenship Affairs | Rêveberiya Giştî ya Karên Gelhe û Welatîbûnê | بەڕێوەبەرایەتی گشتی کاروباری دانیشتوان و هاوڵاتیبوون | اداره کل امور جمعیت و شهروندی | المديرية العامة لشؤون السكان والمواطنة |
+| `citizenship.soonTitle` | Yapım aşamasında | Under construction | Di qonaxa avakirinê de ye | لە قۆناغی دروستکردندایە | در دست ساخت | قيد الإنشاء |
+| `citizenship.soonBody` | Bu hizmet yakında burada olacak. | This service will be available here soon. | Ev karûbar wê di demeke nêz de li vir be. | ئەم خزمەتگوزارییە بەم زووانە لێرە دەبێت. | این خدمت به‌زودی در اینجا در دسترس خواهد بود. | ستتوفر هذه الخدمة هنا قريبًا. |
+
+- kmr Ferheng entries: Rêveberî/m. "Rayberî, rênîşanderî"; Giştî/m. "Tevek/ seranser"; Kar/m. "b) Şixul, şol, îş";
+  Gelhe/m. "nifûs, kes, xelk"; Qonax/m. "Gihanek, qedem, raden"; Avakirin/m. "Şênkirin, ji bingehê ve çêkirin";
+  Karûbar/m. "îşûmîş …"; Nêz/m. "Nedûr, nêzîk"; "demeke kurt" as in Bistik/m. and Rekem/m.
+- kmr `soonBody` uses "karûbar" for "service" because "xizmet" is not in the Ferheng (only Xizmetî = kinship); flagged
+  for native reading, as is the whole sentence.
+- ckb, fa, ar: drafts. fa uses "جمعیت" for population rather than Iran's "ثبت احوال" (civil registration); a native
+  reader should pick the official-sounding name.
+
+### Install step 1 without "Safari" (2026-10-17, PR #21 review)
+
+`iwallet.install.step1` now names the browser's toolbar, not Safari's (Chrome, Edge and Firefox on iOS add to the
+Home Screen from their own Share menus): tr "Tarayıcının araç çubuğundaki Paylaş düğmesine dokun", en "Tap the Share
+button in your browser's toolbar". kmr "Di geroka xwe de li nîşana Parvekirinê bitikîne" (gerok, nîşan and
+parvekirin as before; "bitikîne" still flagged), ckb "لە شریتی ئامرازەکانی وێبگەڕەکەتدا دەست بنێ بە دوگمەی هاوبەشکردن",
+fa "در نوار ابزار مرورگر خود روی دکمه اشتراک‌گذاری بزنید", ar "اضغط على زر المشاركة في شريط أدوات متصفحك". All four are
+drafts for a native reading.

@@ -7,7 +7,8 @@ import { prompt } from '../ui/install';
 import type { InstallMode } from './installMode';
 import './iwallet.css';
 
-// iOS: the three taps in Safari, and why a wallet made in Safari does not appear in the Home Screen app.
+// iOS: the three taps in the browser's Share menu, and why a wallet made in the browser does not appear in the Home
+// Screen app.
 function IosSteps({ open, onClose }: { open: boolean; onClose(): void }) {
   const { t } = useTranslation();
   const steps = [

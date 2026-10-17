@@ -1,6 +1,6 @@
 // Citizenship on the mainnet People chain (spec §6), ported from pwap shared/lib/citizenship-workflow.ts and
-// web/src/components/citizenship/NewCitizenApplication.tsx. Personal form data never leaves this browser: only its
-// blake2 hash goes on chain.
+// web/src/components/citizenship/NewCitizenApplication.tsx. The name never leaves this browser: only a blake2 hash
+// goes on chain.
 import type { ApiPromise } from '@pezkuwi/api';
 import type { SubmittableExtrinsic } from '@pezkuwi/api/types';
 import { u8aEq, u8aToHex } from '@pezkuwi/util';
@@ -17,62 +17,26 @@ type Tx = SubmittableExtrinsic<'promise'>;
 type Deps = { getApi: (chain: ChainKey) => Promise<ApiPromise> };
 const real: Deps = { getApi: getMainnetApi };
 
-export const REGIONS = ['bakur', 'basur', 'rojava', 'rojhelat', 'kurdistan_a_sor', 'diaspora'] as const;
-export type Region = (typeof REGIONS)[number];
-export type MaritalStatus = 'zewici' | 'nezewici';
-export type Child = { name: string; birthYear: string };
-
+// The application asks only for a name and an optional referrer. Nothing personal goes on chain (only the hash
+// below), and the name stays in this browser for the citizen card, so asking for more would only collect data that
+// is never used.
 export type CitizenForm = {
   fullName: string;
-  fatherName: string;
-  grandfatherName: string;
-  motherName: string;
-  tribe: string;
-  maritalStatus: MaritalStatus;
-  childrenCount: string;
-  children: Child[];
-  region: Region | '';
-  email: string;
-  profession: string;
   referrer: string;
 };
 
-export const EMPTY_FORM: CitizenForm = {
-  fullName: '', fatherName: '', grandfatherName: '', motherName: '', tribe: '', maritalStatus: 'nezewici',
-  childrenCount: '', children: [], region: '', email: '', profession: '', referrer: '',
-};
+export const EMPTY_FORM: CitizenForm = { fullName: '', referrer: '' };
 
-// The on-chain identity hash. The expression and key order are copied from pwap NewCitizenApplication.tsx so the
-// same person and wallet give the same hash in both apps. Values are hashed as typed, as pwap does.
+// The on-chain identity hash. The field set shrank with the form (2026-10-17): it was pwap NewCitizenApplication.tsx's
+// nine-field recipe and now hashes { fullName, walletAddress } only, so it no longer matches pwap's hash for the same
+// person. Uniqueness comes from the wallet address (one application per account); the name is hashed as typed.
 export function identityHash(form: CitizenForm, address: string): string {
-  const citizenshipData = { ...form, walletAddress: address };
-  return blake2AsHex(
-    JSON.stringify({
-      fullName: citizenshipData.fullName,
-      fatherName: citizenshipData.fatherName,
-      grandfatherName: citizenshipData.grandfatherName,
-      motherName: citizenshipData.motherName,
-      tribe: citizenshipData.tribe,
-      region: citizenshipData.region,
-      email: citizenshipData.email,
-      profession: citizenshipData.profession,
-      walletAddress: citizenshipData.walletAddress,
-    }),
-    256,
-  );
+  return blake2AsHex(JSON.stringify({ fullName: form.fullName, walletAddress: address }), 256);
 }
 
-// pwap's email rule.
-export const EMAIL_RE = /^\S+@\S+$/i;
-
-export type FormProblem = 'fullName' | 'fatherName' | 'grandfatherName' | 'motherName' | 'tribe' | 'region' | 'email' | 'profession';
+export type FormProblem = 'fullName';
 export function formProblems(form: CitizenForm): FormProblem[] {
-  const out: FormProblem[] = [];
-  for (const k of ['fullName', 'fatherName', 'grandfatherName', 'motherName', 'tribe'] as const) if (!form[k].trim()) out.push(k);
-  if (!form.region) out.push('region');
-  if (!EMAIL_RE.test(form.email)) out.push('email');
-  if (!form.profession.trim()) out.push('profession');
-  return out;
+  return form.fullName.trim() ? [] : ['fullName'];
 }
 
 // Personal data is kept only in this browser's localStorage (via src/lib/storage.ts), keyed by the wallet address.
@@ -81,11 +45,15 @@ export function loadForm(address: string): CitizenForm {
   const raw = storage.get(formKey(address));
   if (!raw) return { ...EMPTY_FORM };
   try {
-    const v = JSON.parse(raw) as Partial<CitizenForm>;
-    return { ...EMPTY_FORM, ...v, children: Array.isArray(v.children) ? v.children : [] };
+    // A form saved before 2026-10-17 also holds father/mother names, tribe, region, email and so on: only the two
+    // fields the form still has are kept, and the next save drops the rest from this browser.
+    const v = JSON.parse(raw) as Record<string, unknown> | null;
+    const text = (x: unknown) => (typeof x === 'string' ? x : '');
+    return v && typeof v === 'object' ? { fullName: text(v.fullName), referrer: text(v.referrer) } : { ...EMPTY_FORM };
   } catch { return { ...EMPTY_FORM }; }
 }
-export const saveForm = (address: string, form: CitizenForm): boolean => storage.set(formKey(address), JSON.stringify(form));
+export const saveForm = (address: string, form: CitizenForm): boolean =>
+  storage.set(formKey(address), JSON.stringify({ fullName: form.fullName, referrer: form.referrer }));
 export const clearForm = (address: string): void => storage.remove(formKey(address));
 // "Delete from device" promises a clean device: every saved citizenship form goes, whatever wallet it belonged to.
 export function clearAllForms(): void {
@@ -145,6 +113,21 @@ export async function loadStatus(address: string, deps: Deps = real): Promise<Ci
   };
   const [status, nft] = await withTimeout(Promise.all([q.identityKyc.kycStatuses(address), q.tiki.citizenNft(address)]), REQUEST_TIMEOUT_MS);
   return { kyc: toKycStatus(status.type), nftId: nft.isSome ? nft.unwrap().toBigInt() : null };
+}
+
+// A citizen NFT is the proof of citizenship: whoever holds one sees the citizen card, never the form, whatever
+// kycStatuses says (measured 2026-10-17: all 97 mainnet NFT holders are Approved, so this only guards a drift).
+export const isCitizen = (s: CitizenStatus) => s.nftId !== null || s.kyc === 'Approved';
+export type Stage = 'form' | 'pending' | 'sign' | 'citizen' | 'approvedNoNft' | 'revoked';
+export function stageOf(s: CitizenStatus): Stage {
+  if (s.nftId !== null) return 'citizen';
+  switch (s.kyc) {
+    case 'NotStarted': return 'form';
+    case 'PendingReferral': return 'pending';
+    case 'ReferrerApproved': return 'sign';
+    case 'Approved': return 'approvedNoNft';
+    case 'Revoked': return 'revoked';
+  }
 }
 
 export type PendingReferral = { applicant: string; identityHash: string };

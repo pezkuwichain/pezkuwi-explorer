@@ -475,3 +475,36 @@ showing the backup words, Settings). Two new keys:
 - kmr: "tê tomarkirin" as in `faceid.storage` / `error.notSaved`; "tê îmzekirin" as in `send.pending`.
 - ckb: "پاشەکەوت" as in `faceid.storage`; "واژۆ دەکرێت" as in `send.pending`. fa and ar follow `send.pending` and
   `faceid.storage`. All four are drafts for a native reading.
+
+### Short citizenship application (2026-10-17, Serok)
+
+Only a hash goes on chain and the data stays in the browser, so the i-Wallet application now asks only for the full
+name (kept on this device for the citizen card) and the optional referrer. The identity hash is now
+`blake2(JSON.stringify({ fullName, walletAddress }))`, no longer pwap's nine-field recipe.
+
+Removed keys, in all six files (ignore their entries in the fa / ar lists above):
+`iwallet.citizen.form.fatherName`, `grandfatherName`, `motherName`, `tribe`, `marital`, `married`, `unmarried`,
+`childrenCount`, `childName`, `birthYear`, `region`, `selectRegion`, `email`, `emailInvalid`, `profession`, and the
+whole `iwallet.citizen.region.*` group (six regions). `form.privacy` and `form.agree` are unchanged.
+
+Changed texts (tr and en are Serok's; kmr as below; ckb, fa, ar drafts):
+
+| key | tr | en | kmr | ckb | fa | ar |
+|---|---|---|---|---|---|---|
+| `iwallet.home.citizen` (home button) | Vatandaşlık başvurusu | Citizenship application | Serlêdana welatîbûnê | داواکاری هاوڵاتیبوون | درخواست شهروندی | طلب المواطنة |
+| `iwallet.citizen.pending.title` | Referansının onayı bekleniyor | Waiting for your referrer's approval | Li benda pejirandina referansê ye | چاوەڕوانی پەسەندکردنی ئاماژەکارەکەتە | در انتظار تأیید معرف شما | في انتظار موافقة المحيل |
+| `iwallet.citizen.approved.title` | Referansın onayladı | Your referrer approved | Referansa te tu pejirandî | ئاماژەکارەکەت پەسەندی کردیت | معرف شما تأیید کرد | وافق المحيل عليك |
+| `iwallet.citizen.approved.body` | Vatandaşlık sürecini tamamlamak için imzan gerekiyor. | Your signature is needed to complete your citizenship. | Ji bo temamkirina pêvajoya welatîbûnê îmzeya te pêwîst e. | بۆ تەواوکردنی پرۆسەی هاوڵاتیبوون واژۆکەت پێویستە. | برای تکمیل روند شهروندی، امضای شما لازم است. | توقيعك مطلوب لإكمال إجراءات المواطنة. |
+
+`iwallet.citizen.citizen.title` already read tr "Vatandaşsın" / en "You are a citizen" / kmr "Tu welatî yî" (a person is
+Welatî; Hevwelatî only for formal plural address) and is unchanged. The ar pending title is the old pwap text, kept.
+
+- **kmr `approved.body` — flagged for native reading.** "Îmze", "temamkirin" and "pêvajo" are not headwords in the
+  Ferheng, but each is used in its definitions: Qol/n. "… c) Îmze, dema lêkera kirinê têkeve dawiyê dibe îmzekirin";
+  Rêkeft/m. "… rêkeftinek îmze kirin"; Jêrnivîs/m. "Imze, hemze, têbinî"; Tûmandin/m. "Kamekirin, temamkirin,
+  îkmalkirin"; Têrker/m. "… temamkirin, komplement"; Rewend/m. "a) Reform, b) Pêvajo"; Deqn/m. "… di pêvajoya …".
+  The Ferheng gives no gender for îmze; "îmzeya te" writes it feminine (as `iwallet.signing` "Tê îmzekirin" uses the
+  verb). Pêwîst/m. is in the table above.
+- **kmr `approved.title`**: "Referansa te tu pejirandî" is the ergative past (agent oblique, verb agreeing with "tu");
+  "referansa" feminine as in `pending.body`. Flagged for native reading.
+- kmr `pending.title`: "Li benda … ye" with Pejirandin/m.; `home.citizen`: Serlêdan/m. + ezafe "welatîbûnê".

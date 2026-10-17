@@ -123,10 +123,7 @@ const login = async () => {
   await user.type(await screen.findByLabelText('Parola'), 'right-pass1');
   await user.click(screen.getByRole('button', { name: 'Kilidi aç' }));
 };
-const FORM: Partial<CitizenForm> = {
-  fullName: 'Berzê Ronahî', fatherName: 'Şêrko', grandfatherName: 'Welat', motherName: 'Gula', tribe: 'Barzanî',
-  region: 'bakur', email: 'berze@example.com', profession: 'Mamosta',
-};
+const FORM: Partial<CitizenForm> = { fullName: 'Berzê Ronahî' };
 const seedForm = (f: Partial<CitizenForm>) => localStorage.setItem(`pezkuwi-explorer:iwallet-citizen:${ADDR}`, JSON.stringify(f));
 const fundTitle = 'HEZ\'i vatandaşlık zincirine taşı';
 const applyBtn = () => screen.getByRole('button', { name: 'Başvuruyu Gönder' });
@@ -202,7 +199,7 @@ describe('i-Wallet citizenship', () => {
     await waitFor(() => expect(screen.queryByRole('heading', { name: fundTitle })).toBeNull());
   });
 
-  it('applies with the pwap hash and the ?ref= referrer, keeping the form only in localStorage', async () => {
+  it('applies with the name hash and the ?ref= referrer, keeping the form only in localStorage', async () => {
     impl.people = 2n * T;
     seedForm(FORM);
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
@@ -274,14 +271,28 @@ describe('i-Wallet citizenship', () => {
     expect(await screen.findByRole('button', { name: /1,5 HEZ taşı/ })).toBeInTheDocument();
   });
 
-  it('does not sign with an incomplete form', async () => {
+  it('does not sign without a name', async () => {
     impl.people = 2n * T;
-    seedForm({ ...FORM, email: 'nope' });
     renderCitizen(); await login();
     await user.click(await screen.findByRole('checkbox'));
     await user.click(applyBtn());
-    expect(screen.getByText('Geçerli e-posta gerekli')).toBeInTheDocument();
+    expect(screen.getByText('Gerekli')).toBeInTheDocument();
     expect(screen.queryByLabelText('Parola')).toBeNull();
+    expect(impl.signed).toEqual([]);
+  });
+
+  it('asks only for the full name and the optional referrer', async () => {
+    impl.people = 2n * T;
+    renderCitizen(); await login();
+    await screen.findByRole('button', { name: 'Başvuruyu Gönder' });
+    const form = document.querySelector('form.iw-form')!;
+    const fields = [...form.querySelectorAll('input, select, textarea')].filter((el) => (el as HTMLInputElement).type !== 'checkbox');
+    expect(fields).toHaveLength(2);
+    expect(screen.getByLabelText('Tam Adın')).toBe(fields[0]);
+    expect(screen.getByLabelText('Referans adresi (isteğe bağlı)')).toBe(fields[1]);
+    // The deposit notice and the privacy text are still there.
+    expect(screen.getByText('1 HEZ depozito gerekli')).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('iwallet.citizen.form.privacy'))).toBeInTheDocument();
   });
 
   it('keeps a wrong password on the confirm screen', async () => {
@@ -296,17 +307,21 @@ describe('i-Wallet citizenship', () => {
   it('shows waiting + cancel for PendingReferral and signs cancelApplication', async () => {
     impl.people = T; impl.status = 'PendingReferral';
     renderCitizen(); await login();
-    expect(await screen.findByText('Referans Onayı Bekleniyor')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Referansının onayı bekleniyor' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: fundTitle })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Başvuruyu Gönder' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Başvuruyu İptal Et' }));
     await signWith('right-pass1');
     expect(await screen.findByText('Başvuru iptal edildi')).toBeInTheDocument();
     expect(impl.signed).toEqual([{ name: 'identityKyc.cancelApplication', args: [] }]);
   });
 
-  it('confirms for ReferrerApproved', async () => {
+  it('asks for the signature for ReferrerApproved and confirms', async () => {
     impl.people = T; impl.status = 'ReferrerApproved';
     renderCitizen(); await login();
+    expect(await screen.findByRole('heading', { name: 'Referansın onayladı' })).toBeInTheDocument();
+    expect(screen.getByText('Vatandaşlık sürecini tamamlamak için imzan gerekiyor.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Başvuruyu Gönder' })).toBeNull();
     await user.click(await screen.findByRole('button', { name: 'Vatandaşlığı Onayla' }));
     await signWith('right-pass1');
     expect(await screen.findByText('Vatandaşlık onaylandı')).toBeInTheDocument();
@@ -321,12 +336,33 @@ describe('i-Wallet citizenship', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(i18n.t('iwallet.err.identityKyc.ReferrerNotCitizen'));
   });
 
-  it('shows the citizen card for Approved with an NFT', async () => {
+  it('shows the citizen card for Approved with an NFT, with the name kept on this device', async () => {
     impl.status = 'Approved'; impl.nft = 7n;
+    seedForm(FORM);
     renderCitizen(); await login();
-    expect(await screen.findByText('Vatandaşsın')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Vatandaşsın' })).toBeInTheDocument();
+    expect(screen.getByText('Berzê Ronahî')).toBeInTheDocument();
     expect(screen.getByText('Welati Tiki NFT #7')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Başvuruyu Gönder' })).toBeNull();
+  });
+
+  for (const status of ['NotStarted', 'PendingReferral', 'ReferrerApproved', 'Revoked']) {
+    it(`shows the citizen card, never the form, for an NFT holder whose status reads ${status}`, async () => {
+      impl.status = status; impl.nft = 9n; impl.people = 2n * T;
+      renderCitizen(); await login();
+      expect(await screen.findByRole('heading', { name: 'Vatandaşsın' })).toBeInTheDocument();
+      expect(screen.getByText('Welati Tiki NFT #9')).toBeInTheDocument();
+      expect(document.querySelector('form.iw-form')).toBeNull();
+      for (const name of ['Başvuruyu Gönder', 'Başvuruyu İptal Et', 'Vatandaşlığı Onayla']) expect(screen.queryByRole('button', { name })).toBeNull();
+      expect(screen.queryByText('Bu hesabın vatandaşlığı iptal edildi.')).toBeNull();
+    });
+  }
+
+  it('says approved without an NFT when the NFT is missing', async () => {
+    impl.status = 'Approved'; impl.nft = null;
+    renderCitizen(); await login();
+    expect(await screen.findByText(i18n.t('iwallet.citizen.approvedNoNft'))).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Vatandaşsın' })).toBeNull();
   });
 
   it('turns an unknown status variant into a load error', async () => {
@@ -421,7 +457,7 @@ describe('i-Wallet citizenship', () => {
     impl.apps = [{ applicant: BOB, referrer: ADDR, status: 'PendingReferral' }];
     impl.people = T; impl.status = 'PendingReferral';
     const first = renderCitizen(); await login();
-    await screen.findByText('Referans Onayı Bekleniyor');
+    await screen.findByRole('heading', { name: 'Referansının onayı bekleniyor' });
     expect(impl.scans).toBe(0);
     expect(screen.queryByText('Onayını bekleyen başvurular')).toBeNull();
     first.unmount();

@@ -85,7 +85,7 @@ describe('i-Wallet home', () => {
     // The same tiles as the Account tab, in its order; People holds nothing and still has its tile.
     expect([...document.querySelectorAll('.total-card .chain-tile')].map((c) => c.textContent)).toEqual(['Relay2', 'Asset Hub5', 'People0']);
     expect(screen.getByRole('link', { name: /Gönder/ })).toHaveAttribute('href', '/i-wallet/send');
-    expect(screen.getByRole('link', { name: /Vatandaşlık/ })).toHaveAttribute('href', '/i-wallet/citizen');
+    expect(screen.getByRole('link', { name: 'Vatandaşlık başvurusu' })).toHaveAttribute('href', '/i-wallet/citizen');
     expect(screen.getByRole('link', { name: /^Al/ })).toHaveAttribute('href', '/i-wallet/receive');
     expect(within(document.querySelector('.total-card') as HTMLElement).getByRole('button', { name: 'Adresi kopyala' })).toBeInTheDocument();
   });

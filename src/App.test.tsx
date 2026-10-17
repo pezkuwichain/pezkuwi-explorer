@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import i18n from './i18n';
 import App from './App';
 import * as keystore from './iwallet/keystore';
@@ -39,8 +39,9 @@ describe('App routes', () => {
     const spy = vi.spyOn(keystore, 'loadKeystore').mockResolvedValue(null);
     window.history.pushState({}, '', '/i-wallet');
     render(<App />);
-    await screen.findByRole('link', { name: /i-Wallet/ });
-    expect(spy).toHaveBeenCalledTimes(1);
+    // The i-Wallet loads on demand: its landing arrives, and the store is read once.
+    expect(await screen.findByRole('link', { name: 'Get an i-Wallet' }, { timeout: 5000 })).toHaveAttribute('href', '/i-wallet/create');
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
     spy.mockRestore();
   });
 });

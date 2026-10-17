@@ -10,13 +10,7 @@ import PaymentStatus from './screens/PaymentStatus';
 import Citizenship from './screens/Citizenship';
 import Network from './screens/Network';
 import { IWalletProvider } from './iwallet/IWalletContext';
-import IWalletShell, { IWalletIndex } from './iwallet/IWalletRoutes';
-import Create from './iwallet/screens/Create';
-import Import from './iwallet/screens/Import';
-import Receive from './iwallet/screens/Receive';
-import Send from './iwallet/screens/Send';
-import Settings from './iwallet/screens/Settings';
-import Citizen from './iwallet/screens/Citizen';
+import LazyIWallet from './iwallet/LazyRoutes';
 import LegalPage from './legal/LazyLegalPage';
 
 // Each later screen task adds its own route here.
@@ -36,15 +30,8 @@ export default function App() {
               <Route path="network" element={<Network />} />
               <Route path="privacy" element={<LegalPage kind="privacy" />} />
               <Route path="terms" element={<LegalPage kind="terms" />} />
-              <Route path="i-wallet" element={<IWalletShell />}>
-                <Route index element={<IWalletIndex />} />
-                <Route path="create" element={<Create />} />
-                <Route path="import" element={<Import />} />
-                <Route path="receive" element={<Receive />} />
-                <Route path="send" element={<Send />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="citizen" element={<Citizen />} />
-              </Route>
+              {/* The i-Wallet and its screens load on demand (src/iwallet/LazyRoutes.tsx, IWalletTree.tsx). */}
+              <Route path="i-wallet/*" element={<LazyIWallet />} />
             </Route>
           </Routes>
         </IWalletProvider>

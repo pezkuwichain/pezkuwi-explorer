@@ -3,11 +3,14 @@
 // fresh pair of its own (useSignedTx). "Unlocked" therefore means "may show the wallet", never "holds the secret".
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { KeyringPair$Json } from '@pezkuwi/keyring/types';
-import { deleteKeystore, loadKeystore, openWords, readSealedWords, verifyPassword } from './keystore';
 import { withKeyProgress } from './progress';
-import { unlockWithFaceId } from './faceid';
 import { indexedDbStore, type KvStore } from './idb';
-import { clearAllForms, clearForm, clearTeleportSent } from './citizen';
+import { clearAllForms, clearForm, clearTeleportSent } from './personal-store';
+
+// The provider is always mounted (App.tsx) but the keyring, the crypto WASM and Face ID load only when a wallet call
+// needs them, together with the i-Wallet screens; the explorer's own screens never load them.
+const keystore = () => import('./keystore');
+const faceid = () => import('./faceid');
 
 export type IWalletState = 'idle' | 'loading' | 'none' | 'locked' | 'unlocked' | 'unavailable';
 
@@ -54,7 +57,7 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
     if (started.current) return;
     started.current = true;
     setState('loading');
-    loadKeystore(store).then(
+    keystore().then((k) => k.loadKeystore(store)).then(
       (j) => {
         if (!live.current) return;
         jsonRef.current = j; setJson(j); setState(j ? 'locked' : 'none');
@@ -66,6 +69,7 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
   const unlock = useCallback(async (password: string) => {
     const j = jsonRef.current;
     if (!j) return;
+    const { verifyPassword } = await keystore();
     await withKeyProgress('open', () => verifyPassword(j, password));
     setState('unlocked');
   }, []);
@@ -73,14 +77,16 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
   const unlockFaceId = useCallback(async () => {
     const j = jsonRef.current;
     if (!j) return;
-    const pw = await unlockWithFaceId(store);
+    const pw = await (await faceid()).unlockWithFaceId(store);
     if (pw === null) return;
+    const { verifyPassword } = await keystore();
     await withKeyProgress('open', () => verifyPassword(j, pw));
     setState('unlocked');
   }, [store]);
 
   // The stored words are read first, outside the overlay (IndexedDB), then opened with the password under it.
   const readWords = useCallback(async (password: string) => {
+    const { openWords, readSealedWords } = await keystore();
     const sealed = await readSealedWords(store);
     return withKeyProgress('open', () => openWords(sealed, password));
   }, [store]);
@@ -97,7 +103,7 @@ export function IWalletProvider({ children, store = indexedDbStore }: { children
   }, []);
 
   const remove = useCallback(async () => {
-    await deleteKeystore(store);
+    await (await keystore()).deleteKeystore(store);
     const old = jsonRef.current;
     clearAllForms();
     if (old) clearTeleportSent(old.address);

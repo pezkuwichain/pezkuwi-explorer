@@ -4,6 +4,7 @@
 import type { KeyringPair$Json } from '@pezkuwi/keyring/types';
 import { createKeystore, requestPersistence, saveWalletAtomic } from './keystore';
 import { enrolFaceId } from './faceid';
+import { withKeyProgress } from './progress';
 
 export class NotSavedError extends Error {
   constructor() { super('The wallet could not be saved'); this.name = 'NotSavedError'; }
@@ -12,8 +13,12 @@ export class NotSavedError extends Error {
 export interface SavedWallet { json: KeyringPair$Json }
 
 export async function saveWallet(mnemonic: string, password: string, opts: { replacing: boolean }): Promise<SavedWallet> {
-  const { json } = await createKeystore(mnemonic, password);
-  if (!(await saveWalletAtomic(json, mnemonic, password, opts.replacing))) throw new NotSavedError();
+  // Both steps run scrypt with the password (the keystore, then the words): the overlay covers them.
+  const json = await withKeyProgress(async () => {
+    const { json: j } = await createKeystore(mnemonic, password);
+    if (!(await saveWalletAtomic(j, mnemonic, password, opts.replacing))) throw new NotSavedError();
+    return j;
+  });
   await requestPersistence();
   // No decrypted pair comes back: the wallet opens unlocked, and each signature decrypts its own pair.
   return { json };

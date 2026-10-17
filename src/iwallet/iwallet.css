@@ -106,10 +106,6 @@
   display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--zer-soft); border: 1px solid var(--zer-line);
   color: var(--zer-text); font-size: 12px; font-weight: 600;
 }
-.iw-balance { display: flex; flex-direction: column; gap: 12px; background: var(--hero-bg); border: 1px solid var(--hero-border); border-radius: 20px; padding: 16px; color: var(--hero-text); }
-.iw-balance .card-note, .iw-balance .retry { color: var(--hero-text); }
-.iw-balance .big-amount .num, .iw-balance .big-amount .sym { color: var(--hero-text); }
-.iw-total .num { font-size: 38px; }
 .iw-addr { display: flex; align-items: center; gap: 8px; }
 .iw-addr-text { font-family: var(--font-mono); font-size: 13px; overflow-wrap: anywhere; }
 .iw-addr-full { justify-content: space-between; padding: 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); color: var(--text-strong); }
@@ -118,15 +114,15 @@
   display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
 .iw-addr-full .iw-copy { background: var(--surface-sunk); }
-.iw-parts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--hero-soft); }
-.iw-parts li { display: flex; align-items: center; gap: 8px; }
-.iw-parts .num { margin-inline-start: auto; font-family: var(--font-mono); }
 .iw-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .iw-act {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-block-size: var(--tap); padding: 10px 0; border-radius: 14px;
-  background: var(--chip-bg); color: var(--hero-text); font-weight: 700; font-size: 13px; text-decoration: none; text-align: center;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text-strong); font-weight: 700; font-size: 13px; text-decoration: none; text-align: center;
 }
-.iw-act-main { background: var(--hero-cta-bg); color: var(--hero-cta-text); }
+.iw-act-main { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+/* The address under the total, as the Account tab's address chip sits in its card. */
+.iw-home-addr { padding-block: 4px; padding-inline: 12px 4px; border-radius: 12px; background: var(--surface-sunk); color: var(--muted-strong); justify-content: space-between; }
+.iw-home-addr .iw-copy { background: transparent; }
 .iw-a2hs { margin: 0; color: var(--muted-strong); font-size: 12.5px; }
 .iw-qr { align-self: center; inline-size: min(280px, 100%); block-size: auto; border-radius: 16px; }
 .iw-qr-bg { fill: var(--qr-bg); }
@@ -144,12 +140,6 @@
 .iw-h1:focus { outline: none; }
 
 /* Send */
-.iw-tokens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.iw-token {
-  min-block-size: var(--tap); border-radius: 12px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong);
-  font: inherit; font-weight: 700; cursor: pointer;
-}
-.iw-token[aria-pressed='true'] { background: var(--ok-soft); border-color: var(--ok-line); color: var(--ok-text); }
 .iw-row { display: flex; gap: 8px; align-items: stretch; }
 .iw-row > input { flex: 1; min-inline-size: 0; }
 .iw-square {
@@ -194,3 +184,15 @@
 .iw-refs { display: flex; flex-direction: column; gap: 8px; }
 .iw-ref { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-block-size: 56px; }
 .iw-summary dd.iw-recipient { justify-content: flex-end; }
+
+/* Send: the token and network pickers (rows of the shared token list) and the "sending X on Y" line. */
+.iw-pick-list .token-row { padding: 0; }
+.iw-pick {
+  flex: 1; display: flex; align-items: center; gap: 12px; padding: 12px 16px; min-block-size: var(--tap); border: 0; background: transparent;
+  color: inherit; font: inherit; text-align: start;
+}
+button.iw-pick { cursor: pointer; }
+.iw-sendon { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+.iw-sendon-text { flex: 1; display: flex; flex-direction: column; min-inline-size: 0; color: var(--text-strong); }
+.iw-sendon-text > span { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.iw-change { flex: none; inline-size: auto; padding-inline: 14px; }

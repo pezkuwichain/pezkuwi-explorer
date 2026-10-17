@@ -8,7 +8,9 @@ Turkish and English are written directly and are not listed.
 - source "dks.news": taken verbatim from the dks.news site (site/news.js; its `ku` is our ckb). fa and ar there are drafts too, so those rows stay marked draft.
 - walletModal kmr: pwap verbatim except its "berîk" is written "cuzdan" (the owner's choice for this site, PR #8), masculine as in the Ferheng (Zeynelabidin): "Cuzdanê ku pere dixin navê" (Xelîtk), so "cuzdanê", never "cuzdana".
 - source "brand": the product name, identical in every locale.
-- **Owner decision (Serok, 2026-10-16): in Kurmancî, citizenship is "Welatîbûn" and a citizen is "welatî" everywhere in the explorer, never "Hemwelatî"** (the Ferheng gives Hemwelatî = compatriot). Changed: `home.citizenship` and `citizenship.title` → Welatîbûn, `citizenship.citizen` → Welatî, `citizenship.revoked` → Welatîbûn hat rakirin, `citizenship.card` → Karta welatîbûnê. `src/i18n/kmr-spelling.test.ts` bans "hemwelat" in kmr. The rows stay drafts for grammar only.
+- **Owner decision (Serok, 2026-10-16): in Kurmancî, citizenship is "Welatîbûn" and a citizen is "welatî" everywhere in the explorer, never "Hemwelatî"** (Hemwelatî carries the compatriot sense). Changed: `home.citizenship` and `citizenship.title` → Welatîbûn, `citizenship.citizen` → Welatî, `citizenship.revoked` → Welatîbûn hat rakirin, `citizenship.card` → Karta welatîbûnê. `src/i18n/kmr-spelling.test.ts` bans "hemwelat" in kmr. The rows stay drafts for grammar only.
+  - Rationale (Serok, 2026-10-17): the Ferheng has Welatî/m. "Hemwelatî, kesên ji eynî welatê hev in." and Hevwelatî/m. "Hemwelatî, merivên ji welatekî, lê ne ji nijadekê." (Hemwelatî/m. "Hevwelatî, kesên ji eynî welatî ne, lê dibe ku ne ji nijadekê bin."). Hevwelatî / Hemwelatî name people who share a country, the hometown or compatriot sense: the spoken question "Tu hevwelatiyê kû yî?" (said "hewwelatî", written Hevwelatî) asks where someone is from. Welatîbûn and Hemwelatîbûn are not Ferheng entries; they are regular -bûn derivations. Citizenship as membership is therefore "Welatîbûn" and a citizen "Welatî", matching the chain role "Welati" and pwap. The UI is unchanged.
+  - Usage rule (Serok, 2026-10-17, final): pick the word by function. Addressing citizens (the state or DKS speaking to its people, "dear citizens") → "Hevwelatiyên birêz". Citizenship as a matter or process (applications, the citizenship tab, citizen issues) → "Welatîbûn". A citizen as a person or role → "Welatî".
 - Row account.failed: the kmr cell is verbatim from pwap (settingsScreen.biometricAlerts.failedTitle, "Bi ser neket"); ckb, fa and ar are drafts. The row is therefore marked "draft (kmr: pwap verbatim)".
 
 | key | kmr | ckb | fa | ar | source |
@@ -219,7 +221,7 @@ What "confirmed" means here:
 - **kmr**: every word is in the Ferheng (Zeynelabidin Zinar, *Ferhenga Bêjebêjê*, 2025) or in pwap's `kmr.ts`, and no grammar or wording question is known. Vocabulary was checked mechanically against both sources; the Ferheng entries relied on are in the table below. Grammar and naturalness were not machine-checked.
 - **ckb**: the cell is pwap text verbatim, or every word occurs in pwap's `ckb.ts` or the explorer's other ckb strings, and no wording question is known.
 - **fa, ar**: the project has no native-reviewed fa or ar source, so a cell is "confirmed" only if it is pwap text verbatim (or a brand string). Everything else is a draft.
-- Brand strings, identical in every language and not translated (7): `iwallet.title`, `iwallet.home.hezSub`, `iwallet.home.pezSub`, `iwallet.home.usdtSub`, `iwallet.send.parsed`, `iwallet.citizen.citizen.nft`, `iwallet.citizen.chain.assetHub`.
+- Brand strings, identical in every language and not translated (4): `iwallet.title`, `iwallet.send.parsed`, `iwallet.citizen.citizen.nft`, `iwallet.citizen.chain.assetHub`. (`iwallet.home.hezSub`, `pezSub`, `usdtSub` were removed on 2026-10-17, see "Per-network HEZ" below.) The network names Relay, Asset Hub and People (`chain.*`, shared with the Account tab) are brand names too.
 
 ### Glossary (one term per concept)
 
@@ -329,9 +331,9 @@ Words not in the Ferheng, taken from pwap's `kmr.ts` (a native reader may prefer
 
 ### Soranî (ckb): 193 confirmed, 62 not confirmed
 
-- `iwallet.citizen.form.agree`: not attested in pwap or the explorer: پەنجەمۆرەکەیان
+- `iwallet.citizen.form.agree`: replaced on 2026-10-17 (see "No 'fingerprint'" below); draft
 - `iwallet.citizen.form.notSaved`: not attested in pwap or the explorer: بۆیە, فۆرمەکەتی, هەڵنەگرت
-- `iwallet.citizen.form.privacy`: not attested in pwap or the explorer: دەنووسرێت, کەسییەکانت
+- `iwallet.citizen.form.privacy`: replaced on 2026-10-17 (see "No 'fingerprint'" below); draft
 - `iwallet.citizen.form.referrerNote`: not attested in pwap or the explorer: کردوویت
 - `iwallet.citizen.fund.body`: not attested in pwap or the explorer: لەوێ
 - `iwallet.citizen.interrupted`: not attested in pwap or the explorer: هەوڵدانەوە
@@ -351,7 +353,6 @@ Words not in the Ferheng, taken from pwap's `kmr.ts` (a native reader may prefer
 - `iwallet.error.notSaved`: not attested in pwap or the explorer: بۆیە, تری, پەنجەرەیەکی
 - `iwallet.home.a2hs`: not attested in pwap or the explorer: بسڕدرێتەوە, دەڕوات
 - `iwallet.home.hot`: "جزدانی گەرم" is a calque of "hot wallet" (گەرم not in pwap); not attested in pwap or the explorer: گەرم
-- `iwallet.home.parts`: not attested in pwap or the explorer: دابەشبوونی
 - `iwallet.home.title`: "i-Wallet ـەکەت" join
 - `iwallet.import.body`: "وشەکانی گەڕاندنەوە" (recovery words) replaces "یەدەگ", which pwap never uses; not attested in pwap or the explorer: بۆشاییەک, لەنێوانیاندا
 - `iwallet.import.confirmBody`: not attested in pwap or the explorer: بیگەیتێ, بەبێ, جارێکی, کۆنەکە
@@ -401,3 +402,34 @@ Every `iwallet.*` cell is a draft except the brand strings above and these 66 ce
 Every `iwallet.*` cell is a draft except the brand strings above and these 60 cells, which are pwap text verbatim: `import.confirmNo`, `home.send`, `home.receive`, `home.citizen`, `home.pezSub`, `next`, `quiz.verify`, `password.label`, `receive.title`, `send.title`, `send.recipient`, `send.amount`, `send.max`, `send.amountInvalid`, `send.to`, `send.confirm`, `send.done`, `send.feeLabel`, `citizen.title`, `citizen.apply`, `citizen.cancel`, `citizen.confirm`, `citizen.confirmTitle`, `citizen.form.personal`, `citizen.form.fullName`, `citizen.form.fatherName`, `citizen.form.grandfatherName`, `citizen.form.motherName`, `citizen.form.tribe`, `citizen.form.marital`, `citizen.form.married`, `citizen.form.unmarried`, `citizen.form.childrenCount`, `citizen.form.childName`, `citizen.form.birthYear`, `citizen.form.region`, `citizen.form.selectRegion`, `citizen.form.email`, `citizen.form.emailInvalid`, `citizen.form.profession`, `citizen.form.required`, `citizen.region.bakur`, `citizen.region.basur`, `citizen.region.rojava`, `citizen.region.rojhelat`, `citizen.region.kurdistan_a_sor`, `citizen.region.diaspora`, `citizen.deposit.title`, `citizen.pending.title`, `citizen.pending.body`, `citizen.pending.depositBack`, `citizen.approved.title`, `citizen.approved.body`, `citizen.refs.approve`, `citizen.row.to`, `citizen.act.confirm`, `citizen.act.cancel`, `citizen.chain.assetHub`, `citizen.done.apply`, `citizen.done.approve`.
 
 Read first in fa and ar: the warning card (`warning.*`, Serok's text), `home.hot` and `send.largeTitle` ("hot wallet"), `send.txId` / `send.recordNo` (no "hash"/"block"), and the citizenship-chain texts (`citizen.fund.*`).
+
+### Per-network HEZ (2026-10-17)
+
+The home now uses the Account tab's balance card and token rows (HEZ total split over Relay, Asset Hub and People; HEZ, PEZ, USDT rows with the Account tab's network labels), and Send asks for the token, then for HEZ the network. The counts above predate this change.
+
+Removed keys (no longer rendered; ignore their entries above): `iwallet.home.assets`, `iwallet.home.hezSub`, `iwallet.home.pezSub`, `iwallet.home.usdtSub`, `iwallet.home.parts`.
+
+New keys; every kmr, ckb, fa and ar cell below is a draft until a native reader signs it off:
+
+| key | kmr | ckb | fa | ar |
+|---|---|---|---|---|
+| `iwallet.send.networkTitle` | Ji bo şandina {{token}} torê hilbijêre | تۆڕێک هەڵبژێرە بۆ ناردنی {{token}} | شبکه را برای ارسال {{token}} انتخاب کنید | اختر الشبكة لإرسال {{token}} |
+| `iwallet.send.network` | Tor | تۆڕ | شبکه | الشبكة |
+| `iwallet.send.change` | Biguherîne | گۆڕین | تغییر | تغيير |
+| `iwallet.receive.networks` | Ev navnîşan li her sê torên Pezkuwi werdigire: Relay, Asset Hub û People. | ئەم یەک ناونیشانە لە هەر سێ تۆڕی Pezkuwi وەردەگرێت: Relay، Asset Hub و People. | همین یک آدرس در هر سه شبکه Pezkuwi دریافت می‌کند: Relay، Asset Hub و People. | هذا العنوان الواحد يستقبل على شبكات Pezkuwi الثلاث كلها: Relay وAsset Hub وPeople. |
+
+- **kmr**: vocabulary confirmed: "tor" as in `send.fee` (xerca torê, glossary "network"), "hilbijêre" (Ferheng: Dengdan/m. Hilbijartin; pwap "Wêneyekî hilbijêre"), "biguherîne" (explorer "Erê, biguherîne"; Ferheng guhertin), "werdigire" (wergirtin, glossary "receive"), "her sê". Word order of `networkTitle` ("Ji bo şandina HEZ torê hilbijêre", after the wallet's "Select network for sending %s") was not machine-checked.
+- **ckb**: "تۆڕ" as in the glossary (کرێی تۆڕ); "هەڵبژێرە" and "گۆڕین" occur in pwap's `ckb.ts`, "وەردەگرێت" in the explorer's ckb; the sentences as a whole are drafts.
+- **fa, ar**: drafts (no pwap source for these sentences).
+
+### No "fingerprint" (2026-10-17, Serok's request)
+
+People read "digital fingerprint" (parmak izi, şop, پەنجەمۆر, اثر انگشت, بصمة) as a real fingerprint being taken. `iwallet.citizen.form.privacy` and `iwallet.citizen.form.agree` were replaced in all six files with Serok's texts, which call it a one-way code made from the data that cannot be read back. No other `iwallet.*` cell uses fingerprint wording (kmr `send.scan` "bişopîne" means "scan").
+
+- tr, en: source texts.
+- kmr: new words "kodeke", "çêkirin", "xwendin" are in common use in the explorer's kmr; the ezafe "zincîrê welatîbûnê" follows the note above. Still awaiting a native reading.
+- ckb, fa, ar: **flagged for native reading** (both keys), as before.
+
+### Progress while the key is opened (2026-10-17)
+
+New key `iwallet.unlocking`, shown in the Kurdistan-sun overlay while a password opens or saves the key: tr "Açılıyor…", en "Opening…". kmr "Tê vekirin…" (Ferheng Vekirin/m.; same as `unlock.working`). ckb "دەکرێتەوە…", fa "در حال باز کردن…", ar "جارٍ الفتح…" are the existing `unlock.working` texts reused, still drafts for a native reading.

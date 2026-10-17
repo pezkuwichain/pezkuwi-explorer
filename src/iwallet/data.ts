@@ -4,43 +4,26 @@ import { IWALLET_NETWORK } from '../config/iwallet-network';
 import { REQUEST_TIMEOUT_MS } from '../chain/connections';
 import { withTimeout } from '../lib/timeout';
 import { getMainnetApi } from './chain';
+import { loadBalances, type Holding } from '../data/balances';
 
 type Deps = { getApi: (chain: ChainKey) => Promise<ApiPromise> };
 const real: Deps = { getApi: getMainnetApi };
 
-export type HezBalance = {
-  /** free + reserved, summed over relay, Asset Hub and People. */
-  total: bigint;
-  perChain: Record<ChainKey, bigint>;
-  /** Spendable HEZ on Asset Hub, where HEZ transfers are made: free - max(frozen - reserved, 0). Frozen applies over free + reserved. */
-  assetHubSpendable: bigint;
-};
+// Spendable HEZ: free - max(frozen - reserved, 0). Frozen applies over free + reserved.
 export const spendable = (a: { free: bigint; reserved: bigint; frozen: bigint }): bigint => {
   const locked = a.frozen > a.reserved ? a.frozen - a.reserved : 0n;
   return a.free > locked ? a.free - locked : 0n;
 };
 export type AssetBalance = { id: number; symbol: string; decimals: number; amount: bigint };
 
-// Fail-closed like src/data/balances.ts: if any of the three chains fails or times out this rejects, so the card
-// says "could not load". A partial HEZ total would be a too-low money figure, which is worse than an error.
-export async function loadHezBalance(address: string, deps: Deps = real): Promise<HezBalance> {
-  const [relay, assetHub, people] = await Promise.all([deps.getApi('relay'), deps.getApi('assetHub'), deps.getApi('people')]);
-  const account = async (api: ApiPromise) => {
-    const a = (await withTimeout(api.query.system.account(address), REQUEST_TIMEOUT_MS)) as never as {
-      data: { free: { toBigInt(): bigint }; reserved: { toBigInt(): bigint }; frozen: { toBigInt(): bigint } };
-    };
-    return { free: a.data.free.toBigInt(), reserved: a.data.reserved.toBigInt(), frozen: a.data.frozen.toBigInt() };
-  };
-  const [r, a, p] = await Promise.all([account(relay), account(assetHub), account(people)]);
-  const sum = (x: { free: bigint; reserved: bigint }) => x.free + x.reserved;
-  return {
-    total: sum(r) + sum(a) + sum(p),
-    perChain: { relay: sum(r), assetHub: sum(a), people: sum(p) },
-    assetHubSpendable: spendable(a),
-  };
+// The home card: the explorer's own balance loader (the Account tab's), on the mainnet connections and config.
+// Fail-closed like the Account tab: any of the three chains failing rejects, so the card says "could not load" rather
+// than show a partial HEZ total. PEZ and USDT stay listed at zero, since they are what the wallet can send.
+export function loadWalletHoldings(address: string, deps: Deps = real): Promise<Holding[]> {
+  return loadBalances(address, deps, { network: IWALLET_NETWORK, keepZero: true });
 }
 
-// PEZ and USDT live on Asset Hub; their rows fail as their own card, independent of the HEZ total.
+// PEZ and USDT live on Asset Hub (Send reads them for an asset transfer).
 export async function loadAssetBalances(address: string, deps: Deps = real): Promise<AssetBalance[]> {
   const assetHub = await deps.getApi('assetHub');
   return Promise.all(IWALLET_NETWORK.assets.map(async (asset) => {
@@ -51,8 +34,8 @@ export async function loadAssetBalances(address: string, deps: Deps = real): Pro
   }));
 }
 
-// Spendable HEZ on one chain (free minus the part frozen beyond reserved). Send reads only Asset Hub through this, so
-// a relay or People outage never blocks a transfer.
+// Spendable HEZ on one chain (free minus the part frozen beyond reserved). Send reads each chain on its own, so an
+// outage of one network never blocks a transfer on another.
 export async function chainSpendable(chain: ChainKey, address: string, deps: Deps = real): Promise<bigint> {
   const api = await deps.getApi(chain);
   const a = (await withTimeout(api.query.system.account(address), REQUEST_TIMEOUT_MS)) as never as {

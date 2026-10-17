@@ -7,6 +7,7 @@ import { IconFaceId, IconLogOut, IconPen, IconShield, IconTrash } from '../../ui
 import { faceIdSupported, forgetFaceId, hasFaceId } from '../faceid';
 import { enableFaceId } from '../saveWallet';
 import { CorruptKeystoreError, WrongPasswordError, verifyPassword } from '../keystore';
+import { withKeyProgress } from '../progress';
 import { downloadJson, exportFileName } from '../download';
 import { useIWallet } from '../IWalletContext';
 import RequireUnlocked from '../RequireUnlocked';
@@ -59,7 +60,7 @@ function SettingsBody({ address }: { address: string }) {
       // Enabling Face ID needs only proof of the password, so the words are not decrypted for it.
       if (view === 'facepw') {
         if (!keystore) throw new Error('no keystore');
-        await verifyPassword(keystore, pw);
+        await withKeyProgress(() => verifyPassword(keystore, pw));
         setFacePw(pw); setPw(''); setNote(null); setView('faceready');
       } else { setWords((await readWords(pw)).split(' ')); setPw(''); setView('words'); }
     } catch (err) {

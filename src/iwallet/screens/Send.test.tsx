@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { user } from '../test-user';
 import i18n from '../../i18n';
@@ -18,11 +18,17 @@ const impl = vi.hoisted(() => ({
   signed: [] as Array<{ name: string; args: unknown[] }>, pairs: [] as Array<{ lock: ReturnType<typeof vi.fn> }>, unlockPw: [] as string[],
   scanned: null as string | null, scanFails: false,
   feeFn: null as null | ((amount: bigint) => bigint), feeGate: null as null | Promise<void>, unsubs: 0, rejectWith: null as unknown, balanceReads: [] as string[],
+  // Per network: spendable HEZ, a failing read, the fee, the error the registry decodes; and which network each
+  // connection, fee estimate and signature was made on.
+  spendBy: {} as Record<string, bigint>, spendFail: [] as string[], feeBy: {} as Record<string, bigint>, metaErrBy: {} as Record<string, string>,
+  apiChains: [] as string[], signedOn: [] as string[], feeOn: [] as string[], unlockGate: null as null | Promise<void>,
 }));
 
 vi.mock('../data', () => ({
-  // Send reads Asset Hub only; a relay / People reader here would be a regression.
-  chainSpendable: (chain: string) => { impl.balanceReads.push(chain); return Promise.resolve(impl.hezSpendable); },
+  chainSpendable: (chain: string) => {
+    impl.balanceReads.push(chain);
+    return impl.spendFail.includes(chain) ? Promise.reject(new Error('down')) : Promise.resolve(impl.spendBy[chain] ?? impl.hezSpendable);
+  },
   loadAssetBalances: () => Promise.resolve([
     { id: 1, symbol: 'PEZ', decimals: 12, amount: impl.assets[1] ?? 0n }, { id: 1000, symbol: 'USDT', decimals: 6, amount: impl.assets[1000] ?? 0n },
   ]),
@@ -41,7 +47,7 @@ vi.mock('../keystore', async (orig) => {
     if (pw !== 'right-pass1') return Promise.reject(new real.WrongPasswordError());
     const pair = { address: ADDR, lock: vi.fn() };
     impl.pairs.push(pair);
-    return Promise.resolve(pair);
+    return (impl.unlockGate ?? Promise.resolve()).then(() => pair);
   };
   return {
     ...real,
@@ -62,29 +68,39 @@ const result = (kind: string) => {
   if (kind === 'invalid') return { ...base, status: { ...base.status, isInvalid: true } };
   return { ...base, status: { ...base.status, isInBlock: true, asInBlock: { toHex: () => '0xb1' } }, dispatchError: { isModule: kind === 'failed', asModule: {} } };
 };
-const mkTx = (name: string, args: unknown[]) => ({
+const mkTx = (chain: string, name: string, args: unknown[]) => ({
   paymentInfo: () => {
+    impl.feeOn.push(chain);
     if (impl.fee === 'fail') return Promise.reject(new Error('rpc'));
-    const fee = impl.feeFn ? impl.feeFn(args[args.length - 1] as bigint) : impl.fee;
+    const fee = impl.feeFn ? impl.feeFn(args[args.length - 1] as bigint) : (impl.feeBy[chain] ?? impl.fee);
     return (impl.feeGate ?? Promise.resolve()).then(() => ({ partialFee: { toBigInt: () => fee } }));
   },
-  signAsync: vi.fn(() => { impl.signed.push({ name, args }); return Promise.resolve(); }),
+  signAsync: vi.fn(() => { impl.signed.push({ name, args }); impl.signedOn.push(chain); return Promise.resolve(); }),
   send: (cb: (r: unknown) => void) => {
     if (impl.sendRejects) return Promise.reject(impl.rejectWith ?? new Error('ws closed'));
     impl.script.forEach((k) => cb(result(k)));
     return Promise.resolve(() => { impl.unsubs++; });
   },
 });
-const stubApi = {
+const on = vi.fn();
+const off = vi.fn();
+// One stub connection per network, so a test can tell which network a transfer was priced, signed and decoded on.
+const mkApi = (chain: string) => ({
   tx: {
-    balances: { transferKeepAlive: (...a: unknown[]) => mkTx('balances.transferKeepAlive', a) },
-    assets: { transfer: (...a: unknown[]) => mkTx('assets.transfer', a) },
+    balances: { transferKeepAlive: (...a: unknown[]) => mkTx(chain, 'balances.transferKeepAlive', a) },
+    // Asset Hub only: the relay and People have no assets pallet.
+    ...(chain === 'assetHub' ? { assets: { transfer: (...a: unknown[]) => mkTx(chain, 'assets.transfer', a) } } : {}),
   },
-  rpc: { chain: { getHeader: () => Promise.resolve({ number: { toNumber: () => 77 } }) } },
-  registry: { findMetaError: () => ({ section: 'balances', name: 'InsufficientBalance' }) },
-  on: vi.fn(), off: vi.fn(),
-};
-vi.mock('../chain', () => ({ getMainnetApi: () => Promise.resolve(stubApi), networkChanged: () => false, subscribeNetworkChanged: () => () => undefined }));
+  rpc: { chain: { getHeader: () => Promise.resolve({ number: { toNumber: () => (chain === 'assetHub' ? 77 : chain === 'relay' ? 88 : 99) } }) } },
+  registry: { findMetaError: () => ({ section: 'balances', name: impl.metaErrBy[chain] ?? 'InsufficientBalance' }) },
+  on, off,
+});
+const apis: Record<string, ReturnType<typeof mkApi>> = { relay: mkApi('relay'), assetHub: mkApi('assetHub'), people: mkApi('people') };
+const stubApi = apis.assetHub;
+vi.mock('../chain', () => ({
+  getMainnetApi: (chain: string) => { impl.apiChains.push(chain); return Promise.resolve(apis[chain]); },
+  networkChanged: () => false, subscribeNetworkChanged: () => () => undefined,
+}));
 
 let store: Map<string, unknown>;
 const makeStore = (): KvStore => ({
@@ -95,8 +111,8 @@ const makeStore = (): KvStore => ({
   setMany: (e, rm = []) => { Object.entries(e).forEach(([k, v]) => store.set(k, v)); rm.forEach((k) => store.delete(k)); return Promise.resolve(); },
 });
 
-const renderSend = () => render(
-  <MemoryRouter initialEntries={['/i-wallet/send']}>
+const renderSend = (path = '/i-wallet/send') => render(
+  <MemoryRouter initialEntries={[path]}>
     <IWalletProvider store={makeStore()}>
       <Routes>
         <Route path="i-wallet" element={<IWalletShell />}>
@@ -107,9 +123,16 @@ const renderSend = () => render(
     </IWalletProvider>
   </MemoryRouter>,
 );
-const login = async () => {
+const NET = { relay: 'Relay', assetHub: 'Asset Hub', people: 'People' } as const;
+const unlockOnly = async () => {
   await user.type(await screen.findByLabelText('Parola'), 'right-pass1');
   await user.click(screen.getByRole('button', { name: 'Kilidi aç' }));
+};
+// Unlocks, then walks the wallet's send flow: the token, then (HEZ only) the network.
+const login = async (token: 'HEZ' | 'PEZ' | 'USDT' = 'HEZ', chain: keyof typeof NET = 'assetHub') => {
+  await unlockOnly();
+  await user.click(await screen.findByRole('button', { name: new RegExp(`^${token}`) }));
+  if (token === 'HEZ') await user.click(await screen.findByRole('button', { name: new RegExp(`^${NET[chain]}`) }));
   await screen.findByLabelText('Alıcı adresi');
   // Wait for the balances so the screen is in its settled state.
   await screen.findByText(/Kullanılabilir: [^—]/);
@@ -136,6 +159,7 @@ describe('i-Wallet send', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('tr');
     store = new Map<string, unknown>([['keystore', {}], ['words', {}]]);
+    Object.assign(impl, { spendBy: {}, spendFail: [], feeBy: {}, metaErrBy: {}, apiChains: [], signedOn: [], feeOn: [], unlockGate: null });
     Object.assign(impl, { hezSpendable: 5000n * T, assets: { 1: 20n * T, 1000: 9_000_000_000n }, fee: 2_000_000_000n, script: ['inBlock', 'finalized'], sendRejects: false, faceOn: false, face: null, scanned: null, scanFails: false, feeFn: null, feeGate: null, unsubs: 0, rejectWith: null });
     impl.signed = []; impl.pairs = []; impl.unlockPw = []; impl.balanceReads = [];
   });
@@ -159,8 +183,7 @@ describe('i-Wallet send', () => {
   });
 
   it('never gates USDT, even 5000', async () => {
-    renderSend(); await login();
-    await user.click(screen.getByRole('button', { name: 'USDT' }));
+    renderSend(); await login('USDT');
     await fill(BOB, '5000'); // 9000 USDT are available, so only the gate could block this
     expect(screen.queryByText(/sıcak cüzdan için yüksek/)).toBeNull();
     expect(review()).toBeEnabled();
@@ -177,8 +200,7 @@ describe('i-Wallet send', () => {
   });
 
   it('Max for USDT is the whole balance, without waiting for a fee', async () => {
-    renderSend(); await login();
-    await user.click(screen.getByRole('button', { name: 'USDT' }));
+    renderSend(); await login('USDT');
     await user.click(screen.getByRole('button', { name: 'En çok' }));
     expect((amountField() as HTMLInputElement).value).toBe('9000');
   });
@@ -205,8 +227,7 @@ describe('i-Wallet send', () => {
 
   it('keeps an asset send reviewable without a fee as long as the amount fits the balance', async () => {
     impl.fee = 'fail';
-    renderSend(); await login();
-    await user.click(screen.getByRole('button', { name: 'USDT' }));
+    renderSend(); await login('USDT');
     await fill(BOB, '1');
     expect(review()).toBeEnabled();
     await user.clear(amountField());
@@ -215,16 +236,15 @@ describe('i-Wallet send', () => {
     expect(review()).toBeDisabled();
   });
 
-  it('disables token switching while Max is being computed', async () => {
+  it('disables changing the token or network while Max is being computed', async () => {
     renderSend(); await login();
     await fill(BOB, '1');
     let release: () => void = () => undefined;
     impl.feeGate = new Promise<void>((r) => { release = r; });
     await user.click(screen.getByRole('button', { name: 'En çok' }));
-    expect(screen.getByRole('button', { name: 'USDT' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'PEZ' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Değiştir' })).toBeDisabled();
     release();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'USDT' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Değiştir' })).toBeEnabled());
     impl.feeGate = null;
   });
 
@@ -256,8 +276,7 @@ describe('i-Wallet send', () => {
 
   it('blocks a PEZ send when HEZ cannot pay the fee', async () => {
     impl.hezSpendable = 1_000n;
-    renderSend(); await login();
-    await user.click(screen.getByRole('button', { name: 'PEZ' }));
+    renderSend(); await login('PEZ');
     await fill(BOB, '1');
     expect(await screen.findByText(/yeterli HEZ'in yok/, undefined, { timeout: 3000 })).toBeInTheDocument();
     expect(review()).toBeDisabled();
@@ -286,8 +305,7 @@ describe('i-Wallet send', () => {
   });
 
   it('sends USDT as asset 1000 with 6 decimals', async () => {
-    renderSend(); await login();
-    await user.click(screen.getByRole('button', { name: 'USDT' }));
+    renderSend(); await login('USDT');
     await fill(BOB, '2,5');
     await confirmWith('right-pass1');
     await screen.findByText('Gönderildi');
@@ -392,8 +410,9 @@ describe('i-Wallet send', () => {
     }
   });
 
-  it('reads only Asset Hub balances, and reads them again after a send', async () => {
-    renderSend(); await login();
+  it('on the form reads only the chosen network, and reads it again after a send', async () => {
+    renderSend('/i-wallet/send?token=HEZ&chain=assetHub'); await unlockOnly();
+    await screen.findByText(/Kullanılabilir: [^—]/);
     expect(impl.balanceReads).toEqual(['assetHub']);
     await fill(BOB, '1');
     impl.hezSpendable = 4000n * T; // what the chain holds after the transfer
@@ -408,7 +427,8 @@ describe('i-Wallet send', () => {
     renderSend(); await login();
     await fill(BOB, '1');
     await user.click(review());
-    expect(await screen.findByText('Pezkuwi Asset Hub')).toBeInTheDocument();
+    const summary = (await screen.findByText('Ağ')).closest('dl')!;
+    expect(summary).toHaveTextContent('AğAsset Hub');
   });
 
   it('an auto-lock during the send keeps the result on screen; leaving it shows the lock', async () => {
@@ -510,8 +530,7 @@ describe('i-Wallet send', () => {
 
   it('asset sends need fee plus the existential deposit in HEZ', async () => {
     impl.hezSpendable = 2_000_000_000n + 3_333_333n - 1n;
-    renderSend(); await login();
-    await user.click(screen.getByRole('button', { name: 'PEZ' }));
+    renderSend(); await login('PEZ');
     await fill(BOB, '1');
     expect(screen.getByText(/yeterli HEZ'in yok/)).toBeInTheDocument();
     expect(review()).toBeDisabled();
@@ -531,5 +550,141 @@ describe('i-Wallet send', () => {
     expect(screen.getByText('= 1 HEZ')).toBeInTheDocument();
     await user.type(amountField(), '1.000,5');
     expect(screen.getByText('Geçerli bir tutar yaz.')).toBeInTheDocument();
+  });
+
+  it('step 1 lists HEZ, PEZ and USDT; PEZ and USDT skip the network step and send on Asset Hub', async () => {
+    renderSend(); await unlockOnly();
+    const tokens = await screen.findByRole('region', { name: 'Varlık' });
+    expect(within(tokens).getAllByRole('button').map((b) => b.textContent)).toEqual(['HEZPezkuwiChain', 'PEZAsset Hub', 'USDTAsset Hub (PEZ-20)']);
+    await user.click(screen.getByRole('button', { name: /^USDT/ }));
+    expect(await screen.findByLabelText('Alıcı adresi')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Ağ' })).toBeNull();
+    expect(document.querySelector('.iw-sendon')).toHaveTextContent(/^USDT Asset Hub/);
+    expect(impl.balanceReads).toEqual(['assetHub']);
+    await waitFor(() => expect(impl.apiChains).toContain('assetHub'));
+    expect(impl.apiChains.every((c) => c === 'assetHub')).toBe(true);
+  });
+
+  it('step 2 for HEZ lists the three networks with what can be sent there, zero included', async () => {
+    impl.spendBy = { relay: 7n * T, assetHub: 5000n * T, people: 0n };
+    renderSend(); await unlockOnly();
+    await user.click(await screen.findByRole('button', { name: /^HEZ/ }));
+    expect(await screen.findByText('HEZ göndermek için ağ seç')).toBeInTheDocument();
+    const nets = screen.getByRole('region', { name: 'Ağ' });
+    await waitFor(() => expect(within(nets).getAllByRole('button').map((b) => b.textContent)).toEqual([
+      'RelayKullanılabilir: 7 HEZ', 'Asset HubKullanılabilir: 5.000 HEZ', 'PeopleKullanılabilir: 0 HEZ',
+    ]));
+  });
+
+  it('a network whose balance fails says so on its own row, with a retry, and the others stay selectable', async () => {
+    impl.spendFail = ['people'];
+    renderSend(); await unlockOnly();
+    await user.click(await screen.findByRole('button', { name: /^HEZ/ }));
+    const nets = await screen.findByRole('region', { name: 'Ağ' });
+    const people = await within(nets).findByText(/Bu yüklenemedi/);
+    expect(people.closest('li')).toHaveTextContent('People');
+    expect(within(nets).getByRole('button', { name: /^Relay/ })).toBeEnabled();
+    impl.spendFail = [];
+    await user.click(within(nets).getByRole('button', { name: 'Tekrar dene' }));
+    expect(await within(nets).findByRole('button', { name: /^People/ })).toBeInTheDocument();
+  });
+
+  it('sends HEZ on the relay with the relay connection, its fee and its existential deposit', async () => {
+    impl.spendBy = { relay: 5n * T };
+    impl.feeBy = { relay: 3_000_000_000n };
+    renderSend(); await login('HEZ', 'relay');
+    expect(document.querySelector('.iw-sendon')).toHaveTextContent(/^HEZ Relay/);
+    expect(screen.getByText(/Kullanılabilir: 5 HEZ/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Alıcı adresi'), BOB);
+    await settled();
+    expect(screen.getByText(/Ağ ücreti: ~0,003/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'En çok' }));
+    // fee 0.003 + 10% margin, then the relay's existential deposit (33333333), not Asset Hub's.
+    const expected = 5n * T - 3_300_000_000n - 33_333_333n;
+    await waitFor(() => expect((amountField() as HTMLInputElement).value).toBe(`4.${(expected % T).toString().padStart(12, '0').replace(/0+$/, '')}`));
+    await settled();
+    await user.click(review());
+    expect((await screen.findByText('Ağ')).closest('dl')!).toHaveTextContent('AğRelay');
+    await user.type(await screen.findByLabelText('Parola'), 'right-pass1');
+    await user.click(screen.getByRole('button', { name: 'Gönder' }));
+    expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+    expect(impl.signed).toEqual([{ name: 'balances.transferKeepAlive', args: [BOB, expected] }]);
+    expect(impl.signedOn).toEqual(['relay']);
+    expect(impl.feeOn.every((c) => c === 'relay')).toBe(true);
+    expect(impl.apiChains).not.toContain('assetHub');
+    expect(screen.getByText('Ağ: Relay')).toBeInTheDocument();
+    expect(await screen.findByText('88')).toBeInTheDocument(); // the record number comes from the relay
+    expect(signPair().lock).toHaveBeenCalled();
+  });
+
+  it('sends HEZ on People with the People connection and its existential deposit', async () => {
+    impl.spendBy = { people: 5n * T };
+    renderSend(); await login('HEZ', 'people');
+    await user.type(screen.getByLabelText('Alıcı adresi'), BOB);
+    await settled();
+    await user.click(screen.getByRole('button', { name: 'En çok' }));
+    const expected = 5n * T - 2_200_000_000n - 3_333_333n;
+    await waitFor(() => expect((amountField() as HTMLInputElement).value).not.toBe(''));
+    await settled();
+    await confirmWith('right-pass1');
+    expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+    expect(impl.signed).toEqual([{ name: 'balances.transferKeepAlive', args: [BOB, expected] }]);
+    expect(impl.signedOn).toEqual(['people']);
+    expect(screen.getByText('Ağ: People')).toBeInTheDocument();
+  });
+
+  it('decodes a failed transfer with the registry of the network it was sent on', async () => {
+    impl.script = ['failed'];
+    impl.metaErrBy = { relay: 'ExistentialDeposit' };
+    impl.spendBy = { relay: 5n * T };
+    renderSend(); await login('HEZ', 'relay');
+    await fill(BOB, '1');
+    await confirmWith('right-pass1');
+    expect(await screen.findByText(/Tutar çok küçük/)).toBeInTheDocument();
+  });
+
+  it('keeps the 1000 HEZ acknowledgement on every network', async () => {
+    renderSend(); await login('HEZ', 'people');
+    await fill(BOB, '1001');
+    expect(screen.getByText(/Bu tutar sıcak cüzdan için yüksek/)).toBeInTheDocument();
+    expect(review()).toBeDisabled();
+  });
+
+  it('a deep link preselects the token and network; values it does not know are ignored', async () => {
+    const first = renderSend('/i-wallet/send?token=HEZ&chain=people'); await unlockOnly();
+    expect(await screen.findByLabelText('Alıcı adresi')).toBeInTheDocument();
+    expect(document.querySelector('.iw-sendon')).toHaveTextContent(/^HEZ People/);
+    await waitFor(() => expect(impl.apiChains).toEqual(['people']));
+    first.unmount();
+    const second = renderSend('/i-wallet/send?token=HEZ&chain=mars'); await unlockOnly();
+    expect(await screen.findByText('HEZ göndermek için ağ seç')).toBeInTheDocument();
+    second.unmount();
+    const third = renderSend('/i-wallet/send?token=DOGE&chain=relay'); await unlockOnly();
+    expect(await screen.findByRole('region', { name: 'Varlık' })).toBeInTheDocument();
+    third.unmount();
+    renderSend('/i-wallet/send?token=USDT&chain=relay'); await unlockOnly();
+    expect(await screen.findByLabelText('Alıcı adresi')).toBeInTheDocument();
+    expect(document.querySelector('.iw-sendon')).toHaveTextContent(/^USDT Asset Hub/);
+  });
+
+  it('Change goes back to the token step', async () => {
+    renderSend(); await login('HEZ', 'relay');
+    await user.click(screen.getByRole('button', { name: 'Değiştir' }));
+    expect(await screen.findByRole('region', { name: 'Varlık' })).toBeInTheDocument();
+  });
+
+  it('covers the screen with the Kurdistan sun while the key is opened for signing, then shows the result', async () => {
+    renderSend(); await login();
+    await fill(BOB, '1');
+    let open: () => void = () => undefined;
+    impl.unlockGate = new Promise<void>((r) => { open = r; });
+    await confirmWith('right-pass1');
+    const status = await screen.findByText('Açılıyor…', { selector: '.progress-message' });
+    expect(status.closest('[role="status"]')).not.toBeNull();
+    expect(impl.signed).toEqual([]);
+    open();
+    expect(await screen.findByText('Gönderildi')).toBeInTheDocument();
+    expect(document.querySelector('.progress-overlay')).toBeNull();
+    expect(impl.signed).toHaveLength(1);
   });
 });

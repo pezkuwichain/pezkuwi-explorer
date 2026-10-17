@@ -3,24 +3,21 @@ import { Link, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAccount } from '../account/AccountContext';
 import { useAsync } from '../hooks/useAsync';
-import { loadBalances, type Holding } from '../data/balances';
+import { loadBalances } from '../data/balances';
 import { loadActivity, NotIndexedError, type Activity } from '../data/history';
 import { Card } from '../ui/Card';
 import { Addr } from '../ui/Layout';
 import PageHeader from '../ui/PageHeader';
 import { ActivityAmount } from '../ui/ActivityAmount';
 import { ActivityChip } from '../ui/ActivityChip';
-import { BigAmount } from '../ui/BigAmount';
-import { ChainIcon, TokenIcon } from '../ui/assetIcons';
+import { HoldingsTokens, HoldingsTotal } from '../ui/Holdings';
 import { IconWallet } from '../ui/icons';
-import { dayKey, dayLabel, formatNumber, relativeTime } from '../lib/format';
+import { dayKey, dayLabel, relativeTime } from '../lib/format';
 import { useNow } from '../hooks/useNow';
 import { shortAddress } from '../lib/address';
-import type { ChainKey } from '../config/network';
 import './Account.css';
 
 type Hist = { status: 'loading' | 'ok' | 'error' | 'preparing'; data?: Activity[] };
-const CHAINS: ChainKey[] = ['relay', 'assetHub', 'people'];
 
 // The signed-in address. Tapping it opens the wallet dialog on this account (name, copy, source, the other
 // accounts the wallet shared, Disconnect).
@@ -31,37 +28,6 @@ function AddressChip({ address }: { address: string }) {
       <IconWallet size={14} />
       <bdi dir="ltr" title={address}>{shortAddress(address)}</bdi>
     </button>
-  );
-}
-
-function Totals({ holdings }: { holdings: Holding[] }) {
-  const { t, i18n } = useTranslation();
-  const native = holdings[0];
-  if (!native) return null;
-  return (
-    <>
-      <BigAmount className="total-amount" value={native.amount} decimals={native.decimals} symbol={native.symbol} />
-      {native.perChain && <ul className="chains">{CHAINS.map((c) => (
-        <li key={c} className="chain-tile">
-          <ChainIcon chain={c} />
-          <span className="chain-name">{t(`chain.${c}`)}</span>
-          <bdi className="chain-amount">{formatNumber(native.perChain![c], native.decimals, i18n.language)}</bdi>
-        </li>))}</ul>}
-    </>
-  );
-}
-
-function Tokens({ holdings }: { holdings: Holding[] }) {
-  const { t, i18n } = useTranslation();
-  return (
-    <section className="tokens" aria-label={t('account.tokens')}>
-      <ul>{holdings.map((h, i) => (
-        <li key={h.symbol} className="token-row">
-          <TokenIcon symbol={h.symbol} />
-          <span className="token-name"><span className="token-symbol">{h.symbol}</span><span className="token-chain">{i === 0 ? 'PezkuwiChain' : h.standard ? `${t('chain.assetHub')} (${h.standard})` : t('chain.assetHub')}</span></span>
-          <bdi className="token-amount">{formatNumber(h.amount, h.decimals, i18n.language)}</bdi>
-        </li>))}</ul>
-    </section>
   );
 }
 
@@ -130,12 +96,12 @@ export default function Account() {
       <PageHeader title={t('home.account')} />
       <div className="screen account">
         <Card className="total-card" title={t('account.total')} status={balances.status} onRetry={balances.retry}>
-          {balances.data && <Totals holdings={balances.data} />}
+          {balances.data && <HoldingsTotal holdings={balances.data} />}
           <AddressChip address={address} />
         </Card>
         {/* The address stays at hand while the total is loading or failed. */}
         {balances.status !== 'ok' && <AddressChip address={address} />}
-        {balances.status === 'ok' && balances.data && balances.data.length > 0 && <Tokens holdings={balances.data} />}
+        {balances.status === 'ok' && balances.data && balances.data.length > 0 && <HoldingsTokens holdings={balances.data} />}
         <Card className="activity" title={t('account.activity')} status={hist.status} onRetry={() => setTick((n) => n + 1)}>
           {/* One or the other: the empty sentence, or a list with at least one row. */}
           {!hist.data || hist.data.length === 0 ? <p className="card-note">{t('account.empty')}</p> : byDay(hist.data).map((day) => (

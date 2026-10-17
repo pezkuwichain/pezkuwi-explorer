@@ -133,6 +133,8 @@ const applyBtn = () => screen.getByRole('button', { name: 'Başvuruyu Gönder' }
 const signWith = async (pw: string) => {
   await user.type(await screen.findByLabelText('Parola'), pw);
   await user.click(screen.getByRole('button', { name: 'İmzala ve gönder' }));
+  // The key is opened behind the progress overlay; signing follows once it is gone.
+  await waitFor(() => expect(document.querySelector('.progress-overlay')).toBeNull());
 };
 const lastPair = () => impl.pairs[impl.pairs.length - 1];
 

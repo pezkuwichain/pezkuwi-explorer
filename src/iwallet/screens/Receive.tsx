@@ -23,6 +23,8 @@ function ReceiveBody({ address }: { address: string }) {
           <bdi dir="ltr" className="iw-addr-text">{address}</bdi>
           <CopyAddress address={address} />
         </div>
+        {/* One address on every Pezkuwi network, as in the Pezkuwi Wallet: HEZ can arrive on any of the three. */}
+        <p className="iw-lead">{t('iwallet.receive.networks')}</p>
         <p className="iw-note">{t('iwallet.receive.warn')}</p>
       </div>
     </div>

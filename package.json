@@ -54,6 +54,7 @@
   "overrides": {
     "workbox-build": {
       "glob": "14.0.2"
-    }
+    },
+    "deepmerge": "npm:@pezkuwi/deepmerge@^4.3.2"
   }
 }
